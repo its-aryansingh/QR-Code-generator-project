@@ -16,6 +16,8 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/crypto/bcrypt"
+
 	xdraw "golang.org/x/image/draw"
 
 	"github.com/google/uuid"
@@ -70,15 +72,22 @@ type UpdateQRRequest struct {
 
 // GenerateRequest contains all parameters for QR generation
 type GenerateRequest struct {
-	UserID        uuid.UUID               `json:"-"`
-	Title         string                  `json:"title,omitempty"`
-	Content       string                  `json:"content"`
-	QRType        string                  `json:"qr_type"`
-	Size          int                     `json:"size"`
-	IsDynamic     bool                    `json:"is_dynamic"`
-	Metadata      map[string]interface{}  `json:"metadata,omitempty"`
-	Customization *models.QRCustomization `json:"customization,omitempty"`
-	ExpiresAt     *time.Time              `json:"expires_at,omitempty"`
+	UserID          uuid.UUID               `json:"-"`
+	Title           string                  `json:"title,omitempty"`
+	Content         string                  `json:"content"`
+	QRType          string                  `json:"qr_type"`
+	Size            int                     `json:"size"`
+	IsDynamic       bool                    `json:"is_dynamic"`
+	Metadata        map[string]interface{}  `json:"metadata,omitempty"`
+	Customization   *models.QRCustomization `json:"customization,omitempty"`
+	ExpiresAt       *time.Time              `json:"expires_at,omitempty"`
+	WorkspaceID     *uuid.UUID              `json:"workspace_id,omitempty"`
+	FolderID        *uuid.UUID              `json:"folder_id,omitempty"`
+	Tags            string                  `json:"tags,omitempty"`
+	Password        string                  `json:"password,omitempty"`
+	MaxScans        *int                    `json:"max_scans,omitempty"`
+	GeoRestrictions string                  `json:"geo_restrictions,omitempty"`
+	ScheduledAt     *time.Time              `json:"scheduled_at,omitempty"`
 }
 
 // GenerateResult contains the generated QR code
@@ -222,22 +231,38 @@ func (s *QRService) Generate(req GenerateRequest) (*GenerateResult, error) {
 		customJSON = datatypes.JSON(data)
 	}
 
+	// Hash password if provided
+	var passwordHash string
+	if req.Password != "" {
+		h, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+		if err != nil {
+			return nil, err
+		}
+		passwordHash = string(h)
+	}
+
 	// Create record
 	record := &models.QRRecord{
-		ID:            uuid.New(),
-		UserID:        req.UserID,
-		Title:         req.Title,
-		Content:       content,
-		QRType:        req.QRType,
-		QRTypeID:      req.QRType,
-		Size:          req.Size,
-		ShortCode:     shortCode,
-		IsDynamic:     req.IsDynamic,
-		RedirectURL:   redirectURL,
-		Metadata:      metadataJSON,
-		Customization: customJSON,
-		IsActive:      true,
-		ExpiresAt:     req.ExpiresAt,
+		ID:              uuid.New(),
+		UserID:          req.UserID,
+		Title:           req.Title,
+		Content:         content,
+		QRType:          req.QRType,
+		QRTypeID:        req.QRType,
+		Size:            req.Size,
+		ShortCode:       shortCode,
+		IsDynamic:       req.IsDynamic,
+		RedirectURL:     redirectURL,
+		Metadata:        metadataJSON,
+		Customization:   customJSON,
+		IsActive:        true,
+		ExpiresAt:       req.ExpiresAt,
+		WorkspaceID:     req.WorkspaceID,
+		FolderID:        req.FolderID,
+		Tags:            req.Tags,
+		Password:        passwordHash,
+		MaxScans:        req.MaxScans,
+		GeoRestrictions: req.GeoRestrictions,
 	}
 
 	// For dynamic QR, the QR content is the redirect URL

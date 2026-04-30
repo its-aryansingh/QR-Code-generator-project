@@ -62,6 +62,7 @@ func main() {
 	// Enterprise: Initialize workspace repository & handler
 	workspaceRepo := repository.NewWorkspaceRepository(db)
 	workspaceHandler := handlers.NewWorkspaceHandler(workspaceRepo, userRepo)
+	bulkHandler := handlers.NewBulkHandler(qrService, workspaceRepo)
 
 	// Setup Gin router
 	if cfg.Environment == "production" {
@@ -159,6 +160,10 @@ func main() {
 				ws.GET("/:id/qr", workspaceHandler.GetWorkspaceQRCodes)
 				ws.POST("/:id/qr/bulk-move", workspaceHandler.BulkMoveToFolder)
 				ws.POST("/:id/qr/bulk-delete", workspaceHandler.BulkDeleteQR)
+
+				// Bulk CSV generation → ZIP download
+				ws.POST("/:id/bulk", bulkHandler.BulkCSVGenerate)
+				ws.POST("/:id/bulk/preview", bulkHandler.BulkCSVPreview)
 
 				// Audit Logs
 				ws.GET("/:id/audit-logs", workspaceHandler.GetAuditLogs)
