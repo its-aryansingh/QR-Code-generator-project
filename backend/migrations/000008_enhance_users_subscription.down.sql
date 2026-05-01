@@ -1,0 +1,13 @@
+DROP INDEX IF EXISTS idx_users_api_key;
+DROP INDEX IF EXISTS idx_users_plan;
+
+ALTER TABLE users DROP COLUMN IF EXISTS stripe_subscription_id;
+ALTER TABLE users DROP COLUMN IF EXISTS stripe_customer_id;
+ALTER TABLE users DROP COLUMN IF EXISTS avatar_url;
+ALTER TABLE users DROP COLUMN IF EXISTS company;
+ALTER TABLE users DROP COLUMN IF EXISTS name;
+ALTER TABLE users DROP COLUMN IF EXISTS api_calls_reset_at;
+ALTER TABLE users DROP COLUMN IF EXISTS api_calls_today;
+ALTER TABLE users DROP COLUMN IF EXISTS api_key;
+ALTER TABLE users DROP COLUMN IF EXISTS plan_expires_at;
+ALTER TABLE users DROP COLUMN IF EXISTS plan;

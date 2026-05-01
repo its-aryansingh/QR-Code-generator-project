@@ -1,0 +1,92 @@
+[
+    {
+        "id": "phone",
+        "file": "phone.png",
+        "width": 2816,
+        "height": 1536,
+        "qr_x": 1008,
+        "qr_y": 368,
+        "qr_size": 800,
+        "render_order": "over"
+    },
+    {
+        "id": "polaroid",
+        "file": "polaroid.png",
+        "width": 2816,
+        "height": 1536,
+        "qr_x": 1008,
+        "qr_y": 368,
+        "qr_size": 800,
+        "render_order": "over"
+    },
+    {
+        "id": "ribbon",
+        "file": "ribbon.png",
+        "width": 2048,
+        "height": 2048,
+        "qr_x": 424,
+        "qr_y": 424,
+        "qr_size": 1200,
+        "render_order": "over"
+    },
+    {
+        "id": "neon",
+        "file": "neon.png",
+        "width": 2048,
+        "height": 2048,
+        "qr_x": 424,
+        "qr_y": 424,
+        "qr_size": 1200,
+        "render_order": "over"
+    },
+    {
+        "id": "scan_me",
+        "file": "scan_me.png",
+        "width": 2816,
+        "height": 1536,
+        "qr_x": 1008,
+        "qr_y": 368,
+        "qr_size": 800,
+        "render_order": "over"
+    },
+    {
+        "id": "round",
+        "file": "round.png",
+        "width": 2048,
+        "height": 2048,
+        "qr_x": 424,
+        "qr_y": 424,
+        "qr_size": 1200,
+        "render_order": "over"
+    },
+    {
+        "id": "badge",
+        "file": "badge.png",
+        "width": 2048,
+        "height": 2048,
+        "qr_x": 424,
+        "qr_y": 424,
+        "qr_size": 1200,
+        "render_order": "over"
+    },
+    {
+        "id": "arrow",
+        "file": "arrow.png",
+        "width": 2048,
+        "height": 2048,
+        "qr_x": 424,
+        "qr_y": 424,
+        "qr_size": 1200,
+        "render_order": "over"
+    },
+    {
+        "id": "dots",
+        "file": "dots.png",
+        "width": 2048,
+        "height": 2048,
+        "qr_x": 424,
+        "qr_y": 424,
+        "qr_size": 1200,
+        "render_order": "over"
+    }
+]
