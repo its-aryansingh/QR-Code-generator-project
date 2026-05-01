@@ -52,17 +52,18 @@ func main() {
 	qrService := services.NewQRService(qrRepo)
 	analyticsService := services.NewAnalyticsService(scanRepo, qrRepo, services.NewIPAPIGeoIPService())
 
+	// Enterprise: Initialize workspace repository & webhook service (needed by qr/redirect handlers)
+	workspaceRepo := repository.NewWorkspaceRepository(db)
+	webhookService := services.NewWebhookService(workspaceRepo)
+	workspaceHandler := handlers.NewWorkspaceHandler(workspaceRepo, userRepo, webhookService)
+	bulkHandler := handlers.NewBulkHandler(qrService, workspaceRepo)
+
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService)
-	qrHandler := handlers.NewQRHandler(qrService)
+	qrHandler := handlers.NewQRHandler(qrService, webhookService)
 	publicHandler := handlers.NewPublicHandler(qrService, freeTierRepo, analyticsService)
-	redirectHandler := handlers.NewRedirectHandler(qrService, qrRepo, scanRepo, analyticsService)
+	redirectHandler := handlers.NewRedirectHandler(qrService, qrRepo, scanRepo, analyticsService, webhookService)
 	analyticsHandler := handlers.NewAnalyticsHandler(analyticsService, qrService)
-
-	// Enterprise: Initialize workspace repository & handler
-	workspaceRepo := repository.NewWorkspaceRepository(db)
-	workspaceHandler := handlers.NewWorkspaceHandler(workspaceRepo, userRepo)
-	bulkHandler := handlers.NewBulkHandler(qrService, workspaceRepo)
 
 	// Setup Gin router
 	if cfg.Environment == "production" {
@@ -173,6 +174,7 @@ func main() {
 				ws.GET("/:id/webhooks", workspaceHandler.GetWebhooks)
 				ws.DELETE("/:id/webhooks/:webhookID", workspaceHandler.DeleteWebhook)
 				ws.GET("/:id/webhooks/:webhookID/logs", workspaceHandler.GetWebhookLogs)
+				ws.POST("/:id/webhooks/:webhookID/test", workspaceHandler.TestWebhook)
 
 				// Analytics (workspace-scoped)
 				ws.GET("/:id/analytics", workspaceHandler.GetWorkspaceAnalytics)
@@ -211,7 +213,7 @@ func main() {
 		}
 
 		// API routes (API key auth)
-		apiHandler := handlers.NewAPIHandler(qrService)
+		apiHandler := handlers.NewAPIHandler(qrService, userRepo)
 		apiRoutes := v1.Group("/api")
 		apiRoutes.Use(middleware.APIKeyAuth(db))
 		{

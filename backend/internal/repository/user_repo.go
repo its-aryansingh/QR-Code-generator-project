@@ -11,6 +11,7 @@ type UserRepository interface {
 	FindByEmail(email string) (*models.User, error)
 	FindByID(id uuid.UUID) (*models.User, error)
 	FindByAPIKey(apiKey string) (*models.User, error)
+	FindByStripeCustomerID(customerID string) (*models.User, error)
 	Update(user *models.User) error
 }
 
@@ -45,6 +46,14 @@ func (r *userRepository) FindByID(id uuid.UUID) (*models.User, error) {
 func (r *userRepository) FindByAPIKey(apiKey string) (*models.User, error) {
 	var user models.User
 	if err := r.db.Where("api_key = ?", apiKey).First(&user).Error; err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (r *userRepository) FindByStripeCustomerID(customerID string) (*models.User, error) {
+	var user models.User
+	if err := r.db.Where("stripe_customer_id = ?", customerID).First(&user).Error; err != nil {
 		return nil, err
 	}
 	return &user, nil

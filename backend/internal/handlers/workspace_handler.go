@@ -10,15 +10,17 @@ import (
 	"github.com/google/uuid"
 	"github.com/qrapp/backend/internal/models"
 	"github.com/qrapp/backend/internal/repository"
+	"github.com/qrapp/backend/internal/services"
 )
 
 type WorkspaceHandler struct {
-	repo     *repository.WorkspaceRepository
-	userRepo repository.UserRepository
+	repo           *repository.WorkspaceRepository
+	userRepo       repository.UserRepository
+	webhookService *services.WebhookService
 }
 
-func NewWorkspaceHandler(repo *repository.WorkspaceRepository, userRepo repository.UserRepository) *WorkspaceHandler {
-	return &WorkspaceHandler{repo: repo, userRepo: userRepo}
+func NewWorkspaceHandler(repo *repository.WorkspaceRepository, userRepo repository.UserRepository, webhookService *services.WebhookService) *WorkspaceHandler {
+	return &WorkspaceHandler{repo: repo, userRepo: userRepo, webhookService: webhookService}
 }
 
 // ==========================================
@@ -631,6 +633,29 @@ func (h *WorkspaceHandler) GetWebhookLogs(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"success": true, "data": logs})
+}
+
+// TestWebhook fires a synthetic test event to the specified webhook
+// POST /api/v1/workspaces/:id/webhooks/:webhookID/test
+func (h *WorkspaceHandler) TestWebhook(c *gin.Context) {
+	wsID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Invalid workspace ID"})
+		return
+	}
+
+	if h.webhookService == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"success": false, "error": "Webhook service unavailable"})
+		return
+	}
+
+	h.webhookService.TriggerEvent(wsID, "webhook.test", map[string]interface{}{
+		"message":      "This is a test event from QRit",
+		"webhook_id":   c.Param("webhookID"),
+		"workspace_id": wsID,
+	})
+
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Test event dispatched"})
 }
 
 // ==========================================

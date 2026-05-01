@@ -9,6 +9,7 @@ import (
 
 	"github.com/qrapp/backend/internal/middleware"
 	"github.com/qrapp/backend/internal/models"
+	"github.com/qrapp/backend/internal/repository"
 	"github.com/qrapp/backend/internal/services"
 	"github.com/qrapp/backend/pkg/utils"
 )
@@ -16,11 +17,12 @@ import (
 // APIHandler handles API endpoints for programmatic access
 type APIHandler struct {
 	qrService *services.QRService
+	userRepo  repository.UserRepository
 }
 
 // NewAPIHandler creates a new API handler
-func NewAPIHandler(qrService *services.QRService) *APIHandler {
-	return &APIHandler{qrService: qrService}
+func NewAPIHandler(qrService *services.QRService, userRepo repository.UserRepository) *APIHandler {
+	return &APIHandler{qrService: qrService, userRepo: userRepo}
 }
 
 // SingleGenerateRequest for API single QR generation
@@ -322,15 +324,33 @@ func (h *APIHandler) RegenerateAPIKey(c *gin.Context) {
 		utils.Unauthorized(c, "User not found")
 		return
 	}
-	userID, _ := uuid.Parse(userIDStr.(string))
+	userID := userIDStr.(uuid.UUID)
 
-	// Note: This would need access to user repo to update
-	// For now, return a placeholder response
+	user, err := h.userRepo.FindByID(userID)
+	if err != nil {
+		utils.NotFound(c, "User not found")
+		return
+	}
+
+	if !user.CanUseAPI() {
+		utils.Forbidden(c, "API access requires Pro or Enterprise plan")
+		return
+	}
+
+	if err := user.GenerateAPIKey(); err != nil {
+		utils.InternalError(c, "Failed to generate API key")
+		return
+	}
+
+	if err := h.userRepo.Update(user); err != nil {
+		utils.InternalError(c, "Failed to save API key")
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data": gin.H{
-			"user_id": userID,
-			"message": "API key regeneration would be implemented here",
+			"api_key": user.APIKey,
 		},
 	})
 }

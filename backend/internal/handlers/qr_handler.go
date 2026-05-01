@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -14,21 +15,29 @@ import (
 )
 
 type QRHandler struct {
-	qrService *services.QRService
+	qrService      *services.QRService
+	webhookService *services.WebhookService
 }
 
-func NewQRHandler(qrService *services.QRService) *QRHandler {
-	return &QRHandler{qrService: qrService}
+func NewQRHandler(qrService *services.QRService, webhookService *services.WebhookService) *QRHandler {
+	return &QRHandler{qrService: qrService, webhookService: webhookService}
 }
 
 type GenerateRequest struct {
-	Title         string                  `json:"title"`
-	Content       string                  `json:"content"`
-	QRType        string                  `json:"qr_type"`
-	Size          int                     `json:"size"`
-	IsDynamic     bool                    `json:"is_dynamic"`
-	Metadata      map[string]interface{}  `json:"metadata,omitempty"`
-	Customization *models.QRCustomization `json:"customization,omitempty"`
+	Title           string                  `json:"title"`
+	Content         string                  `json:"content"`
+	QRType          string                  `json:"qr_type"`
+	Size            int                     `json:"size"`
+	IsDynamic       bool                    `json:"is_dynamic"`
+	Metadata        map[string]interface{}  `json:"metadata,omitempty"`
+	Customization   *models.QRCustomization `json:"customization,omitempty"`
+	WorkspaceID     *uuid.UUID              `json:"workspace_id,omitempty"`
+	FolderID        *uuid.UUID              `json:"folder_id,omitempty"`
+	Tags            string                  `json:"tags,omitempty"`
+	Password        string                  `json:"password,omitempty"`
+	MaxScans        *int                    `json:"max_scans,omitempty"`
+	GeoRestrictions string                  `json:"geo_restrictions,omitempty"`
+	ExpiresAt       *time.Time              `json:"expires_at,omitempty"`
 }
 
 func (h *QRHandler) Generate(c *gin.Context) {
@@ -38,7 +47,6 @@ func (h *QRHandler) Generate(c *gin.Context) {
 		return
 	}
 
-	// Get user ID from context
 	userIDStr, exists := c.Get("userID")
 	if !exists {
 		utils.Unauthorized(c, "User not authenticated")
@@ -46,16 +54,22 @@ func (h *QRHandler) Generate(c *gin.Context) {
 	}
 	userID := userIDStr.(uuid.UUID)
 
-	// Convert to service request
 	serviceReq := services.GenerateRequest{
-		UserID:        userID,
-		Title:         req.Title,
-		Content:       req.Content,
-		QRType:        req.QRType,
-		Size:          req.Size,
-		IsDynamic:     req.IsDynamic,
-		Metadata:      req.Metadata,
-		Customization: req.Customization,
+		UserID:          userID,
+		Title:           req.Title,
+		Content:         req.Content,
+		QRType:          req.QRType,
+		Size:            req.Size,
+		IsDynamic:       req.IsDynamic,
+		Metadata:        req.Metadata,
+		Customization:   req.Customization,
+		WorkspaceID:     req.WorkspaceID,
+		FolderID:        req.FolderID,
+		Tags:            req.Tags,
+		Password:        req.Password,
+		MaxScans:        req.MaxScans,
+		GeoRestrictions: req.GeoRestrictions,
+		ExpiresAt:       req.ExpiresAt,
 	}
 
 	result, err := h.qrService.Generate(serviceReq)
@@ -71,6 +85,15 @@ func (h *QRHandler) Generate(c *gin.Context) {
 			utils.BadRequest(c, err.Error())
 		}
 		return
+	}
+
+	// Fire webhook
+	if h.webhookService != nil && result.Record.WorkspaceID != nil {
+		go h.webhookService.TriggerEvent(*result.Record.WorkspaceID, "qr.created", map[string]interface{}{
+			"qr_id":   result.Record.ID,
+			"title":   result.Record.Title,
+			"qr_type": result.Record.QRType,
+		})
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -165,7 +188,6 @@ func (h *QRHandler) Update(c *gin.Context) {
 		return
 	}
 
-	// Call UpdateQR service
 	updateReq := services.UpdateQRRequest{
 		Title:       req.Title,
 		RedirectURL: req.RedirectURL,
@@ -185,11 +207,18 @@ func (h *QRHandler) Update(c *gin.Context) {
 		return
 	}
 
-	// Get updated record
 	record, err := h.qrService.GetByID(id, userID)
 	if err != nil {
 		utils.NotFound(c, "QR record not found")
 		return
+	}
+
+	// Fire webhook
+	if h.webhookService != nil && record.WorkspaceID != nil {
+		go h.webhookService.TriggerEvent(*record.WorkspaceID, "qr.updated", map[string]interface{}{
+			"qr_id": record.ID,
+			"title": record.Title,
+		})
 	}
 
 	utils.Success(c, record)
@@ -210,11 +239,20 @@ func (h *QRHandler) Delete(c *gin.Context) {
 		return
 	}
 
+	// Fetch before deleting so we can fire webhook with workspace context
+	record, _ := h.qrService.GetByID(id, userID)
+
 	if err := h.qrService.DeleteQR(id, userID); err != nil {
-		// Assuming error means not found or forbidden (since service checks ID)
-		// But service currently just returns error from repo request if not found
 		utils.InternalError(c, "Failed to delete QR code")
 		return
+	}
+
+	// Fire webhook
+	if h.webhookService != nil && record != nil && record.WorkspaceID != nil {
+		go h.webhookService.TriggerEvent(*record.WorkspaceID, "qr.deleted", map[string]interface{}{
+			"qr_id": record.ID,
+			"title": record.Title,
+		})
 	}
 
 	c.Status(http.StatusNoContent)

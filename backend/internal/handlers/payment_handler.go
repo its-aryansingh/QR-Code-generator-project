@@ -1,8 +1,11 @@
 package handlers
 
 import (
+	"encoding/json"
 	"io"
+	"log"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -184,16 +187,90 @@ func (h *PaymentHandler) Webhook(c *gin.Context) {
 }
 
 func (h *PaymentHandler) handleCheckoutComplete(event *stripe.Event) {
-	// Parse checkout session from event
-	// Update user subscription status
+	var sess stripe.CheckoutSession
+	if err := json.Unmarshal(event.Data.Raw, &sess); err != nil {
+		log.Printf("payment: failed to parse checkout.session.completed: %v", err)
+		return
+	}
+	if sess.Customer == nil || sess.Subscription == nil {
+		return
+	}
+	user, err := h.userRepo.FindByStripeCustomerID(sess.Customer.ID)
+	if err != nil {
+		log.Printf("payment: user not found for customer %s: %v", sess.Customer.ID, err)
+		return
+	}
+	user.StripeSubscriptionID = sess.Subscription.ID
+	user.SubscriptionStatus = "active"
+	// Determine plan from line items metadata or subscription lookup
+	if sess.Metadata != nil {
+		if plan, ok := sess.Metadata["plan"]; ok && plan != "" {
+			user.Plan = plan
+		}
+	}
+	if err := h.userRepo.Update(user); err != nil {
+		log.Printf("payment: failed to update user after checkout: %v", err)
+	}
 }
 
 func (h *PaymentHandler) handleSubscriptionUpdated(event *stripe.Event) {
-	// Update user plan based on subscription
+	var sub stripe.Subscription
+	if err := json.Unmarshal(event.Data.Raw, &sub); err != nil {
+		log.Printf("payment: failed to parse subscription.updated: %v", err)
+		return
+	}
+	if sub.Customer == nil {
+		return
+	}
+	user, err := h.userRepo.FindByStripeCustomerID(sub.Customer.ID)
+	if err != nil {
+		log.Printf("payment: user not found for customer %s: %v", sub.Customer.ID, err)
+		return
+	}
+
+	user.StripeSubscriptionID = sub.ID
+	user.SubscriptionStatus = string(sub.Status)
+
+	// Map price ID to plan
+	if len(sub.Items.Data) > 0 {
+		priceID := sub.Items.Data[0].Price.ID
+		user.Plan = services.GetPlanFromPriceID(priceID)
+	}
+
+	// Set expiry for cancel-at-period-end subscriptions
+	if sub.CancelAtPeriodEnd && sub.CurrentPeriodEnd > 0 {
+		t := time.Unix(sub.CurrentPeriodEnd, 0)
+		user.SubscriptionEndsAt = &t
+	}
+
+	if err := h.userRepo.Update(user); err != nil {
+		log.Printf("payment: failed to update user after subscription update: %v", err)
+	}
 }
 
 func (h *PaymentHandler) handleSubscriptionDeleted(event *stripe.Event) {
-	// Downgrade user to free plan
+	var sub stripe.Subscription
+	if err := json.Unmarshal(event.Data.Raw, &sub); err != nil {
+		log.Printf("payment: failed to parse subscription.deleted: %v", err)
+		return
+	}
+	if sub.Customer == nil {
+		return
+	}
+	user, err := h.userRepo.FindByStripeCustomerID(sub.Customer.ID)
+	if err != nil {
+		log.Printf("payment: user not found for customer %s: %v", sub.Customer.ID, err)
+		return
+	}
+
+	user.Plan = models.PlanFree
+	user.StripeSubscriptionID = ""
+	user.SubscriptionStatus = "canceled"
+	user.SubscriptionEndsAt = nil
+
+	if err := h.userRepo.Update(user); err != nil {
+		log.Printf("payment: failed to downgrade user after subscription deleted: %v", err)
+	}
 }
 
 // GetPlans returns available subscription plans
