@@ -50,3 +50,17 @@ logs/
 
 # Docker
 .docker/
+
+# Tools & binaries
+tools/
+*.zip
+
+# Test/scratch data
+*.csv
+*.json
+!package.json
+!package-lock.json
+!tsconfig.json
+
+# One-off scripts
+verify_*.ps1

@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -551,7 +552,22 @@ func (h *WorkspaceHandler) GetAuditLogs(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
 
-	logs, total, err := h.repo.GetAuditLogs(wsID, limit, offset)
+	filters := repository.AuditLogFilters{
+		Action:   c.Query("action"),
+		Resource: c.Query("resource"),
+	}
+	if from := c.Query("from"); from != "" {
+		if t, err := time.Parse(time.RFC3339, from); err == nil {
+			filters.From = &t
+		}
+	}
+	if to := c.Query("to"); to != "" {
+		if t, err := time.Parse(time.RFC3339, to); err == nil {
+			filters.To = &t
+		}
+	}
+
+	logs, total, err := h.repo.GetAuditLogs(wsID, limit, offset, filters)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Failed to fetch audit logs"})
 		return

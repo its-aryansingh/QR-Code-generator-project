@@ -185,11 +185,31 @@ func (r *WorkspaceRepository) CreateAuditLog(log *models.AuditLog) error {
 	return r.db.Create(log).Error
 }
 
-func (r *WorkspaceRepository) GetAuditLogs(workspaceID uuid.UUID, limit, offset int) ([]models.AuditLog, int64, error) {
+type AuditLogFilters struct {
+	Action   string
+	Resource string
+	From     *time.Time
+	To       *time.Time
+}
+
+func (r *WorkspaceRepository) GetAuditLogs(workspaceID uuid.UUID, limit, offset int, filters AuditLogFilters) ([]models.AuditLog, int64, error) {
 	var logs []models.AuditLog
 	var total int64
 
 	query := r.db.Where("workspace_id = ?", workspaceID)
+	if filters.Action != "" {
+		query = query.Where("action = ?", filters.Action)
+	}
+	if filters.Resource != "" {
+		query = query.Where("resource = ?", filters.Resource)
+	}
+	if filters.From != nil {
+		query = query.Where("created_at >= ?", *filters.From)
+	}
+	if filters.To != nil {
+		query = query.Where("created_at <= ?", *filters.To)
+	}
+
 	query.Model(&models.AuditLog{}).Count(&total)
 
 	err := query.Preload("User").
