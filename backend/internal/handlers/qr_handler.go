@@ -161,10 +161,15 @@ func (h *QRHandler) GetByID(c *gin.Context) {
 }
 
 type UpdateRequest struct {
-	Title         *string                `json:"title,omitempty"`
-	RedirectURL   *string                `json:"redirect_url,omitempty"`
-	IsActive      *bool                  `json:"is_active,omitempty"`
-	Customization map[string]interface{} `json:"customization,omitempty"`
+	Title           *string                `json:"title,omitempty"`
+	RedirectURL     *string                `json:"redirect_url,omitempty"`
+	IsActive        *bool                  `json:"is_active,omitempty"`
+	Customization   map[string]interface{} `json:"customization,omitempty"`
+	Password        *string                `json:"password,omitempty"`
+	MaxScans        *int                   `json:"max_scans,omitempty"`
+	GeoRestrictions *string                `json:"geo_restrictions,omitempty"`
+	ExpiresAt       *time.Time             `json:"expires_at,omitempty"`
+	Tags            *string                `json:"tags,omitempty"`
 }
 
 func (h *QRHandler) Update(c *gin.Context) {
@@ -189,9 +194,14 @@ func (h *QRHandler) Update(c *gin.Context) {
 	}
 
 	updateReq := services.UpdateQRRequest{
-		Title:       req.Title,
-		RedirectURL: req.RedirectURL,
-		IsActive:    req.IsActive,
+		Title:           req.Title,
+		RedirectURL:     req.RedirectURL,
+		IsActive:        req.IsActive,
+		Password:        req.Password,
+		MaxScans:        req.MaxScans,
+		GeoRestrictions: req.GeoRestrictions,
+		ExpiresAt:       req.ExpiresAt,
+		Tags:            req.Tags,
 	}
 
 	if req.Customization != nil {

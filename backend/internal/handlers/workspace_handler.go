@@ -299,6 +299,50 @@ func (h *WorkspaceHandler) AcceptInvite(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Joined workspace", "workspace_id": invite.WorkspaceID})
 }
 
+// GetInviteInfo returns public info about an invite (no auth required)
+// GET /api/v1/invites/:token/info
+func (h *WorkspaceHandler) GetInviteInfo(c *gin.Context) {
+	token := c.Param("token")
+
+	invite, err := h.repo.GetInviteByToken(token)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"success": false, "error": "Invalid or expired invite"})
+		return
+	}
+
+	if invite.IsExpired() {
+		c.JSON(http.StatusGone, gin.H{"success": false, "error": "Invite has expired"})
+		return
+	}
+
+	workspace, err := h.repo.GetByID(invite.WorkspaceID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"success": false, "error": "Workspace not found"})
+		return
+	}
+
+	// Find inviter name
+	inviterName := ""
+	if inviter, err := h.userRepo.FindByID(invite.InvitedBy); err == nil {
+		inviterName = inviter.Name
+		if inviterName == "" {
+			inviterName = inviter.Email
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"workspace_name": workspace.Name,
+			"workspace_logo": workspace.LogoURL,
+			"role":           invite.Role,
+			"invited_by":     inviterName,
+			"email":          invite.Email,
+			"expires_at":     invite.ExpiresAt,
+		},
+	})
+}
+
 func (h *WorkspaceHandler) GetMembers(c *gin.Context) {
 	wsID, _ := uuid.Parse(c.Param("id"))
 
@@ -637,6 +681,71 @@ func (h *WorkspaceHandler) DeleteWebhook(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Webhook deleted"})
+}
+
+// UpdateWebhook updates an existing webhook
+// PUT /api/v1/workspaces/:id/webhooks/:webhookID
+func (h *WorkspaceHandler) UpdateWebhook(c *gin.Context) {
+	userID := c.MustGet("userID").(uuid.UUID)
+	wsID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Invalid workspace ID"})
+		return
+	}
+	webhookID, err := uuid.Parse(c.Param("webhookID"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Invalid webhook ID"})
+		return
+	}
+
+	webhook, err := h.repo.GetWebhookByID(webhookID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"success": false, "error": "Webhook not found"})
+		return
+	}
+
+	// Verify webhook belongs to workspace
+	if webhook.WorkspaceID != wsID {
+		c.JSON(http.StatusForbidden, gin.H{"success": false, "error": "Webhook does not belong to this workspace"})
+		return
+	}
+
+	var req struct {
+		URL         *string  `json:"url"`
+		Events      []string `json:"events"`
+		Description *string  `json:"description"`
+		IsActive    *bool    `json:"is_active"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		return
+	}
+
+	if req.URL != nil {
+		webhook.URL = *req.URL
+	}
+	if req.Events != nil {
+		webhook.Events = strings.Join(req.Events, ",")
+	}
+	if req.Description != nil {
+		webhook.Description = *req.Description
+	}
+	if req.IsActive != nil {
+		webhook.IsActive = *req.IsActive
+	}
+
+	if err := h.repo.UpdateWebhook(webhook); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Failed to update webhook"})
+		return
+	}
+
+	h.repo.CreateAuditLog(&models.AuditLog{
+		WorkspaceID: wsID, UserID: userID,
+		Action: models.AuditActionUpdate, Resource: models.AuditResourceWebhook,
+		ResourceID: &webhookID, IPAddress: c.ClientIP(),
+	})
+
+	c.JSON(http.StatusOK, gin.H{"success": true, "data": webhook})
 }
 
 func (h *WorkspaceHandler) GetWebhookLogs(c *gin.Context) {

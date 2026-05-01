@@ -64,10 +64,15 @@ func NewQRService(repo QRRepository) *QRService {
 
 // UpdateQRRequest contains fields for updating a QR code
 type UpdateQRRequest struct {
-	Title         *string
-	RedirectURL   *string
-	IsActive      *bool
-	Customization *datatypes.JSON
+	Title           *string
+	RedirectURL     *string
+	IsActive        *bool
+	Customization   *datatypes.JSON
+	Password        *string
+	MaxScans        *int
+	GeoRestrictions *string
+	ExpiresAt       *time.Time
+	Tags            *string
 }
 
 // GenerateRequest contains all parameters for QR generation
@@ -841,6 +846,39 @@ func (s *QRService) UpdateQR(id uuid.UUID, userID uuid.UUID, req UpdateQRRequest
 	// Update Customization
 	if req.Customization != nil {
 		record.Customization = *req.Customization
+	}
+
+	// Update Password (hash if changed)
+	if req.Password != nil {
+		if *req.Password == "" {
+			record.Password = "" // Clear password protection
+		} else {
+			h, err := bcrypt.GenerateFromPassword([]byte(*req.Password), bcrypt.DefaultCost)
+			if err != nil {
+				return err
+			}
+			record.Password = string(h)
+		}
+	}
+
+	// Update Max Scans
+	if req.MaxScans != nil {
+		record.MaxScans = req.MaxScans
+	}
+
+	// Update Geo Restrictions
+	if req.GeoRestrictions != nil {
+		record.GeoRestrictions = *req.GeoRestrictions
+	}
+
+	// Update Expiry
+	if req.ExpiresAt != nil {
+		record.ExpiresAt = req.ExpiresAt
+	}
+
+	// Update Tags
+	if req.Tags != nil {
+		record.Tags = *req.Tags
 	}
 
 	return s.repo.Update(record)

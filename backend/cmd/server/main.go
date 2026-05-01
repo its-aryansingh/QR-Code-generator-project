@@ -173,6 +173,7 @@ func main() {
 				ws.POST("/:id/webhooks", workspaceHandler.CreateWebhook)
 				ws.GET("/:id/webhooks", workspaceHandler.GetWebhooks)
 				ws.DELETE("/:id/webhooks/:webhookID", workspaceHandler.DeleteWebhook)
+				ws.PUT("/:id/webhooks/:webhookID", workspaceHandler.UpdateWebhook)
 				ws.GET("/:id/webhooks/:webhookID/logs", workspaceHandler.GetWebhookLogs)
 				ws.POST("/:id/webhooks/:webhookID/test", workspaceHandler.TestWebhook)
 
@@ -210,6 +211,9 @@ func main() {
 			leadPublicHandler := handlers.NewLeadCaptureHandler(workspaceRepo)
 			v1.GET("/pages/:slug", leadPublicHandler.GetPageBySlug)
 			v1.POST("/pages/:slug/submit", leadPublicHandler.SubmitLead)
+
+			// Public invite info (no auth)
+			v1.GET("/invites/:token/info", workspaceHandler.GetInviteInfo)
 		}
 
 		// API routes (API key auth)
