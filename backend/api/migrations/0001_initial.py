@@ -462,7 +462,7 @@ class Migration(migrations.Migration):
                 ("last_used", models.DateTimeField(blank=True, null=True)),
             ],
             options={
-                "db_table": "free_tier_usage",
+                "db_table": "free_tier_usages",
                 "managed": True,
                 "unique_together": {("ip_address", "date")},
             },

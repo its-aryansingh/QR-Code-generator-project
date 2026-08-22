@@ -117,8 +117,8 @@ class FreeTierUsage(models.Model):
 
     class Meta:
         managed = True
-        # Keep the table name used by the pre-Django backend so existing data survives.
-        db_table = "free_tier_usage"
+        # Keep the table name used by the deployed pre-Django backend.
+        db_table = "free_tier_usages"
         unique_together = [["ip_address", "date"]]
 
 
