@@ -8,7 +8,7 @@ export default function BulkPage() {
   const { accessToken } = useAuthStore();
   const [workspaceId, setWorkspaceId] = useState<string>("");
 
-  const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081/api/v1";
+  const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8084/api/v1";
 
   useEffect(() => {
     const stored = localStorage.getItem("qrit_active_workspace");

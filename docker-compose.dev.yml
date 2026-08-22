@@ -10,19 +10,19 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     environment:
-      ENVIRONMENT: development
+      DEBUG: "True"
     volumes:
       - ./backend:/app
-    command: go run ./cmd/server
+    command: python manage.py runserver 0.0.0.0:8084
     ports:
-      - "8080:8080"
+      - "8084:8084"
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8080/api/v1
+      NEXT_PUBLIC_API_URL: http://localhost:8084/api/v1
     volumes:
       - ./frontend:/app
       - /app/node_modules

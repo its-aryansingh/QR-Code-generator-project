@@ -64,3 +64,10 @@ tools/
 
 # One-off scripts
 verify_*.ps1
+
+# Python build artifacts and local agent scratch files
+__pycache__/
+*.py[cod]
+.venv/
+.claude/
+patch.py

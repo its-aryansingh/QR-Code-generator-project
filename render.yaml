@@ -1,13 +1,13 @@
 services:
   - type: web
     name: qrit-backend
-    env: go
+    env: python
     rootDir: backend
-    buildCommand: go build -o server ./cmd/server/main.go
-    startCommand: ./server
+    buildCommand: pip install -r requirements.txt && python manage.py migrate --fake-initial --noinput
+    startCommand: python manage.py runserver 0.0.0.0:$PORT
     envVars:
       - key: PORT
-        value: 8080
+        value: 8084
       - key: DATABASE_URL
         fromDatabase:
           name: qrit-db
@@ -18,6 +18,8 @@ services:
         sync: false
       - key: STRIPE_WEBHOOK_SECRET
         sync: false
+      - key: DEBUG
+        value: "False"
 
   - type: web
     name: qrit-frontend

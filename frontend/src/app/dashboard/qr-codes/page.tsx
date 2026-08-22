@@ -23,7 +23,7 @@ export default function QRCodesPage() {
   const [moving, setMoving] = useState(false);
   const [tableKey, setTableKey] = useState(0);
 
-  const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081/api/v1";
+  const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8084/api/v1";
 
   useEffect(() => {
     const stored = localStorage.getItem("qrit_active_workspace");
@@ -52,25 +52,24 @@ export default function QRCodesPage() {
   useEffect(() => { loadFolders(); }, [loadFolders]);
 
   const handleMoveToFolder = async (folderId: string | null) => {
-    if (!workspaceId || selectedIds.length === 0) return;
+    if (selectedIds.length === 0) return;
     setMoving(true);
     try {
-      const res = await fetch(`${api}/workspaces/${workspaceId}/qr/bulk-move`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ qr_ids: selectedIds, folder_id: folderId }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        toast.success(`Moved ${selectedIds.length} QR code(s)`);
-        setSelectedIds([]);
-        setShowMoveModal(false);
-        setTableKey((k) => k + 1);
-      } else {
-        toast.error(data.error ?? "Move failed");
-      }
+      await Promise.all(
+        selectedIds.map((id) =>
+          fetch(`${api}/qr/${id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+            body: JSON.stringify({ folder_id: folderId }),
+          })
+        )
+      );
+      toast.success(`Moved ${selectedIds.length} QR code(s)`);
+      setSelectedIds([]);
+      setShowMoveModal(false);
+      setTableKey((k) => k + 1);
     } catch {
-      toast.error("Network error");
+      toast.error("Move failed");
     } finally {
       setMoving(false);
     }

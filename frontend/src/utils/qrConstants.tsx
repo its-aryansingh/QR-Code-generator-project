@@ -36,3 +36,12 @@ export const qrTypes = [
     { id: "mecard", name: "MeCard", description: "Simple Contact" },
     { id: "multilink", name: "Multi-Link", description: "Multiple URLs" },
 ];
+
+export const frameTemplates = [
+    { id: "none", name: "None", style: {} },
+    { id: "scan-me", name: "Scan Me", text: "SCAN ME", style: { border: '4px solid #000', borderRadius: '12px' } },
+    { id: "scan-me-rounded", name: "Rounded", text: "SCAN ME", style: { border: '4px solid #000', borderRadius: '24px' } },
+    { id: "iphone", name: "Phone", text: "SCAN TO VIEW", style: { border: '8px solid #000', borderTopWidth: '24px', borderBottomWidth: '24px', borderRadius: '32px' } },
+    { id: "polaroid", name: "Polaroid", text: "📸", style: { border: '16px solid #fff', borderBottomWidth: '48px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' } },
+];
+

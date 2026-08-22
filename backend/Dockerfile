@@ -1,27 +1,14 @@
-FROM golang:1.21-alpine AS builder
+FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install dependencies
-COPY go.mod go.sum ./
-RUN go mod download
+RUN apt-get update && apt-get install -y libpq-dev gcc && rm -rf /var/lib/apt/lists/*
 
-# Copy source code
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
 COPY . .
 
-# Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -o /app/server ./cmd/server/main.go
+EXPOSE 8084
 
-# Final stage
-FROM alpine:latest
-
-WORKDIR /root/
-
-# Copy the binary from builder
-COPY --from=builder /app/server .
-
-# Expose port
-EXPOSE 8080
-
-# Run the binary
-CMD ["./server"]
+CMD ["sh", "-c", "python manage.py migrate --noinput --fake-initial && exec python manage.py runserver 0.0.0.0:8084"]

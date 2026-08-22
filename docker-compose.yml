@@ -21,26 +21,23 @@ services:
       timeout: 5s
       retries: 5
 
-  # Go Backend
+  # Django Backend
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: qrapp-backend
     environment:
-      PORT: 8080
-      ENVIRONMENT: production
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_USER: postgres
-      DB_PASSWORD: postgres
-      DB_NAME: qrapp
-      DB_SSLMODE: disable
+      PORT: 8084
+      DEBUG: "False"
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/qrapp
       JWT_SECRET: ${JWT_SECRET:-super-secret-change-in-production}
       JWT_EXPIRY_MINUTES: 15
       REFRESH_EXPIRY_DAYS: 7
+      APP_BASE_URL: http://localhost:3000
+      API_BASE_URL: http://localhost:8084
     ports:
-      - "8081:8080"
+      - "8084:8084"
     depends_on:
       postgres:
         condition: service_healthy
@@ -53,7 +50,7 @@ services:
       dockerfile: Dockerfile
     container_name: qrapp-frontend
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8081/api/v1
+      NEXT_PUBLIC_API_URL: http://localhost:8084/api/v1
     ports:
       - "3000:3000"
     depends_on:

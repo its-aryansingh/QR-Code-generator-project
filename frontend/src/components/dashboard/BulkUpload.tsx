@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
+import JSZip from "jszip";
 import { useAuthStore } from "@/lib/auth";
 import { toast } from "sonner";
 
@@ -18,48 +19,85 @@ interface BulkUploadProps {
 
 type Stage = "idle" | "preview" | "generating" | "done";
 
+function parseCSV(text: string): PreviewRow[] {
+  const lines = text.split(/\r?\n/).filter((l) => l.trim());
+  if (lines.length < 2) return [];
+
+  const header = lines[0].split(",").map((h) => h.replace(/^"|"$/g, "").trim().toLowerCase());
+  const contentIdx = header.indexOf("content") !== -1 ? header.indexOf("content") : header.indexOf("url");
+  const titleIdx = header.indexOf("title");
+  const typeIdx = header.indexOf("type");
+
+  if (contentIdx === -1) return [];
+
+  return lines.slice(1).map((line, i) => {
+    // simple CSV parse — handles quoted fields
+    const cols: string[] = [];
+    let cur = "";
+    let inQuote = false;
+    for (let ci = 0; ci < line.length; ci++) {
+      const ch = line[ci];
+      if (ch === '"') { inQuote = !inQuote; continue; }
+      if (ch === "," && !inQuote) { cols.push(cur); cur = ""; continue; }
+      cur += ch;
+    }
+    cols.push(cur);
+
+    const content = cols[contentIdx]?.trim() ?? "";
+    const title = titleIdx !== -1 ? cols[titleIdx]?.trim() : "";
+    const type = typeIdx !== -1 ? cols[typeIdx]?.trim() : "url";
+
+    return {
+      row: i + 1,
+      title: title || content.substring(0, 40),
+      content,
+      type: type || "url",
+    };
+  }).filter((r) => r.content);
+}
+
+async function buildZip(items: { filename: string; b64: string }[]): Promise<Blob> {
+  const zip = new JSZip();
+  for (const item of items) {
+    const binary = atob(item.b64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    zip.file(item.filename, bytes);
+  }
+  return zip.generateAsync({ type: "blob" });
+}
+
 export function BulkUpload({ workspaceId, onComplete }: BulkUploadProps) {
   const { accessToken } = useAuthStore();
   const [stage, setStage] = useState<Stage>("idle");
   const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<PreviewRow[]>([]);
-  const [totalRows, setTotalRows] = useState(0);
+  const [rows, setRows] = useState<PreviewRow[]>([]);
   const [progress, setProgress] = useState(0);
   const [successCount, setSuccessCount] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081/api/v1";
+  const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8084/api/v1";
 
-  const loadPreview = useCallback(async (f: File) => {
-    setFile(f);
-    const form = new FormData();
-    form.append("file", f);
-    try {
-      const res = await fetch(`${api}/workspaces/${workspaceId}/bulk/preview`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${accessToken}` },
-        body: form,
-      }).then((r) => r.json());
-
-      if (res.success) {
-        setPreview(res.preview ?? []);
-        setTotalRows(res.total_rows ?? 0);
-        setStage("preview");
-      } else {
-        toast.error(res.error || "Invalid CSV");
-      }
-    } catch {
-      toast.error("Failed to parse CSV");
-    }
-  }, [workspaceId, accessToken, api]);
-
-  const handleFile = (f: File | null) => {
+  const handleFile = useCallback((f: File | null) => {
     if (!f) return;
     if (!f.name.endsWith(".csv")) { toast.error("Please upload a .csv file"); return; }
     if (f.size > 5 * 1024 * 1024) { toast.error("File too large (max 5 MB)"); return; }
-    loadPreview(f);
-  };
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      const parsed = parseCSV(text);
+      if (parsed.length === 0) {
+        toast.error("No valid rows found. Make sure the file has a 'content' or 'url' column.");
+        return;
+      }
+      setFile(f);
+      setRows(parsed.slice(0, 100));
+      setStage("preview");
+    };
+    reader.readAsText(f);
+  }, []);
 
   const onDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -68,21 +106,22 @@ export function BulkUpload({ workspaceId, onComplete }: BulkUploadProps) {
   };
 
   const generate = async () => {
-    if (!file) return;
+    if (rows.length === 0) return;
     setStage("generating");
     setProgress(0);
 
-    // Fake progress ticker while the request is in-flight
-    const ticker = setInterval(() => setProgress((p) => Math.min(p + 3, 92)), 400);
+    const ticker = setInterval(() => setProgress((p) => Math.min(p + 4, 88)), 350);
 
     try {
-      const form = new FormData();
-      form.append("file", file);
+      const items = rows.map((r) => ({ content: r.content, title: r.title, type: r.type, size: 512 }));
 
-      const res = await fetch(`${api}/workspaces/${workspaceId}/bulk`, {
+      const res = await fetch(`${api}/bulk/generate`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${accessToken}` },
-        body: form,
+        headers: {
+          "Content-Type": "application/json",
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
+        body: JSON.stringify({ items }),
       });
 
       clearInterval(ticker);
@@ -94,25 +133,46 @@ export function BulkUpload({ workspaceId, onComplete }: BulkUploadProps) {
         return;
       }
 
-      // Parse response headers for counts
-      const success = parseInt(res.headers.get("X-Bulk-Success") ?? "0", 10);
-      const total = parseInt(res.headers.get("X-Bulk-Total") ?? String(totalRows), 10);
+      const data = await res.json();
+      const results: { content: string; qr_base64: string; success: boolean }[] = data.results ?? [];
+      const succeeded = results.filter((r) => r.success);
 
       setProgress(100);
-      setSuccessCount(success);
+      setSuccessCount(succeeded.length);
       setStage("done");
 
-      // Trigger ZIP download
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "qrit-bulk-qrcodes.zip";
-      a.click();
-      URL.revokeObjectURL(url);
+      // Build ZIP from base64 strings
+      const zipItems = succeeded.map((r, i) => ({
+        filename: `qr-${i + 1}-${rows[i]?.title?.replace(/[^a-z0-9]/gi, "_").substring(0, 30) || i + 1}.png`,
+        b64: r.qr_base64,
+      }));
 
-      toast.success(`Generated ${success} / ${total} QR codes`);
-      onComplete?.(success);
+      try {
+        const zipBlob = await buildZip(zipItems);
+        const url = URL.createObjectURL(zipBlob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "qrit-bulk-qrcodes.zip";
+        a.click();
+        URL.revokeObjectURL(url);
+      } catch {
+        // jszip not available — download PNGs individually
+        for (const item of zipItems) {
+          const binary = atob(item.b64);
+          const bytes = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+          const blob = new Blob([bytes], { type: "image/png" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = item.filename;
+          a.click();
+          URL.revokeObjectURL(url);
+        }
+      }
+
+      toast.success(`Generated ${succeeded.length} / ${rows.length} QR codes`);
+      onComplete?.(succeeded.length);
     } catch {
       clearInterval(ticker);
       toast.error("Network error — please retry");
@@ -123,11 +183,12 @@ export function BulkUpload({ workspaceId, onComplete }: BulkUploadProps) {
   const reset = () => {
     setStage("idle");
     setFile(null);
-    setPreview([]);
-    setTotalRows(0);
+    setRows([]);
     setProgress(0);
     if (fileRef.current) fileRef.current.value = "";
   };
+
+  const preview = rows.slice(0, 10);
 
   return (
     <div className="space-y-5">
@@ -154,15 +215,14 @@ export function BulkUpload({ workspaceId, onComplete }: BulkUploadProps) {
           </div>
           <div className="text-center">
             <p className="font-semibold text-zinc-200">Drop your CSV here</p>
-            <p className="text-sm text-zinc-500 mt-1">or click to browse — max 5 MB, 100 rows</p>
+            <p className="text-sm text-zinc-500 mt-1">or <span className="text-violet-400 underline underline-offset-2">click to browse</span> — max 5 MB, 100 rows</p>
           </div>
 
-          {/* Format hint */}
           <div className="mt-2 px-4 py-2.5 bg-zinc-900 border border-zinc-800 rounded-xl text-xs font-mono text-zinc-500 text-left w-full max-w-sm">
             <span className="text-zinc-400">title</span>,<span className="text-zinc-400">content</span>,<span className="text-zinc-400">type</span><br />
-            "Product A","https://…","url"<br />
-            "Trade WiFi","WIFI:T:WPA;…","wifi"<br />
-            "Contact Card","BEGIN:VCARD…","vcard"
+            "Product A","https://example.com","url"<br />
+            "Trade WiFi","WIFI:T:WPA;S:Net;P:pass;;","wifi"<br />
+            "Contact","BEGIN:VCARD…","vcard"
           </div>
         </div>
       )}
@@ -174,9 +234,9 @@ export function BulkUpload({ workspaceId, onComplete }: BulkUploadProps) {
             <div>
               <p className="font-semibold text-zinc-200">
                 {file?.name}
-                <span className="ml-2 text-sm font-normal text-zinc-500">— {totalRows} row{totalRows !== 1 ? "s" : ""} detected</span>
+                <span className="ml-2 text-sm font-normal text-zinc-500">— {rows.length} row{rows.length !== 1 ? "s" : ""} ready</span>
               </p>
-              {totalRows > 100 && (
+              {rows.length === 100 && (
                 <p className="text-xs text-amber-400 mt-1">Capped at 100 rows per request.</p>
               )}
             </div>
@@ -185,7 +245,6 @@ export function BulkUpload({ workspaceId, onComplete }: BulkUploadProps) {
             </button>
           </div>
 
-          {/* Preview table */}
           <div className="bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden">
             <table className="w-full text-xs">
               <thead>
@@ -209,9 +268,9 @@ export function BulkUpload({ workspaceId, onComplete }: BulkUploadProps) {
                 ))}
               </tbody>
             </table>
-            {totalRows > 10 && (
+            {rows.length > 10 && (
               <p className="px-4 py-2.5 text-xs text-zinc-600 border-t border-zinc-800">
-                Showing 10 of {Math.min(totalRows, 100)} rows that will be generated.
+                Showing 10 of {rows.length} rows that will be generated.
               </p>
             )}
           </div>
@@ -224,7 +283,7 @@ export function BulkUpload({ workspaceId, onComplete }: BulkUploadProps) {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
-              Generate {Math.min(totalRows, 100)} QR Codes &amp; Download ZIP
+              Generate {rows.length} QR Codes &amp; Download ZIP
             </button>
             <button onClick={reset} className="px-5 py-2.5 border border-zinc-700 text-zinc-400 font-semibold rounded-xl hover:bg-zinc-800 hover:text-zinc-200 transition-all text-sm">
               Cancel
@@ -244,7 +303,6 @@ export function BulkUpload({ workspaceId, onComplete }: BulkUploadProps) {
             <p className="font-semibold text-zinc-200 mb-1">Generating QR codes…</p>
             <p className="text-sm text-zinc-500">Do not close this page</p>
           </div>
-          {/* Progress bar */}
           <div className="w-full max-w-sm">
             <div className="flex justify-between text-xs text-zinc-500 mb-1.5">
               <span>Progress</span>
@@ -270,7 +328,7 @@ export function BulkUpload({ workspaceId, onComplete }: BulkUploadProps) {
           </div>
           <div>
             <p className="text-xl font-bold text-zinc-100 mb-1">{successCount} QR codes generated</p>
-            <p className="text-sm text-zinc-500">Your ZIP download should have started automatically.</p>
+            <p className="text-sm text-zinc-500">Your download should have started automatically.</p>
           </div>
           <button
             onClick={reset}

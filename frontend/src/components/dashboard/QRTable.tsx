@@ -43,7 +43,7 @@ export function QRTable({ workspaceId, folderId, onSelect }: QRTableProps) {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   const limit = 20;
-  const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081/api/v1";
+  const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8084/api/v1";
 
   const fetchRecords = useCallback(async () => {
     if (!workspaceId || !accessToken) return;
@@ -51,19 +51,20 @@ export function QRTable({ workspaceId, folderId, onSelect }: QRTableProps) {
     try {
       const params = new URLSearchParams({
         limit: String(limit),
-        offset: String(page * limit),
+        page: String(page + 1),
+        workspace_id: workspaceId,
       });
       if (search) params.set("search", search);
       if (folderId) params.set("folder_id", folderId);
 
       const res = await fetch(
-        `${api}/workspaces/${workspaceId}/qr?${params}`,
+        `${api}/qr/history?${params}`,
         { headers: { Authorization: `Bearer ${accessToken}` } }
       ).then((r) => r.json());
 
       if (res.success) {
-        setRecords(res.data ?? []);
-        setTotal(res.total ?? 0);
+        setRecords(res.data?.items ?? []);
+        setTotal(res.data?.total ?? 0);
       }
     } finally {
       setLoading(false);
@@ -72,7 +73,7 @@ export function QRTable({ workspaceId, folderId, onSelect }: QRTableProps) {
 
   useEffect(() => { fetchRecords(); }, [fetchRecords]);
 
-  // Debounce search
+  // Reset to page 0 on filter change
   useEffect(() => {
     setPage(0);
   }, [search, folderId]);
@@ -114,13 +115,17 @@ export function QRTable({ workspaceId, folderId, onSelect }: QRTableProps) {
   const deleteSelected = async () => {
     if (!confirm(`Delete ${selected.size} QR code(s)?`)) return;
     try {
-      await fetch(`${api}/workspaces/${workspaceId}/qr/bulk-delete`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ qr_ids: Array.from(selected) }),
-      });
+      await Promise.all(
+        Array.from(selected).map((id) =>
+          fetch(`${api}/qr/${id}`, {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${accessToken}` },
+          })
+        )
+      );
       toast.success("Deleted successfully");
       setSelected(new Set());
+      onSelect?.([]);
       fetchRecords();
     } catch {
       toast.error("Delete failed");
