@@ -58,7 +58,11 @@ class LoginView(APIView):
 
 class RefreshView(APIView):
     def post(self, request):
-        token = request.data.get("refreshToken", "")
+        token = (
+            request.data.get("refresh_token")
+            or request.data.get("refreshToken")
+            or ""
+        )
         if not token:
             return Response({"success": False, "error": "Refresh token required"}, status=400)
         try:
@@ -109,8 +113,8 @@ class MeView(APIView):
 class ChangePasswordView(APIView):
     @require_auth
     def post(self, request):
-        current = request.data.get("currentPassword", "")
-        new_pass = request.data.get("newPassword", "")
+        current = request.data.get("current_password") or request.data.get("currentPassword") or ""
+        new_pass = request.data.get("new_password") or request.data.get("newPassword") or ""
         if not current or not new_pass or len(new_pass) < 8:
             return Response({"success": False, "error": "Invalid password"}, status=400)
         try:

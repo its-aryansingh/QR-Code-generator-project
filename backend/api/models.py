@@ -303,3 +303,220 @@ class Lead(models.Model):
     class Meta:
         managed = True
         db_table = "leads"
+
+
+# ====================================================================
+# Enterprise layer
+# ====================================================================
+
+
+class Campaign(models.Model):
+    """A named marketing initiative that QR codes roll up into.
+
+    Distinct from Folder: folders are storage, campaigns are measurement.
+    A QR lives in one folder and is measured against one campaign.
+    """
+
+    STATUS_CHOICES = ["draft", "scheduled", "active", "paused", "completed", "archived"]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    workspace = models.ForeignKey("Workspace", on_delete=models.CASCADE,
+                                  db_column="workspace_id", related_name="campaigns")
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
+    status = models.CharField(max_length=20, default="draft")
+    color = models.CharField(max_length=7, default="#8B5CF6")
+    starts_at = models.DateTimeField(null=True, blank=True)
+    ends_at = models.DateTimeField(null=True, blank=True)
+    scan_goal = models.BigIntegerField(default=0)
+    utm_source = models.CharField(max_length=100, blank=True, null=True)
+    utm_medium = models.CharField(max_length=100, blank=True, null=True)
+    utm_campaign = models.CharField(max_length=100, blank=True, null=True)
+    utm_term = models.CharField(max_length=100, blank=True, null=True)
+    utm_content = models.CharField(max_length=100, blank=True, null=True)
+    tags = models.TextField(blank=True, null=True)
+    created_by = models.UUIDField(null=True, blank=True)
+    created_at = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        managed = True
+        db_table = "campaigns"
+        indexes = [models.Index(fields=["workspace", "status"])]
+
+
+class QRTemplate(models.Model):
+    """Brand-locked design preset.
+
+    When is_locked is set, editors must use the design verbatim. That is how
+    brand teams keep ten thousand printed codes on-brand.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    workspace = models.ForeignKey("Workspace", on_delete=models.CASCADE,
+                                  db_column="workspace_id", related_name="templates")
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
+    design = models.JSONField(default=dict)
+    preview_url = models.TextField(blank=True, null=True)
+    is_default = models.BooleanField(default=False)
+    is_locked = models.BooleanField(default=False)
+    usage_count = models.IntegerField(default=0)
+    created_by = models.UUIDField(null=True, blank=True)
+    created_at = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        managed = True
+        db_table = "qr_templates"
+
+
+class RoutingRule(models.Model):
+    """Smart-routing condition evaluated at scan time, highest priority first.
+
+    Weighted rules implement A/B split testing; every other condition is a
+    deterministic match against the incoming request.
+    """
+
+    CONDITIONS = ["country", "device", "os", "language", "time_of_day",
+                  "date_range", "weight", "scan_count"]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    qr_record = models.ForeignKey("QRRecord", on_delete=models.CASCADE,
+                                  db_column="qr_id", related_name="routing_rules")
+    name = models.CharField(max_length=255, blank=True, null=True)
+    condition = models.CharField(max_length=30)
+    operator = models.CharField(max_length=20, default="in")
+    value = models.TextField(blank=True, null=True)
+    destination_url = models.TextField()
+    priority = models.IntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    hit_count = models.BigIntegerField(default=0)
+    created_at = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        managed = True
+        db_table = "routing_rules"
+        ordering = ["-priority", "created_at"]
+
+
+class ApiKey(models.Model):
+    """Workspace-scoped API credential.
+
+    Only the hash is stored; the plaintext is returned once at creation.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    workspace = models.ForeignKey("Workspace", on_delete=models.CASCADE,
+                                  db_column="workspace_id", related_name="api_keys")
+    name = models.CharField(max_length=255)
+    prefix = models.CharField(max_length=16, db_index=True)
+    key_hash = models.CharField(max_length=255)
+    scopes = models.TextField(default="qr:read,qr:write,analytics:read")
+    last_used_at = models.DateTimeField(null=True, blank=True)
+    calls_today = models.BigIntegerField(default=0)
+    calls_reset_at = models.DateField(null=True, blank=True)
+    total_calls = models.BigIntegerField(default=0)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    created_by = models.UUIDField(null=True, blank=True)
+    created_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        managed = True
+        db_table = "workspace_api_keys"
+
+
+class CustomDomain(models.Model):
+    """Branded short-link domain.
+
+    A dedicated domain with isolated reputation is the primary defence that
+    keeps a quishing takedown on a shared domain from killing your codes.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    workspace = models.ForeignKey("Workspace", on_delete=models.CASCADE,
+                                  db_column="workspace_id", related_name="domains")
+    domain = models.CharField(max_length=255, unique=True)
+    status = models.CharField(max_length=20, default="pending")
+    verification_token = models.CharField(max_length=64)
+    verification_method = models.CharField(max_length=20, default="dns_txt")
+    is_primary = models.BooleanField(default=False)
+    ssl_status = models.CharField(max_length=20, default="pending")
+    last_checked_at = models.DateTimeField(null=True, blank=True)
+    verified_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        managed = True
+        db_table = "custom_domains"
+
+
+class SsoConfig(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    workspace = models.OneToOneField("Workspace", on_delete=models.CASCADE,
+                                     db_column="workspace_id", related_name="sso")
+    is_enabled = models.BooleanField(default=False)
+    provider = models.CharField(max_length=20, default="saml")
+    entity_id = models.CharField(max_length=500, blank=True, null=True)
+    sso_url = models.TextField(blank=True, null=True)
+    slo_url = models.TextField(blank=True, null=True)
+    certificate = models.TextField(blank=True, null=True)
+    metadata_url = models.TextField(blank=True, null=True)
+    email_domains = models.TextField(blank=True, null=True)
+    default_role = models.CharField(max_length=20, default="viewer")
+    enforce_sso = models.BooleanField(default=False)
+    scim_enabled = models.BooleanField(default=False)
+    scim_token_hash = models.CharField(max_length=255, blank=True, null=True)
+    created_at = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        managed = True
+        db_table = "sso_configs"
+
+
+class SecurityPolicy(models.Model):
+    """Per-workspace guardrails.
+
+    allowed_domains stops an editor from pointing a printed code at an
+    off-brand or attacker-controlled host.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    workspace = models.OneToOneField("Workspace", on_delete=models.CASCADE,
+                                     db_column="workspace_id", related_name="security_policy")
+    allowed_domains = models.TextField(blank=True, null=True)
+    blocked_domains = models.TextField(blank=True, null=True)
+    require_https = models.BooleanField(default=True)
+    require_approval = models.BooleanField(default=False)
+    scan_alert_threshold = models.IntegerField(default=0)
+    password_min_length = models.IntegerField(default=8)
+    session_timeout_minutes = models.IntegerField(default=0)
+    created_at = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        managed = True
+        db_table = "security_policies"
+
+
+class BulkJob(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    workspace = models.ForeignKey("Workspace", on_delete=models.CASCADE,
+                                  db_column="workspace_id", related_name="bulk_jobs")
+    created_by = models.UUIDField(null=True, blank=True)
+    filename = models.CharField(max_length=255, blank=True, null=True)
+    status = models.CharField(max_length=20, default="pending")
+    total_rows = models.IntegerField(default=0)
+    success_count = models.IntegerField(default=0)
+    error_count = models.IntegerField(default=0)
+    errors = models.TextField(blank=True, null=True)
+    options = models.JSONField(default=dict)
+    created_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        managed = True
+        db_table = "bulk_jobs"
