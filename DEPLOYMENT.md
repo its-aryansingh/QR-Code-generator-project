@@ -117,6 +117,33 @@ web: cd backend && gunicorn qrapp.wsgi:application --config gunicorn.conf.py --b
 
 - In DigitalOcean or Heroku, the `release` phase runs migrations and gathers static files before routing traffic to the newly deployed container, ensuring zero-downtime releases.
 
+### Method D: Railway.app (Monorepo Setup)
+
+In Railway, this monorepo should be deployed as **two separate services** from the same GitHub repository:
+
+#### 1. Frontend Service (`qrit-frontend`):
+- Create new Service -> **GitHub Repo** -> select this repository.
+- Go to **Settings** -> **General**:
+  - **Root Directory**: Set to `/frontend` (or `frontend`).
+  *(This is critical! If left as `/`, Railway defaults to the repository root where `npm` and `package.json` do not reside).*
+- Go to **Variables**:
+  - `NEXT_PUBLIC_API_URL`: `https://${{qrit-backend.RAILWAY_PUBLIC_DOMAIN}}/api/v1`
+  - `NEXT_PUBLIC_API_BASE_URL`: `https://${{qrit-backend.RAILWAY_PUBLIC_DOMAIN}}`
+  - `NEXT_PUBLIC_APP_URL`: `https://${{RAILWAY_PUBLIC_DOMAIN}}`
+
+#### 2. Backend Service (`qrit-backend`):
+- In the same project, click **+ New** -> **GitHub Repo** -> select the same repository.
+- Go to **Settings** -> **General**:
+  - **Root Directory**: Set to `/backend` (or `backend`).
+- Go to **Variables**:
+  - Add variables from `backend/.env.example` (`DEBUG=False`, `DATABASE_URL`, `DJANGO_SECRET_KEY`, `JWT_SECRET`, etc.).
+- Under **Settings** -> **Deploy**:
+  - Railway will use `backend/Dockerfile` or Nixpacks automatically with Gunicorn.
+
+#### 3. Database (`PostgreSQL`):
+- Click **+ New** -> **Database** -> **Add PostgreSQL**.
+- Connect `DATABASE_URL` to `qrit-backend`.
+
 ---
 
 ## 4. Database Migrations
