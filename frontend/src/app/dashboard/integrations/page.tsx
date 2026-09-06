@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { startTransition, useState, useEffect, useCallback } from "react";
 import { useAuthStore } from "@/lib/auth";
+import { useWorkspace } from "@/lib/workspace";
 import { Check, Copy, ExternalLink, Zap, Plus } from "lucide-react";
 
 interface Webhook {
@@ -38,7 +39,7 @@ const INTEGRATIONS: Integration[] = [
     ),
     accentColor: "border-orange-500/30 bg-orange-500/5",
     badgeColor: "text-orange-400 bg-orange-500/10",
-    events: ["qr.scanned", "qr.created", "qr.deleted"],
+    events: ["scan.created", "qr.created", "qr.deleted"],
     setupSteps: [
       "Go to zapier.com and create a new Zap",
       "Choose 'Webhooks by Zapier' as your trigger",
@@ -63,7 +64,7 @@ const INTEGRATIONS: Integration[] = [
     ),
     accentColor: "border-purple-500/30 bg-purple-500/5",
     badgeColor: "text-purple-400 bg-purple-500/10",
-    events: ["qr.scanned", "qr.created", "qr.updated", "qr.deleted"],
+    events: ["scan.created", "qr.created", "qr.updated", "qr.deleted"],
     setupSteps: [
       "Go to api.slack.com/apps and create a new app",
       "Enable 'Incoming Webhooks' in the Features section",
@@ -95,7 +96,7 @@ const INTEGRATIONS: Integration[] = [
     ),
     accentColor: "border-rose-500/30 bg-rose-500/5",
     badgeColor: "text-rose-400 bg-rose-500/10",
-    events: ["qr.scanned", "lead.captured"],
+    events: ["scan.created", "lead.captured"],
     setupSteps: [
       "In HubSpot, go to Settings → Integrations → Private Apps",
       "Create a new private app with 'crm.objects.contacts.write' scope",
@@ -121,7 +122,7 @@ const INTEGRATIONS: Integration[] = [
     ),
     accentColor: "border-violet-500/30 bg-violet-500/5",
     badgeColor: "text-violet-400 bg-violet-500/10",
-    events: ["qr.scanned", "qr.created", "qr.deleted", "lead.captured"],
+    events: ["scan.created", "qr.created", "qr.deleted", "lead.captured"],
     setupSteps: [
       "In Make, create a new scenario",
       "Add a 'Webhooks' module as the trigger",
@@ -154,7 +155,7 @@ function IntegrationCard({ integration, workspaceId, existingWebhooks }: {
   existingWebhooks: Webhook[];
 }) {
   const { accessToken } = useAuthStore();
-  const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081/api/v1";
+  const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8084/api/v1";
   const [expanded, setExpanded] = useState(false);
   const [webhookUrl, setWebhookUrl] = useState("");
   const [saving, setSaving] = useState(false);
@@ -320,13 +321,22 @@ function IntegrationCard({ integration, workspaceId, existingWebhooks }: {
 
 export default function IntegrationsPage() {
   const { accessToken } = useAuthStore();
-  const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081/api/v1";
+  const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8084/api/v1";
   const [workspaceId, setWorkspaceId] = useState("");
   const [webhooks, setWebhooks] = useState<Webhook[]>([]);
+  const { workspaceId: activeWorkspaceId } = useWorkspace();
+
+  const fetchWebhooks = useCallback((wsId: string) => {
+    fetch(`${api}/workspaces/${wsId}/webhooks`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+      .then((r) => r.json())
+      .then((d) => { if (d.success) setWebhooks(d.data?.webhooks || []); })
+      .catch(() => {});
+  }, [accessToken, api]);
 
   useEffect(() => {
-    const stored = localStorage.getItem("qrit_active_workspace");
-    const wsId = stored || "";
+    const wsId = activeWorkspaceId || "";
     if (!wsId) {
       fetch(`${api}/workspaces`, { headers: { Authorization: `Bearer ${accessToken}` } })
         .then((r) => r.json())
@@ -338,19 +348,10 @@ export default function IntegrationsPage() {
         })
         .catch(() => {});
     } else {
-      setWorkspaceId(wsId);
+      startTransition(() => setWorkspaceId(wsId));
       fetchWebhooks(wsId);
     }
-  }, [accessToken]);
-
-  const fetchWebhooks = (wsId: string) => {
-    fetch(`${api}/workspaces/${wsId}/webhooks`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    })
-      .then((r) => r.json())
-      .then((d) => { if (d.success) setWebhooks(d.data || []); })
-      .catch(() => {});
-  };
+  }, [accessToken, activeWorkspaceId, api, fetchWebhooks]);
 
   return (
     <div className="space-y-6">

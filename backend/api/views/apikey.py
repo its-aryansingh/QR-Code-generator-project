@@ -19,7 +19,9 @@ class ApiKeyView(APIView):
         return Response({"success": True, "data": {
             "api_key": user.api_key,
             "calls_today": int(user.api_calls_today or 0),
+            "calls_limit": limit,
             "daily_limit": limit,
+            "can_access": plan != "free",
             "reset_at": user.api_calls_reset_at.isoformat() if user.api_calls_reset_at else None,
             "plan": plan,
         }})

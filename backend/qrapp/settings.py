@@ -13,10 +13,11 @@ def _csv_env(name, default=""):
 
 
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "django-insecure-change-in-production")
-DEBUG = os.environ.get("DEBUG", "True") == "True"
+DEBUG = os.environ.get("DEBUG", "False") == "True"
 ALLOWED_HOSTS = _csv_env("ALLOWED_HOSTS", "*") or ["*"]
 
 INSTALLED_APPS = [
+    "django.contrib.staticfiles",
     "django.contrib.contenttypes",
     "django.contrib.auth",
     "corsheaders",
@@ -29,7 +30,20 @@ MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.middleware.common.CommonMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
+
+X_FRAME_OPTIONS = "DENY"
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+if not DEBUG:
+    SECURE_SSL_REDIRECT = os.environ.get("SECURE_SSL_REDIRECT", "True") == "True"
+    SECURE_HSTS_SECONDS = int(os.environ.get("SECURE_HSTS_SECONDS", 31536000))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
 
 ROOT_URLCONF = "qrapp.urls"
 WSGI_APPLICATION = "qrapp.wsgi.application"
@@ -62,13 +76,27 @@ DATABASES = {
     "default": dj_database_url.config(
         default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
         conn_max_age=int(os.environ.get("DB_CONN_MAX_AGE", 600)),
+        ssl_require=os.environ.get("DB_SSL_REQUIRE", "False") == "True",
     )
 }
 
 # ---------------------------------------------------------------- Auth
 JWT_SECRET = os.environ.get("JWT_SECRET", "your-super-secret-key-change-in-production")
+if not DEBUG and JWT_SECRET == "your-super-secret-key-change-in-production":
+    raise RuntimeError(
+        "FATAL: JWT_SECRET is set to the insecure default. "
+        "Set a strong, unique JWT_SECRET environment variable before running in production."
+    )
 JWT_EXPIRY_MINUTES = int(os.environ.get("JWT_EXPIRY_MINUTES", 60))
 REFRESH_EXPIRY_DAYS = int(os.environ.get("REFRESH_EXPIRY_DAYS", 30))
+
+# Auth security
+AUTH_MAX_LOGIN_ATTEMPTS = int(os.environ.get("AUTH_MAX_LOGIN_ATTEMPTS", 5))
+AUTH_LOCKOUT_DURATION_MINUTES = int(os.environ.get("AUTH_LOCKOUT_DURATION_MINUTES", 15))
+AUTH_RESET_TOKEN_EXPIRY_HOURS = int(os.environ.get("AUTH_RESET_TOKEN_EXPIRY_HOURS", 1))
+AUTH_VERIFICATION_TOKEN_EXPIRY_HOURS = int(os.environ.get("AUTH_VERIFICATION_TOKEN_EXPIRY_HOURS", 24))
+AUTH_MAX_REGISTER_PER_IP_PER_HOUR = int(os.environ.get("AUTH_MAX_REGISTER_PER_IP_PER_HOUR", 5))
+AUTH_MAX_LOGIN_PER_IP_PER_15MIN = int(os.environ.get("AUTH_MAX_LOGIN_PER_IP_PER_15MIN", 10))
 
 # ---------------------------------------------------------------- Stripe
 STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
@@ -81,6 +109,14 @@ STRIPE_PRICE_ENTERPRISE = os.environ.get("STRIPE_PRICE_ENTERPRISE", "")
 APP_BASE_URL = os.environ.get("APP_BASE_URL", "http://localhost:3000")
 API_BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:8084")
 SHORT_LINK_BASE_URL = os.environ.get("SHORT_LINK_BASE_URL", API_BASE_URL)
+
+# ---------------------------------------------------------------- Google OAuth
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
+
+# ---------------------------------------------------------------- Email
+EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND", "console")  # 'console' or 'resend'
+RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
+EMAIL_FROM = os.environ.get("EMAIL_FROM", "noreply@qrit.app")
 
 FREE_TIER_DAILY_LIMIT = int(os.environ.get("FREE_TIER_DAILY_LIMIT", 10))
 
@@ -139,7 +175,7 @@ REST_FRAMEWORK = {
     "UNAUTHENTICATED_USER": None,
 }
 
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
@@ -155,6 +191,27 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
-    "handlers": {"console": {"class": "logging.StreamHandler"}},
-    "root": {"handlers": ["console"], "level": os.environ.get("LOG_LEVEL", "INFO")},
+    "formatters": {
+        "standard": {
+            "format": "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+            "datefmt": "%Y-%m-%d %H:%M:%S",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "standard",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": os.environ.get("LOG_LEVEL", "INFO"),
+    },
+    "loggers": {
+        "django.request": {
+            "handlers": ["console"],
+            "level": "ERROR",
+            "propagate": False,
+        },
+    },
 }

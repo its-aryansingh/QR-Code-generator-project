@@ -133,7 +133,7 @@ export default function PricingPage() {
     const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
     const router = useRouter();
     const { isAuthenticated, accessToken } = useAuthStore();
-    const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081/api/v1";
+    const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8084/api/v1";
 
     const handleCheckout = async (planName: string, href: string) => {
         if (planName === "Free" || planName === "Enterprise") {

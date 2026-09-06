@@ -20,7 +20,7 @@ export default function InviteAcceptPage() {
   const router = useRouter();
   const { accessToken, isAuthenticated } = useAuthStore();
   const token = params.token as string;
-  const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081/api/v1";
+  const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8084/api/v1";
 
   const [invite, setInvite] = useState<InviteInfo | null>(null);
   const [loading, setLoading] = useState(true);
@@ -32,10 +32,18 @@ export default function InviteAcceptPage() {
   useEffect(() => {
     const fetchInvite = async () => {
       try {
-        const res = await fetch(`${api}/invites/${token}/info`);
+        const res = await fetch(`${api}/public/invite/${token}`);
         const data = await res.json();
         if (data.success) {
-          setInvite(data.data);
+          const invitation = data.data;
+          setInvite({
+            workspace_name: invitation.workspace?.name || "the workspace",
+            workspace_logo: invitation.workspace?.brand_logo || undefined,
+            role: invitation.role,
+            invited_by: invitation.invited_by?.name || invitation.invited_by?.email || "A workspace administrator",
+            email: invitation.email,
+            expires_at: invitation.expires_at,
+          });
         } else {
           setError(data.error || "Invalid or expired invite");
         }
@@ -71,7 +79,7 @@ export default function InviteAcceptPage() {
     setError("");
 
     try {
-      const res = await fetch(`${api}/invites/${token}/accept`, {
+      const res = await fetch(`${api}/workspaces/invite/${token}/accept`, {
         method: "POST",
         headers: { Authorization: `Bearer ${accessToken}` },
       });
@@ -80,8 +88,8 @@ export default function InviteAcceptPage() {
         setAccepted(true);
         // Redirect to workspace after 2s
         setTimeout(() => {
-          if (data.workspace_id) {
-            localStorage.setItem("qrit_active_workspace", data.workspace_id);
+          if (data.data?.workspace_id) {
+            localStorage.setItem("qrit_active_workspace", data.data.workspace_id);
           }
           router.push("/dashboard");
         }, 2000);

@@ -1,28 +1,26 @@
-# Binaries for programs and plugins
-*.exe
-*.exe~
-*.dll
-*.so
-*.dylib
-
-# Test binary, built with `go test -c`
-*.test
-
-# Output of the go coverage tool, specifically when used with Litmus
-*.out
-
-# Dependency directories (remove the comment below to include it)
-# vendor/
-
-# Go workspace file
-go.work
-
-# Frontend Dependencies
+# Dependencies
 node_modules/
 dist/
 build/
 .next/
 out/
+venv/
+.venv/
+env/
+ENV/
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+
+# Django Static & Media & Databases
+staticfiles/
+media/
+*.sqlite3
+db.sqlite3
 
 # Environment Variables
 .env
@@ -30,44 +28,27 @@ out/
 .env.development.local
 .env.test.local
 .env.production.local
+!*.example
 
-# IDEs/Editors
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDEs & OS
 .vscode/
 .idea/
 *.swp
 *.swo
-
-# OS related files
 .DS_Store
 Thumbs.db
-
-# Logs
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-logs/
-*.log
 
 # Docker
 .docker/
 
-# Tools & binaries
-tools/
-*.zip
-
-# Test/scratch data
-*.csv
-*.json
-!package.json
-!package-lock.json
-!tsconfig.json
-
-# One-off scripts
-verify_*.ps1
-
-# Python build artifacts and local agent scratch files
-__pycache__/
-*.py[cod]
-.venv/
-.claude/
+# Scratch & One-off files
 patch.py
+verify_*.ps1
+.claude/

@@ -25,7 +25,7 @@ interface Lead {
 }
 
 export default function LeadCapturePage() {
-    const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081/api/v1";
+    const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8084/api/v1";
     const [workspaceId, setWorkspaceId] = useState("");
     const [pages, setPages] = useState<LeadPage[]>([]);
     const [leads, setLeads] = useState<Lead[]>([]);

@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAuthStore } from "@/lib/auth";
 
 export default function BrandingPage() {
-    const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081/api/v1";
+    const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8084/api/v1";
     const [workspaceId, setWorkspaceId] = useState("");
     const [branding, setBranding] = useState({
         custom_domain: "",
@@ -19,9 +19,7 @@ export default function BrandingPage() {
     const [saving, setSaving] = useState(false);
     const [msg, setMsg] = useState("");
 
-    useEffect(() => { loadData(); }, []);
-
-    const loadData = async () => {
+    const loadData = useCallback(async () => {
         const token = useAuthStore.getState().accessToken;
         let id = localStorage.getItem("qrit_active_workspace") || "";
         if (!id) {
@@ -41,29 +39,56 @@ export default function BrandingPage() {
             const brandData = await brandRes.json();
             const ssoData = await ssoRes.json();
             if (brandData.success) setBranding(brandData.data);
-            if (ssoData.success) setSSO(ssoData.data);
+            if (ssoData.success) {
+                const config = ssoData.data;
+                setSSO({
+                    sso_enabled: Boolean(config.is_enabled),
+                    sso_provider: config.provider || "saml",
+                    sso_config: {
+                        entity_id: config.entity_id || "",
+                        sso_url: config.sso_url || "",
+                        slo_url: config.slo_url || "",
+                        certificate: config.certificate || "",
+                        metadata_url: config.metadata_url || "",
+                        issuer: config.issuer || "",
+                        client_id: config.client_id || "",
+                        client_secret: config.client_secret || "",
+                    },
+                });
+            }
         }
-    };
+    }, [api]);
+
+    useEffect(() => {
+        const timer = window.setTimeout(() => { void loadData(); }, 0);
+        return () => window.clearTimeout(timer);
+    }, [loadData]);
 
     const saveBranding = async () => {
         setSaving(true);
         const token = useAuthStore.getState().accessToken;
-        await fetch(`${api}/workspaces/${workspaceId}/branding`, {
+        const response = await fetch(`${api}/workspaces/${workspaceId}/branding`, {
             method: "PUT", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
             body: JSON.stringify(branding),
         });
-        setMsg("Branding saved!"); setSaving(false);
+        const data = await response.json();
+        setMsg(data.success ? "Branding saved!" : data.error || "Could not save branding"); setSaving(false);
         setTimeout(() => setMsg(""), 3000);
     };
 
     const saveSSOConfig = async () => {
         setSaving(true);
         const token = useAuthStore.getState().accessToken;
-        await fetch(`${api}/workspaces/${workspaceId}/sso`, {
+        const response = await fetch(`${api}/workspaces/${workspaceId}/sso`, {
             method: "PUT", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ enabled: sso.sso_enabled, provider: sso.sso_provider, config: sso.sso_config }),
+            body: JSON.stringify({
+                is_enabled: sso.sso_enabled,
+                provider: sso.sso_provider,
+                ...sso.sso_config,
+            }),
         });
-        setMsg("SSO configuration saved!"); setSaving(false);
+        const data = await response.json();
+        setMsg(data.success ? "SSO configuration saved!" : data.error || "Could not save SSO configuration"); setSaving(false);
         setTimeout(() => setMsg(""), 3000);
     };
 

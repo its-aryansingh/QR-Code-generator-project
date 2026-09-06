@@ -49,7 +49,7 @@ function buildContent(
       if (e.subject) params.set("subject", e.subject);
       if (e.body) params.set("body", e.body);
       const qs = params.toString();
-      return `mailto:${e.to}${qs ? \`?\${qs}\` : ""}`;
+      return `mailto:${e.to}${qs ? "?" + qs : ""}`;
     }
     case "sms":
       return smsData.phone ? `SMSTO:${smsData.phone}:${smsData.message || ""}` : "";
@@ -61,7 +61,7 @@ function buildContent(
     case "location": {
       const l = locationData;
       if (!l.lat || !l.lng) return "";
-      return `geo:${l.lat},${l.lng}${l.name ? \`?q=\${encodeURIComponent(l.name)}\` : ""}`;
+      return `geo:${l.lat},${l.lng}${l.name ? "?q=" + encodeURIComponent(l.name) : ""}`;
     }
     case "event": {
       const ev = eventData;
@@ -96,7 +96,7 @@ function buildContent(
       const params: string[] = [];
       if (b.amount) params.push(`amount=${b.amount}`);
       if (b.label) params.push(`label=${encodeURIComponent(b.label)}`);
-      return `bitcoin:${b.address}${params.length ? \`?\${params.join("&")}\` : ""}`;
+      return `bitcoin:${b.address}${params.length ? "?" + params.join("&") : ""}`;
     }
     case "upi": {
       const u = upiData;
@@ -112,7 +112,7 @@ function buildContent(
       const wa = whatsappData;
       if (!wa.phone) return "";
       const num = wa.phone.replace(/\D/g, "");
-      return `https://wa.me/${num}${wa.message ? \`?text=\${encodeURIComponent(wa.message)}\` : ""}`;
+      return `https://wa.me/${num}${wa.message ? "?text=" + encodeURIComponent(wa.message) : ""}`;
     }
     case "mecard": {
       const mc = mecardData;

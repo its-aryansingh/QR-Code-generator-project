@@ -3,8 +3,9 @@ services:
     name: qrit-backend
     env: python
     rootDir: backend
-    buildCommand: pip install -r requirements.txt && python manage.py migrate --fake-initial --noinput
-    startCommand: python manage.py runserver 0.0.0.0:$PORT
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate --noinput
+    startCommand: gunicorn qrapp.wsgi:application --config gunicorn.conf.py --bind 0.0.0.0:$PORT
+    healthCheckPath: /health
     envVars:
       - key: PORT
         value: 8084
@@ -12,14 +13,28 @@ services:
         fromDatabase:
           name: qrit-db
           property: connectionString
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
       - key: JWT_SECRET
         generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: ALLOWED_HOSTS
+        value: "qrit-backend.onrender.com,localhost"
+      - key: CORS_ALLOWED_ORIGINS
+        value: "https://qrit-frontend.onrender.com"
+      - key: APP_BASE_URL
+        value: "https://qrit-frontend.onrender.com"
+      - key: API_BASE_URL
+        value: "https://qrit-backend.onrender.com"
       - key: STRIPE_SECRET_KEY
         sync: false
       - key: STRIPE_WEBHOOK_SECRET
         sync: false
-      - key: DEBUG
-        value: "False"
+      - key: RESEND_API_KEY
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
 
   - type: web
     name: qrit-frontend
@@ -27,9 +42,16 @@ services:
     rootDir: frontend
     buildCommand: npm install && npm run build
     startCommand: npm run start
+    healthCheckPath: /api/health
     envVars:
       - key: NEXT_PUBLIC_API_URL
         value: "https://qrit-backend.onrender.com/api/v1"
+      - key: NEXT_PUBLIC_API_BASE_URL
+        value: "https://qrit-backend.onrender.com"
+      - key: NEXT_PUBLIC_APP_URL
+        value: "https://qrit-frontend.onrender.com"
+      - key: NEXT_PUBLIC_GOOGLE_CLIENT_ID
+        sync: false
 
 databases:
   - name: qrit-db

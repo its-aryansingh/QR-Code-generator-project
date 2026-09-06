@@ -12,3 +12,5 @@ ua-parser==0.18.0
 dj-database-url==2.2.0
 gunicorn==23.0.0
 whitenoise==6.7.0
+google-auth>=2.0
+resend>=2.0

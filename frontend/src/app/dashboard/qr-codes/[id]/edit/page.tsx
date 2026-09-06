@@ -50,8 +50,9 @@ export default function EditQRPage() {
   const params = useParams();
   const router = useRouter();
   const { accessToken } = useAuthStore();
-  const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081/api/v1";
+  const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8084/api/v1";
   const qrId = params.id as string;
+  const workspaceId = typeof window !== "undefined" ? localStorage.getItem("qrit_active_workspace") : null;
 
   const [record, setRecord] = useState<QRRecord | null>(null);
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
@@ -74,7 +75,7 @@ export default function EditQRPage() {
     if (!accessToken || !qrId) return;
     const load = async () => {
       try {
-        const res = await fetch(`${api}/qr/${qrId}`, {
+        const res = await fetch(`${api}/workspaces/${workspaceId}/qr/${qrId}`, {
           headers: { Authorization: `Bearer ${accessToken}` },
         });
         const data = await res.json();
@@ -99,7 +100,7 @@ export default function EditQRPage() {
       }
     };
     load();
-  }, [accessToken, qrId, api]);
+  }, [accessToken, qrId, api, workspaceId]);
 
   // Load analytics
   useEffect(() => {
@@ -130,7 +131,7 @@ export default function EditQRPage() {
     if (security.geoRestrictions) body.geo_restrictions = security.geoRestrictions;
 
     try {
-      const res = await fetch(`${api}/qr/${qrId}`, {
+      const res = await fetch(`${api}/workspaces/${workspaceId}/qr/${qrId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
         body: JSON.stringify(body),

@@ -68,6 +68,8 @@ class BrandingView(APIView):
                       "custom_css", "custom_footer"):
             if field in d:
                 updates[field] = d[field] or None
+        if "custom_domain" in d:
+            updates["custom_domain"] = d["custom_domain"] or None
 
         # Removing QRit branding and injecting custom CSS are white-label
         # capabilities, so they are gated even though the columns always exist.
@@ -99,7 +101,7 @@ class SsoView(APIView):
         return Response({"success": True, "data": data})
 
     @require_auth
-    @require_workspace("owner")
+    @require_workspace("admin")
     def put(self, request, ws_id):
         denial = feature_denied(request.workspace.plan or "free", "sso")
         if denial:

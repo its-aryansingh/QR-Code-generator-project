@@ -28,10 +28,11 @@ export default function QREditPage() {
   const params = useParams();
   const router = useRouter();
   const { accessToken } = useAuthStore();
-  const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081/api/v1";
-  const appBase = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:8081";
+  const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8084/api/v1";
+  const appBase = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
   const id = params?.id as string;
+  const workspaceId = typeof window !== "undefined" ? localStorage.getItem("qrit_active_workspace") : null;
 
   const [record, setRecord] = useState<QRRecord | null>(null);
   const [loading, setLoading] = useState(true);
@@ -54,7 +55,7 @@ export default function QREditPage() {
 
   useEffect(() => {
     if (!id || !accessToken) return;
-    fetch(`${api}/qr/${id}`, { headers: { Authorization: `Bearer ${accessToken}` } })
+    fetch(`${api}/workspaces/${workspaceId}/qr/${id}`, { headers: { Authorization: `Bearer ${accessToken}` } })
       .then((r) => r.json())
       .then((d) => {
         if (d.success) {
@@ -75,7 +76,7 @@ export default function QREditPage() {
       })
       .catch(() => setError("Failed to load QR code."))
       .finally(() => setLoading(false));
-  }, [id, accessToken, api]);
+  }, [id, accessToken, api, workspaceId]);
 
   const loadPreview = useCallback(async () => {
     if (!record || !accessToken) return;
@@ -109,7 +110,7 @@ export default function QREditPage() {
     if (security.geoRestrictions) body.geo_restrictions = security.geoRestrictions;
 
     try {
-      const res = await fetch(`${api}/qr/${id}`, {
+      const res = await fetch(`${api}/workspaces/${workspaceId}/qr/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
         body: JSON.stringify(body),
@@ -133,7 +134,7 @@ export default function QREditPage() {
     if (!confirm("Delete this QR code? This cannot be undone.")) return;
     setDeleting(true);
     try {
-      await fetch(`${api}/qr/${id}`, {
+      await fetch(`${api}/workspaces/${workspaceId}/qr/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${accessToken}` },
       });

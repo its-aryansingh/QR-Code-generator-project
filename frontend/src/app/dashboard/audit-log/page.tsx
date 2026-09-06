@@ -1,219 +1,232 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { useAuthStore } from "@/lib/auth";
-import { Download, Filter } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
-interface AuditEntry {
-  id: string;
-  action: string;
-  resource: string;
-  details?: string;
-  ip_address?: string;
-  created_at: string;
-  user?: { email: string; name?: string };
+import { useMutation, useResource, WorkspaceGate } from "@/components/enterprise/shell";
+import {
+  Avatar, Badge, Btn, EmptyState, ErrorState, LoadingPanel, Pagination, Panel,
+  PageHeader, SearchInput, Select, formatDate, formatRelative,
+} from "@/components/enterprise/ui";
+import { enterprise } from "@/lib/enterprise";
+import { useWorkspace } from "@/lib/workspace";
+import type { AuditEntry } from "@/types/enterprise";
+
+type Tone = "success" | "info" | "warning" | "danger" | "violet" | "neutral";
+
+const ACTION_TONE: Record<string, Tone> = {
+  create: "success",
+  update: "info",
+  delete: "danger",
+  remove: "danger",
+  revoke: "danger",
+  invite: "violet",
+  join: "success",
+  role_change: "warning",
+  export: "info",
+  test: "neutral",
+  login: "neutral",
+};
+
+/** Turns a row into a sentence, so the log reads as a story rather than a
+ *  table of enum values. */
+function describe(entry: AuditEntry) {
+  const who = entry.user?.name || entry.user?.email || "Someone";
+  const details = entry.details ?? {};
+  const name = typeof details.name === "string" ? details.name : undefined;
+  const resource = entry.resource.replace(/_/g, " ");
+
+  switch (entry.action) {
+    case "create":
+      return `${who} created ${resource}${name ? ` “${name}”` : ""}`;
+    case "update": {
+      const fields = Array.isArray(details.fields) ? details.fields.join(", ") : null;
+      return `${who} updated ${resource}${fields ? ` (${fields})` : ""}`;
+    }
+    case "delete":
+      return `${who} deleted ${resource}${name ? ` “${name}”` : ""}`;
+    case "invite":
+      return `${who} invited ${details.email ?? "someone"} as ${details.role ?? "a member"}`;
+    case "join":
+      return `${who} joined the workspace as ${details.role ?? "a member"}`;
+    case "remove":
+      return `${who} removed ${details.email ?? "a member"}`;
+    case "revoke":
+      return `${who} revoked ${resource}${details.email ? ` for ${details.email}` : ""}`;
+    case "role_change":
+      return `${who} changed a member's role from ${details.from} to ${details.to}`;
+    case "export":
+      return `${who} exported ${resource} data`;
+    case "test":
+      return `${who} sent a test ${resource} delivery`;
+    default:
+      return `${who} performed ${entry.action} on ${resource}`;
+  }
 }
 
-const ACTION_COLORS: Record<string, string> = {
-  create:        "text-emerald-400 bg-emerald-500/10",
-  update:        "text-blue-400 bg-blue-500/10",
-  delete:        "text-red-400 bg-red-500/10",
-  invite:        "text-violet-400 bg-violet-500/10",
-  join:          "text-amber-400 bg-amber-500/10",
-  leave:         "text-zinc-400 bg-zinc-700/30",
-  export:        "text-cyan-400 bg-cyan-500/10",
-  bulk_generate: "text-yellow-400 bg-yellow-500/10",
-};
-
-const ACTION_ICONS: Record<string, string> = {
-  create: "🟢", update: "🔵", delete: "🔴", invite: "💌",
-  join: "👋", leave: "👤", export: "📤", bulk_generate: "⚡",
-};
-
-const ACTIONS = ["create", "update", "delete", "invite", "join", "leave", "export", "bulk_generate"];
-const RESOURCES = ["qr_code", "workspace", "member", "folder", "webhook", "lead_page", "api_key"];
-
 export default function AuditLogPage() {
-  const [logs, setLogs]             = useState<AuditEntry[]>([]);
-  const [total, setTotal]           = useState(0);
-  const [loading, setLoading]       = useState(true);
-  const [exporting, setExporting]   = useState(false);
-  const [offset, setOffset]         = useState(0);
-  const [workspaceId, setWorkspaceId] = useState("");
-  const [filterAction, setFilterAction]   = useState("");
-  const [filterResource, setFilterResource] = useState("");
-  const [filterFrom, setFilterFrom] = useState("");
-  const [filterTo, setFilterTo]     = useState("");
-  const limit = 20;
+  return (
+    <WorkspaceGate requiredRole="admin" requiredFeature="audit_log">
+      <AuditLog />
+    </WorkspaceGate>
+  );
+}
 
-  const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081/api/v1";
+function AuditLog() {
+  const { workspaceId, can } = useWorkspace();
+  const [search, setSearch] = useState("");
+  const [debounced, setDebounced] = useState("");
+  const [action, setAction] = useState("");
+  const [resource, setResource] = useState("");
+  const [days, setDays] = useState("");
+  const [page, setPage] = useState(1);
 
-  const loadLogs = useCallback(async () => {
-    setLoading(true);
-    const token = useAuthStore.getState().accessToken;
-    try {
-      let wsId = workspaceId;
-      if (!wsId) {
-        const stored = localStorage.getItem("qrit_active_workspace");
-        if (stored) { wsId = stored; setWorkspaceId(stored); }
-        else {
-          const r = await fetch(`${api}/workspaces`, { headers: { Authorization: `Bearer ${token}` } });
-          const d = await r.json();
-          if (d.success && d.data?.length) { wsId = d.data[0].id; setWorkspaceId(wsId); }
-        }
-      }
-      if (!wsId) return;
+  useEffect(() => {
+    const timer = setTimeout(() => { setDebounced(search); setPage(1); }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
-      const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
-      if (filterAction)   params.set("action", filterAction);
-      if (filterResource) params.set("resource", filterResource);
-      if (filterFrom)     params.set("from", new Date(filterFrom).toISOString());
-      if (filterTo)       params.set("to", new Date(filterTo + "T23:59:59").toISOString());
+  const query = useMemo(
+    () => ({
+      page,
+      limit: 50,
+      search: debounced || undefined,
+      action: action || undefined,
+      resource: resource || undefined,
+      days: days || undefined,
+    }),
+    [page, debounced, action, resource, days],
+  );
 
-      const res = await fetch(`${api}/workspaces/${wsId}/audit-logs?${params}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      if (data.success) {
-        setLogs(data.data || []);
-        setTotal(data.total || 0);
-      }
-    } catch {}
-    finally { setLoading(false); }
-  }, [offset, filterAction, filterResource, filterFrom, filterTo, workspaceId, api]);
+  const { data, loading, error, reload } = useResource(
+    (id) => enterprise.auditLog(id, query),
+    [query],
+  );
 
-  useEffect(() => { loadLogs(); }, [loadLogs]);
+  const exportCsv = useMutation(() => enterprise.exportCsv(workspaceId!, "audit", { days: days || 365 }));
 
-  const handleFilterChange = () => { setOffset(0); };
-
-  const handleExportCSV = async () => {
-    if (!workspaceId || exporting) return;
-    setExporting(true);
-    const token = useAuthStore.getState().accessToken;
-    try {
-      const res = await fetch(`${api}/workspaces/${workspaceId}/export/analytics`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url; a.download = "audit-log.csv"; a.click();
-      URL.revokeObjectURL(url);
-    } catch {}
-    finally { setExporting(false); }
-  };
-
-  const selectCls = "bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-300 focus:outline-none focus:border-violet-500";
-  const inputCls  = "bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-300 focus:outline-none focus:border-violet-500 [color-scheme:dark]";
+  const filtered = [debounced, action, resource, days].filter(Boolean).length;
 
   return (
-    <div className="space-y-5">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-white">Audit Log</h1>
-          <p className="text-zinc-500 text-sm mt-1">Complete workspace activity history for compliance and security</p>
-        </div>
-        <button
-          onClick={handleExportCSV}
-          disabled={exporting || !workspaceId}
-          className="flex items-center gap-1.5 px-3 py-2 text-sm bg-zinc-800 border border-zinc-700 text-zinc-300 rounded-lg hover:bg-zinc-700 disabled:opacity-40"
-        >
-          <Download size={14} />
-          {exporting ? "Exporting…" : "Export CSV"}
-        </button>
-      </div>
+    <>
+      <PageHeader
+        title="Audit log"
+        description="An immutable record of every change made in this workspace — who did what, from where, and when."
+        actions={
+          can("exports") && (
+            <Btn variant="outline" loading={exportCsv.busy} onClick={() => exportCsv.run()}>
+              Export CSV
+            </Btn>
+          )
+        }
+      />
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3 p-4 bg-zinc-900 border border-zinc-800 rounded-xl">
-        <div className="flex items-center gap-2 text-xs text-zinc-500 mr-1">
-          <Filter size={12} /> Filters
-        </div>
-        <select value={filterAction} onChange={(e) => { setFilterAction(e.target.value); handleFilterChange(); }} className={selectCls}>
-          <option value="">All actions</option>
-          {ACTIONS.map((a) => <option key={a} value={a}>{a}</option>)}
-        </select>
-        <select value={filterResource} onChange={(e) => { setFilterResource(e.target.value); handleFilterChange(); }} className={selectCls}>
-          <option value="">All resources</option>
-          {RESOURCES.map((r) => <option key={r} value={r}>{r.replace("_", " ")}</option>)}
-        </select>
-        <input type="date" value={filterFrom} onChange={(e) => { setFilterFrom(e.target.value); handleFilterChange(); }} className={inputCls} placeholder="From" />
-        <input type="date" value={filterTo} onChange={(e) => { setFilterTo(e.target.value); handleFilterChange(); }} className={inputCls} placeholder="To" />
-        {(filterAction || filterResource || filterFrom || filterTo) && (
-          <button
-            onClick={() => { setFilterAction(""); setFilterResource(""); setFilterFrom(""); setFilterTo(""); setOffset(0); }}
-            className="text-xs text-zinc-500 hover:text-zinc-300 px-2 py-1 rounded border border-zinc-700 bg-zinc-800"
-          >
-            Clear
-          </button>
-        )}
-      </div>
+      {error && <ErrorState message={error.message} onRetry={reload} />}
+      {exportCsv.error && <div className="mb-4"><ErrorState message={exportCsv.error} /></div>}
 
-      {/* Table */}
-      <div className="bg-zinc-900/30 border border-zinc-800/60 rounded-xl overflow-hidden">
-        {loading ? (
-          <div className="flex items-center justify-center py-16">
-            <div className="w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : logs.length === 0 ? (
-          <div className="text-center py-16">
-            <p className="text-zinc-500">No audit entries found</p>
-            {(filterAction || filterResource || filterFrom || filterTo) && (
-              <p className="text-xs text-zinc-600 mt-1">Try clearing filters</p>
+      <Panel bodyClassName="p-4">
+        <div className="mb-4 flex flex-col gap-2 lg:flex-row">
+          <SearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder="Search by action, resource or person…"
+            className="lg:max-w-sm lg:flex-1"
+          />
+          <div className="flex flex-wrap gap-2">
+            <Select value={action} onChange={(e) => { setAction(e.target.value); setPage(1); }} className="w-auto min-w-32">
+              <option value="">Any action</option>
+              {(data?.actions ?? []).map((value) => (
+                <option key={value} value={value} className="capitalize">
+                  {value.replace(/_/g, " ")}
+                </option>
+              ))}
+            </Select>
+            <Select value={resource} onChange={(e) => { setResource(e.target.value); setPage(1); }} className="w-auto min-w-32">
+              <option value="">Any resource</option>
+              {(data?.resources ?? []).map((value) => (
+                <option key={value} value={value} className="capitalize">
+                  {value.replace(/_/g, " ")}
+                </option>
+              ))}
+            </Select>
+            <Select value={days} onChange={(e) => { setDays(e.target.value); setPage(1); }} className="w-auto min-w-32">
+              <option value="">All time</option>
+              <option value="1">Last 24 hours</option>
+              <option value="7">Last 7 days</option>
+              <option value="30">Last 30 days</option>
+              <option value="90">Last 90 days</option>
+            </Select>
+            {filtered > 0 && (
+              <Btn
+                variant="ghost"
+                onClick={() => {
+                  setSearch(""); setAction(""); setResource(""); setDays(""); setPage(1);
+                }}
+              >
+                Clear ({filtered})
+              </Btn>
             )}
           </div>
-        ) : (
+        </div>
+
+        {loading && !data ? (
+          <LoadingPanel rows={8} />
+        ) : data && data.items.length ? (
           <>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-zinc-800/60">
-                    {["Action", "User", "Resource", "Details", "IP", "Time"].map((h) => (
-                      <th key={h} className="text-left text-xs font-medium text-zinc-500 uppercase tracking-wider px-5 py-3">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {logs.map((log) => (
-                    <tr key={log.id} className="border-b border-zinc-800/30 hover:bg-zinc-800/20 transition-colors">
-                      <td className="px-5 py-3">
-                        <span className={`text-xs px-2.5 py-1 rounded-full ${ACTION_COLORS[log.action] ?? ACTION_COLORS.update}`}>
-                          {ACTION_ICONS[log.action] ?? "📋"} {log.action}
-                        </span>
-                      </td>
-                      <td className="px-5 py-3 text-sm text-zinc-300">{log.user?.name || log.user?.email || "System"}</td>
-                      <td className="px-5 py-3">
-                        <span className="text-xs px-2 py-0.5 rounded bg-zinc-800 text-zinc-400">{log.resource}</span>
-                      </td>
-                      <td className="px-5 py-3 text-sm text-zinc-500 max-w-xs truncate" title={log.details}>{log.details || "—"}</td>
-                      <td className="px-5 py-3 text-xs text-zinc-600 font-mono">{log.ip_address || "—"}</td>
-                      <td className="px-5 py-3 text-xs text-zinc-500 whitespace-nowrap">{new Date(log.created_at).toLocaleString()}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {total > limit && (
-              <div className="flex items-center justify-between px-5 py-3 border-t border-zinc-800/60">
-                <p className="text-xs text-zinc-500">
-                  {offset + 1}–{Math.min(offset + limit, total)} of {total}
-                </p>
-                <div className="flex gap-2">
-                  <button disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - limit))}
-                    className="px-3 py-1.5 text-xs bg-zinc-800 text-zinc-400 rounded-lg hover:text-white disabled:opacity-30">
-                    Previous
-                  </button>
-                  <button disabled={offset + limit >= total} onClick={() => setOffset(offset + limit)}
-                    className="px-3 py-1.5 text-xs bg-zinc-800 text-zinc-400 rounded-lg hover:text-white disabled:opacity-30">
-                    Next
-                  </button>
-                </div>
-              </div>
-            )}
+            <ol className="relative space-y-0 border-l border-zinc-800/70 pl-0">
+              {data.items.map((entry) => (
+                <li key={entry.id} className="relative flex gap-3 py-3 pl-5">
+                  <span
+                    className="absolute -left-[5px] top-[22px] size-2.5 rounded-full border-2 border-zinc-950"
+                    style={{
+                      background:
+                        ACTION_TONE[entry.action] === "danger" ? "#e66767"
+                        : ACTION_TONE[entry.action] === "success" ? "#199e70"
+                        : ACTION_TONE[entry.action] === "warning" ? "#c98500"
+                        : "#52525b",
+                    }}
+                  />
+                  <Avatar
+                    name={entry.user?.name}
+                    email={entry.user?.email}
+                    url={entry.user?.avatar_url}
+                    size={30}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm text-zinc-200">{describe(entry)}</p>
+                    <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-600">
+                      <Badge tone={ACTION_TONE[entry.action] ?? "neutral"}>
+                        {entry.action.replace(/_/g, " ")}
+                      </Badge>
+                      <span title={formatDate(entry.created_at, true)}>
+                        {formatRelative(entry.created_at)}
+                      </span>
+                      {entry.ip_address && <span>· {entry.ip_address}</span>}
+                      {entry.resource_id && (
+                        <span className="font-mono">· {String(entry.resource_id).slice(0, 8)}</span>
+                      )}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+            <Pagination page={data.page} pages={data.pages} total={data.total} onPage={setPage} />
           </>
+        ) : (
+          <EmptyState
+            icon={
+              <svg className="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            }
+            title={filtered ? "No entries match these filters" : "No activity recorded yet"}
+            description={
+              filtered
+                ? "Try clearing a filter or widening the date range."
+                : "Every create, update, delete, invite and export in this workspace is recorded here as it happens."
+            }
+          />
         )}
-      </div>
-    </div>
+      </Panel>
+    </>
   );
 }

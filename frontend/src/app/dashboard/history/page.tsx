@@ -25,7 +25,7 @@ const TYPE_LABELS: Record<string, string> = {
 
 export default function HistoryPage() {
   const { accessToken } = useAuthStore();
-  const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081/api/v1";
+  const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8084/api/v1";
 
   const [records, setRecords] = useState<QRRecord[]>([]);
   const [total, setTotal] = useState(0);

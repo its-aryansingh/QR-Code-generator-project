@@ -18,7 +18,7 @@ export default function DashboardOverview() {
 
     useEffect(() => {
         const token = useAuthStore.getState().accessToken;
-        const api = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8081/api/v1';
+        const api = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8084/api/v1';
 
         // Fetch stats
         Promise.all([

@@ -34,7 +34,7 @@ interface PageData {
 export default function PublicLeadPage() {
   const params = useParams();
   const slug = params?.slug as string;
-  const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081/api/v1";
+  const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8084/api/v1";
 
   const [page, setPage] = useState<PageData | null>(null);
   const [fields, setFields] = useState<FormField[]>([]);

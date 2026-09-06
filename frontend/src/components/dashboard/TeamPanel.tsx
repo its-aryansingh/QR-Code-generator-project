@@ -45,7 +45,7 @@ export function TeamPanel({ workspaceId, currentUserRole = "viewer" }: TeamPanel
   const [inviteRole, setInviteRole] = useState("editor");
   const [sending, setSending] = useState(false);
 
-  const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081/api/v1";
+  const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8084/api/v1";
   const canManage = currentUserRole === "owner" || currentUserRole === "admin";
 
   const fetchTeam = useCallback(async () => {

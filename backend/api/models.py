@@ -21,6 +21,13 @@ class User(models.Model):
     default_workspace_id = models.UUIDField(null=True, blank=True)
     created_at = models.DateTimeField(null=True, blank=True)
     updated_at = models.DateTimeField(null=True, blank=True)
+    email_verified = models.BooleanField(default=False)
+    email_verified_at = models.DateTimeField(null=True, blank=True)
+    failed_login_attempts = models.IntegerField(default=0)
+    locked_until = models.DateTimeField(null=True, blank=True)
+    last_login_at = models.DateTimeField(null=True, blank=True)
+    last_login_ip = models.CharField(max_length=45, null=True, blank=True)
+    password_changed_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         managed = True
@@ -475,6 +482,64 @@ class SsoConfig(models.Model):
     class Meta:
         managed = True
         db_table = "sso_configs"
+
+
+class RefreshToken(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="refresh_tokens")
+    jti = models.CharField(max_length=64, unique=True, db_index=True)
+    token_hash = models.CharField(max_length=255)
+    family_id = models.UUIDField(default=uuid.uuid4, db_index=True)
+    revoked = models.BooleanField(default=False)
+    replaced_by = models.ForeignKey(
+        "self", on_delete=models.SET_NULL, null=True, blank=True, related_name="replaces"
+    )
+    expires_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        managed = True
+        db_table = "refresh_tokens"
+
+
+class LoginAttempt(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    email = models.CharField(max_length=255, db_index=True)
+    ip_address = models.CharField(max_length=45)
+    success = models.BooleanField(default=False)
+    failure_reason = models.CharField(max_length=50, blank=True, null=True)
+    user_agent = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        managed = True
+        db_table = "login_attempts"
+
+
+class PasswordResetToken(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="password_reset_tokens")
+    token_hash = models.CharField(max_length=255)
+    expires_at = models.DateTimeField()
+    used_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        managed = True
+        db_table = "password_reset_tokens"
+
+
+class EmailVerification(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="email_verifications")
+    token_hash = models.CharField(max_length=255)
+    expires_at = models.DateTimeField()
+    verified_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        managed = True
+        db_table = "email_verifications"
 
 
 class SecurityPolicy(models.Model):

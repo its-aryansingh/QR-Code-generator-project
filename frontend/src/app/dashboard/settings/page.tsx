@@ -13,7 +13,7 @@ export default function SettingsPage() {
     const [saved, setSaved] = useState(false);
     const [deleting, setDeleting] = useState(false);
 
-    const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081/api/v1";
+    const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8084/api/v1";
 
     useEffect(() => {
         const token = useAuthStore.getState().accessToken;

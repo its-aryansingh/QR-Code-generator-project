@@ -2,24 +2,23 @@
 
 import { useState } from "react";
 import { useAuthStore } from "@/lib/auth";
+import { useWorkspace } from "@/lib/workspace";
 
 export default function ReportsPage() {
-    const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081/api/v1";
+    const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8084/api/v1";
     const [downloading, setDownloading] = useState<string | null>(null);
     const [days, setDays] = useState(30);
+    const { workspaceId } = useWorkspace();
 
     const downloadReport = async (type: string) => {
         setDownloading(type);
         const token = useAuthStore.getState().accessToken;
 
-        // Get first workspace
-        const wsRes = await fetch(`${api}/workspaces`, { headers: { Authorization: `Bearer ${token}` } });
-        const wsData = await wsRes.json();
-        if (!wsData.success || !wsData.data?.length) {
+        const wsId = workspaceId;
+        if (!wsId) {
             setDownloading(null);
             return;
         }
-        const wsId = wsData.data[0].id;
 
         let url = "";
         let filename = "";
@@ -29,7 +28,7 @@ export default function ReportsPage() {
                 filename = `analytics_${days}d.csv`;
                 break;
             case "qr-codes":
-                url = `${api}/workspaces/${wsId}/export/qr-codes`;
+                url = `${api}/workspaces/${wsId}/export/qr`;
                 filename = "qr_codes.csv";
                 break;
             case "leads":
@@ -37,8 +36,8 @@ export default function ReportsPage() {
                 filename = "leads.csv";
                 break;
             case "report":
-                url = `${api}/workspaces/${wsId}/report?days=${days}`;
-                filename = `report_${days}d.json`;
+                url = `${api}/workspaces/${wsId}/export/analytics?days=${days}`;
+                filename = `performance_${days}d.csv`;
                 break;
         }
 

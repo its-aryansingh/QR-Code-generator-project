@@ -12,7 +12,9 @@ from api.views import compat
 from api.views.analytics import DashboardView, QRAnalyticsView, QRScansView
 from api.views.apikey import ApiKeyRegenerateView, ApiKeyUsageView, ApiKeyView
 from api.views.auth import (
-    ChangePasswordView, LoginView, LogoutView, MeView, RefreshView, RegisterView,
+    ChangePasswordView, ForgotPasswordView, LoginView, LogoutView, MeView,
+    RefreshView, RegisterView, ResetPasswordView,
+    VerifyEmailView, ResendVerificationView,
 )
 from api.views.billing import (
     CancelView, CheckoutView, PortalView, SubscriptionView, WebhookView,
@@ -55,7 +57,7 @@ from api.views.ws_integrations import (
 )
 from api.views.ws_qr import (
     BulkJobDetailView, BulkJobListView, RoutingRuleDetailView, RoutingRuleListView,
-    WorkspaceQRBulkActionView, WorkspaceQRListView,
+    WorkspaceQRBulkActionView, WorkspaceQRDetailView, WorkspaceQRListView,
 )
 
 urlpatterns = [
@@ -66,6 +68,10 @@ urlpatterns = [
     path("auth/logout", LogoutView.as_view()),
     path("auth/me", MeView.as_view()),
     path("auth/change-password", ChangePasswordView.as_view()),
+    path("auth/forgot-password", ForgotPasswordView.as_view()),
+    path("auth/reset-password", ResetPasswordView.as_view()),
+    path("auth/verify-email", VerifyEmailView.as_view()),
+    path("auth/resend-verification", ResendVerificationView.as_view()),
     path("auth/google", compat.GoogleAuthView.as_view()),
 
     # ---------------------------------------------------------------- QR
@@ -112,6 +118,7 @@ urlpatterns = [
 
     # QR codes
     path("workspaces/<uuid:ws_id>/qr", WorkspaceQRListView.as_view()),
+    path("workspaces/<uuid:ws_id>/qr/<uuid:qr_id>", WorkspaceQRDetailView.as_view()),
     path("workspaces/<uuid:ws_id>/qr/bulk-action", WorkspaceQRBulkActionView.as_view()),
     path("workspaces/<uuid:ws_id>/qr/<uuid:qr_id>/routing", RoutingRuleListView.as_view()),
     path("workspaces/<uuid:ws_id>/qr/<uuid:qr_id>/routing/<uuid:rule_id>",

@@ -1,443 +1,344 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { useAuthStore } from "@/lib/auth";
-import { ChevronDown, ChevronUp, Trash2, Zap, Check, X } from "lucide-react";
+import { useState } from "react";
 
-interface WebhookData {
-  id: string;
-  url: string;
-  events: string;
-  is_active: boolean;
-  fail_count: number;
-  last_triggered?: string;
-  description?: string;
-  created_at: string;
-}
-
-interface WebhookLog {
-  id: string;
-  event: string;
-  status_code: number;
-  success: boolean;
-  attempt: number;
-  response_body?: string;
-  created_at: string;
-}
-
-const EVENT_OPTIONS = [
-  { value: "qr.created", label: "QR Created" },
-  { value: "qr.updated", label: "QR Updated" },
-  { value: "qr.deleted", label: "QR Deleted" },
-  { value: "qr.scanned", label: "QR Scanned" },
-  { value: "bulk.completed", label: "Bulk Generation Done" },
-  { value: "member.joined", label: "Member Joined" },
-];
+import { useMutation, useResource, WorkspaceGate } from "@/components/enterprise/shell";
+import {
+  Badge, Btn, ConfirmModal, CopyButton, EmptyState, ErrorState, Field, Grid,
+  LoadingPanel, Modal, Panel, PageHeader, StatCard, StatusDot, TextInput, Toggle,
+  formatNumber, formatRelative,
+} from "@/components/enterprise/ui";
+import { enterprise } from "@/lib/enterprise";
+import { useWorkspace } from "@/lib/workspace";
+import type { Webhook, WebhookLog } from "@/types/enterprise";
 
 export default function WebhooksPage() {
-  const [webhooks, setWebhooks] = useState<WebhookData[]>([]);
-  const [showCreate, setShowCreate] = useState(false);
-  const [newUrl, setNewUrl] = useState("");
-  const [newEvents, setNewEvents] = useState<string[]>(["qr.scanned"]);
-  const [newDesc, setNewDesc] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [workspaceId, setWorkspaceId] = useState<string | null>(null);
-  const [expandedLogs, setExpandedLogs] = useState<Record<string, boolean>>({});
-  const [logs, setLogs] = useState<Record<string, WebhookLog[]>>({});
-  const [testing, setTesting] = useState<Record<string, boolean>>({});
-  const [testResult, setTestResult] = useState<Record<string, "ok" | "fail" | null>>({});
-  const [editingWebhook, setEditingWebhook] = useState<WebhookData | null>(null);
-  const [editUrl, setEditUrl] = useState("");
-  const [editEvents, setEditEvents] = useState<string[]>([]);
-  const [editDesc, setEditDesc] = useState("");
-  const [editActive, setEditActive] = useState(true);
+  return (
+    <WorkspaceGate requiredRole="admin" requiredFeature="webhooks">
+      <Webhooks />
+    </WorkspaceGate>
+  );
+}
 
-  const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081/api/v1";
+function Webhooks() {
+  const { workspaceId } = useWorkspace();
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<Webhook | null>(null);
+  const [url, setUrl] = useState("");
+  const [description, setDescription] = useState("");
+  const [events, setEvents] = useState<string[]>(["scan.created"]);
+  const [newSecret, setNewSecret] = useState<{ url: string; secret: string } | null>(null);
+  const [deleting, setDeleting] = useState<Webhook | null>(null);
+  const [logsFor, setLogsFor] = useState<Webhook | null>(null);
+  const [logs, setLogs] = useState<WebhookLog[]>([]);
+  const [testResult, setTestResult] = useState<Record<string, string>>({});
 
-  const loadWebhooks = useCallback(async () => {
-    const token = useAuthStore.getState().accessToken;
-    try {
-      const stored = localStorage.getItem("qrit_active_workspace");
-      let wsId = stored;
-      if (!wsId) {
-        const wsRes = await fetch(`${api}/workspaces`, { headers: { Authorization: `Bearer ${token}` } });
-        const wsData = await wsRes.json();
-        if (wsData.success && wsData.data?.length > 0) wsId = wsData.data[0].id;
+  const list = useResource((id) => enterprise.listWebhooks(id), []);
+
+  const close = () => {
+    setFormOpen(false);
+    setEditing(null);
+    setUrl("");
+    setDescription("");
+    setEvents(["scan.created"]);
+  };
+
+  const save = useMutation(
+    async () => {
+      if (editing) {
+        return enterprise.updateWebhook(workspaceId!, editing.id, {
+          url: url.trim(), events, description,
+        });
       }
-      if (!wsId) return;
-      setWorkspaceId(wsId);
-      const res = await fetch(`${api}/workspaces/${wsId}/webhooks`, { headers: { Authorization: `Bearer ${token}` } });
-      const data = await res.json();
-      if (data.success) setWebhooks(data.data || []);
-    } catch {}
-    finally { setLoading(false); }
-  }, [api]);
-
-  useEffect(() => { loadWebhooks(); }, [loadWebhooks]);
-
-  const handleCreate = async () => {
-    if (!workspaceId || !newUrl) return;
-    const token = useAuthStore.getState().accessToken;
-    const res = await fetch(`${api}/workspaces/${workspaceId}/webhooks`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ url: newUrl, events: newEvents, description: newDesc }),
-    });
-    const data = await res.json();
-    if (data.success) {
-      setWebhooks([...webhooks, data.data]);
-      setNewUrl(""); setNewEvents(["qr.scanned"]); setNewDesc("");
-      setShowCreate(false);
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!workspaceId) return;
-    const token = useAuthStore.getState().accessToken;
-    await fetch(`${api}/workspaces/${workspaceId}/webhooks/${id}`, {
-      method: "DELETE", headers: { Authorization: `Bearer ${token}` },
-    });
-    setWebhooks(webhooks.filter((w) => w.id !== id));
-  };
-
-  const loadLogs = async (webhookId: string) => {
-    if (!workspaceId) return;
-    const token = useAuthStore.getState().accessToken;
-    try {
-      const res = await fetch(`${api}/workspaces/${workspaceId}/webhooks/${webhookId}/logs`, {
-        headers: { Authorization: `Bearer ${token}` },
+      return enterprise.createWebhook(workspaceId!, {
+        url: url.trim(), events, description: description || undefined,
       });
-      const data = await res.json();
-      if (data.success) setLogs((prev) => ({ ...prev, [webhookId]: data.data || [] }));
-    } catch {}
+    },
+    {
+      onSuccess: (result) => {
+        if (result && "secret" in result && result.secret) {
+          setNewSecret({ url: result.url, secret: result.secret });
+        }
+        close();
+        list.reload();
+      },
+    },
+  );
+
+  const remove = useMutation(
+    (id: string) => enterprise.deleteWebhook(workspaceId!, id),
+    { onSuccess: () => { setDeleting(null); list.reload(); } },
+  );
+
+  const toggleActive = useMutation(
+    (webhook: Webhook) =>
+      enterprise.updateWebhook(workspaceId!, webhook.id, { is_active: !webhook.is_active }),
+    { onSuccess: () => list.reload() },
+  );
+
+  const test = useMutation(
+    async (webhook: Webhook) => {
+      const result = await enterprise.testWebhook(workspaceId!, webhook.id);
+      setTestResult((current) => ({
+        ...current,
+        [webhook.id]: result.delivered
+          ? `Delivered · HTTP ${result.status_code} in ${result.duration_ms}ms`
+          : `Failed · ${result.error || `HTTP ${result.status_code}`}`,
+      }));
+      return result;
+    },
+    { onSuccess: () => list.reload() },
+  );
+
+  const openLogs = useMutation(
+    async (webhook: Webhook) => {
+      const result = await enterprise.webhookLogs(workspaceId!, webhook.id);
+      setLogs(result);
+      setLogsFor(webhook);
+      return result;
+    },
+  );
+
+  const openEdit = (webhook: Webhook) => {
+    setEditing(webhook);
+    setUrl(webhook.url);
+    setDescription(webhook.description ?? "");
+    setEvents(webhook.events);
+    setFormOpen(true);
   };
 
-  const toggleLogs = (id: string) => {
-    const next = !expandedLogs[id];
-    setExpandedLogs((prev) => ({ ...prev, [id]: next }));
-    if (next && !logs[id]) loadLogs(id);
-  };
-
-  const handleTest = async (wh: WebhookData) => {
-    if (!workspaceId || testing[wh.id]) return;
-    setTesting((p) => ({ ...p, [wh.id]: true }));
-    setTestResult((p) => ({ ...p, [wh.id]: null }));
-    const token = useAuthStore.getState().accessToken;
-    try {
-      // Fire a synthetic qr.scanned event via the webhook service trigger endpoint
-      const res = await fetch(`${api}/workspaces/${workspaceId}/webhooks/${wh.id}/test`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      });
-      setTestResult((p) => ({ ...p, [wh.id]: res.ok ? "ok" : "fail" }));
-      // Refresh logs after test
-      setTimeout(() => loadLogs(wh.id), 1500);
-    } catch {
-      setTestResult((p) => ({ ...p, [wh.id]: "fail" }));
-    } finally {
-      setTesting((p) => ({ ...p, [wh.id]: false }));
-      setTimeout(() => setTestResult((p) => ({ ...p, [wh.id]: null })), 4000);
-    }
-  };
-
-  const toggleEvent = (event: string) =>
-    setNewEvents((prev) =>
-      prev.includes(event) ? prev.filter((e) => e !== event) : [...prev, event]
-    );
-
-  const openEdit = (wh: WebhookData) => {
-    setEditingWebhook(wh);
-    setEditUrl(wh.url);
-    setEditEvents(wh.events.split(",").map((e) => e.trim()));
-    setEditDesc(wh.description || "");
-    setEditActive(wh.is_active);
-  };
-
-  const toggleEditEvent = (event: string) =>
-    setEditEvents((prev) =>
-      prev.includes(event) ? prev.filter((e) => e !== event) : [...prev, event]
-    );
-
-  const handleUpdate = async () => {
-    if (!workspaceId || !editingWebhook) return;
-    const token = useAuthStore.getState().accessToken;
-    const res = await fetch(`${api}/workspaces/${workspaceId}/webhooks/${editingWebhook.id}`, {
-      method: "PUT",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ url: editUrl, events: editEvents, description: editDesc, is_active: editActive }),
-    });
-    const data = await res.json();
-    if (data.success) {
-      setWebhooks(webhooks.map((w) => (w.id === editingWebhook.id ? data.data : w)));
-      setEditingWebhook(null);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-2 border-zinc-700 border-t-white rounded-full animate-spin" />
-      </div>
-    );
-  }
+  const webhooks = list.data?.webhooks ?? [];
+  const catalogue = list.data?.events ?? [];
+  const healthy = webhooks.filter((row) => row.is_active && row.fail_count === 0).length;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Webhooks</h1>
-          <p className="text-zinc-500 mt-1">Get real-time notifications when events happen in your workspace</p>
-        </div>
-        <button
-          onClick={() => setShowCreate(true)}
-          className="px-4 py-2 bg-white text-zinc-950 text-sm font-medium rounded-lg hover:bg-zinc-200 transition-colors"
-        >
-          + Add Webhook
-        </button>
-      </div>
+    <>
+      <PageHeader
+        title="Webhooks"
+        description="Push scan events into your own systems in real time. Every delivery is signed so you can verify it came from us."
+        actions={<Btn variant="primary" onClick={() => setFormOpen(true)}>+ Add endpoint</Btn>}
+      />
 
-      {/* Create Modal */}
-      {showCreate && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 w-full max-w-lg">
-            <h3 className="text-lg font-semibold text-white mb-4">New Webhook</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm text-zinc-400 block mb-1">Endpoint URL</label>
-                <input
-                  type="url" value={newUrl} onChange={(e) => setNewUrl(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600"
-                  placeholder="https://your-app.com/webhook"
-                />
-              </div>
-              <div>
-                <label className="text-sm text-zinc-400 block mb-2">Events</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {EVENT_OPTIONS.map((ev) => (
-                    <button key={ev.value} onClick={() => toggleEvent(ev.value)}
-                      className={`text-left px-3 py-2 rounded-lg text-sm transition-all border ${newEvents.includes(ev.value)
-                        ? "bg-violet-500/10 border-violet-500/30 text-violet-300"
-                        : "bg-zinc-800/50 border-zinc-700/50 text-zinc-400 hover:border-zinc-600"
-                      }`}>
-                      {ev.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="text-sm text-zinc-400 block mb-1">Description (optional)</label>
-                <input type="text" value={newDesc} onChange={(e) => setNewDesc(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600"
-                  placeholder="Slack notification for scans"
-                />
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button onClick={() => setShowCreate(false)}
-                  className="flex-1 px-4 py-2.5 bg-zinc-800 text-zinc-300 rounded-lg hover:bg-zinc-700 transition-colors">
-                  Cancel
-                </button>
-                <button onClick={handleCreate}
-                  className="flex-1 px-4 py-2.5 bg-white text-zinc-950 font-medium rounded-lg hover:bg-zinc-200 transition-colors">
-                  Create Webhook
-                </button>
-              </div>
-            </div>
+      <Grid cols={3} className="mb-5">
+        <StatCard label="Endpoints" value={formatNumber(webhooks.length)} />
+        <StatCard label="Healthy" value={formatNumber(healthy)} />
+        <StatCard
+          label="Failing"
+          value={formatNumber(webhooks.filter((row) => row.fail_count > 0).length)}
+          hint={webhooks.some((row) => row.fail_count > 0) ? "Check the delivery log" : undefined}
+        />
+      </Grid>
+
+      {newSecret && (
+        <div className="mb-5 rounded-xl border border-amber-900/40 bg-amber-950/20 p-4">
+          <p className="text-sm font-medium text-amber-200">Save your signing secret now</p>
+          <p className="mt-0.5 text-xs text-amber-300/70">
+            This is the only time it is shown. Use it to verify the{" "}
+            <code className="text-amber-200">X-QRit-Signature</code> header on every delivery.
+          </p>
+          <div className="mt-2.5 flex items-center gap-2 rounded-lg border border-amber-900/40 bg-zinc-950 px-3 py-2">
+            <code className="min-w-0 flex-1 truncate text-xs text-zinc-300">{newSecret.secret}</code>
+            <CopyButton value={newSecret.secret} />
           </div>
+          <button
+            onClick={() => setNewSecret(null)}
+            className="mt-2 text-xs text-amber-300/70 underline underline-offset-2 hover:text-amber-200"
+          >
+            I have saved it
+          </button>
         </div>
       )}
 
-      {/* Webhooks List */}
-      {webhooks.length === 0 ? (
-        <div className="text-center py-16 bg-zinc-900/30 border border-zinc-800/60 rounded-xl">
-          <p className="text-zinc-400 mb-1">No webhooks configured</p>
-          <p className="text-zinc-600 text-sm">Add webhooks to get real-time event notifications</p>
-        </div>
-      ) : (
+      {list.error && <ErrorState message={list.error.message} onRetry={list.reload} />}
+      {test.error && <div className="mb-4"><ErrorState message={test.error} /></div>}
+
+      {list.loading && !list.data ? (
+        <LoadingPanel rows={4} />
+      ) : webhooks.length ? (
         <div className="space-y-3">
-          {webhooks.map((wh) => (
-            <div key={wh.id} className="bg-zinc-900/50 border border-zinc-800/60 rounded-xl overflow-hidden hover:border-zinc-700 transition-all">
-              {/* Webhook header */}
-              <div className="p-5">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className={`w-2 h-2 rounded-full shrink-0 ${wh.is_active ? "bg-emerald-400" : "bg-zinc-600"}`} />
-                      <code className="text-sm text-zinc-200 font-mono truncate">{wh.url}</code>
-                    </div>
-                    {wh.description && <p className="text-xs text-zinc-500 mt-1 ml-4">{wh.description}</p>}
-                    <div className="flex flex-wrap gap-1.5 mt-3 ml-4">
-                      {wh.events.split(",").map((e) => (
-                        <span key={e} className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400 border border-zinc-700/50">
-                          {e.trim()}
-                        </span>
-                      ))}
-                    </div>
-                    {wh.last_triggered && (
-                      <p className="text-[10px] text-zinc-600 mt-2 ml-4">
-                        Last triggered: {new Date(wh.last_triggered).toLocaleString()}
-                      </p>
-                    )}
+          {webhooks.map((webhook) => (
+            <div key={webhook.id} className="rounded-xl border border-zinc-800/70 bg-zinc-900/40 p-4">
+              <div className="flex flex-wrap items-start gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-mono text-sm text-zinc-100">{webhook.url}</p>
+                  {webhook.description && (
+                    <p className="mt-0.5 truncate text-xs text-zinc-500">{webhook.description}</p>
+                  )}
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {webhook.events.map((event) => (
+                      <Badge key={event} tone="violet">{event}</Badge>
+                    ))}
                   </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-2 ml-4 shrink-0">
-                    {wh.fail_count > 0 && (
-                      <span className="text-xs text-amber-400 bg-amber-500/10 px-2 py-1 rounded">
-                        {wh.fail_count} failures
-                      </span>
-                    )}
-
-                    {/* Test button */}
-                    <button
-                      onClick={() => handleTest(wh)}
-                      disabled={testing[wh.id]}
-                      title="Send test event"
-                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all border ${
-                        testResult[wh.id] === "ok"
-                          ? "bg-emerald-900/30 border-emerald-700 text-emerald-400"
-                          : testResult[wh.id] === "fail"
-                          ? "bg-red-900/30 border-red-700 text-red-400"
-                          : "bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700"
-                      } disabled:opacity-50`}
-                    >
-                      {testing[wh.id] ? (
-                        <div className="w-3 h-3 border border-zinc-400 border-t-transparent rounded-full animate-spin" />
-                      ) : testResult[wh.id] === "ok" ? (
-                        <Check size={12} />
-                      ) : testResult[wh.id] === "fail" ? (
-                        <X size={12} />
-                      ) : (
-                        <Zap size={12} />
-                      )}
-                      {testing[wh.id] ? "Testing…" : testResult[wh.id] === "ok" ? "Sent" : testResult[wh.id] === "fail" ? "Failed" : "Test"}
-                    </button>
-
-                    {/* Logs toggle */}
-                    <button
-                      onClick={() => toggleLogs(wh.id)}
-                      title="View delivery logs"
-                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs bg-zinc-800 border border-zinc-700 text-zinc-300 hover:bg-zinc-700"
-                    >
-                      {expandedLogs[wh.id] ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                      Logs
-                    </button>
-
-                    {/* Edit */}
-                    <button
-                      onClick={() => openEdit(wh)}
-                      className="p-1.5 text-zinc-600 hover:text-white transition-colors"
-                      title="Edit webhook"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                    </button>
-
-                    {/* Delete */}
-                    <button
-                      onClick={() => handleDelete(wh.id)}
-                      className="p-1.5 text-zinc-600 hover:text-red-400 transition-colors"
-                    >
-                      <Trash2 size={15} />
-                    </button>
-                  </div>
+                </div>
+                <div className="flex flex-col items-end gap-2">
+                  <StatusDot active={webhook.is_active} />
+                  {webhook.fail_count > 0 && (
+                    <Badge tone="danger">{webhook.fail_count} consecutive failures</Badge>
+                  )}
                 </div>
               </div>
 
-              {/* Log viewer */}
-              {expandedLogs[wh.id] && (
-                <div className="border-t border-zinc-800 bg-zinc-950/60">
-                  {!logs[wh.id] ? (
-                    <div className="flex items-center justify-center py-6">
-                      <div className="w-5 h-5 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
-                    </div>
-                  ) : logs[wh.id].length === 0 ? (
-                    <p className="text-center text-zinc-600 text-xs py-6">No delivery logs yet</p>
-                  ) : (
-                    <div className="divide-y divide-zinc-800/60">
-                      {logs[wh.id].slice(0, 10).map((log) => (
-                        <div key={log.id} className="flex items-center gap-3 px-5 py-3 text-xs">
-                          <span className={`w-2 h-2 rounded-full shrink-0 ${log.success ? "bg-emerald-400" : "bg-red-400"}`} />
-                          <span className="text-zinc-400 font-mono w-24 shrink-0">{log.event}</span>
-                          <span className={`font-mono w-10 shrink-0 ${log.success ? "text-emerald-400" : "text-red-400"}`}>
-                            {log.status_code}
-                          </span>
-                          <span className="text-zinc-600">attempt {log.attempt}</span>
-                          <span className="ml-auto text-zinc-600 shrink-0">
-                            {new Date(log.created_at).toLocaleTimeString()}
-                          </span>
-                          {log.response_body && (
-                            <span className="text-zinc-700 truncate max-w-[120px]" title={log.response_body}>
-                              {log.response_body.slice(0, 40)}
-                            </span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+              {testResult[webhook.id] && (
+                <p
+                  className={
+                    testResult[webhook.id].startsWith("Delivered")
+                      ? "mt-3 text-xs text-emerald-400"
+                      : "mt-3 text-xs text-red-400"
+                  }
+                >
+                  {testResult[webhook.id]}
+                </p>
               )}
+
+              <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-zinc-800/60 pt-3 text-xs text-zinc-600">
+                <span>
+                  Last delivery {webhook.last_triggered ? formatRelative(webhook.last_triggered) : "never"}
+                  {typeof webhook.delivery_count === "number" && ` · ${formatNumber(webhook.delivery_count)} total`}
+                </span>
+                <div className="ml-auto flex flex-wrap gap-1.5">
+                  <Btn size="sm" variant="outline" loading={test.busy} onClick={() => test.run(webhook)}>
+                    Send test
+                  </Btn>
+                  <Btn size="sm" variant="ghost" onClick={() => openLogs.run(webhook)}>Deliveries</Btn>
+                  <Btn size="sm" variant="ghost" onClick={() => toggleActive.run(webhook)}>
+                    {webhook.is_active ? "Pause" : "Resume"}
+                  </Btn>
+                  <Btn size="sm" variant="ghost" onClick={() => openEdit(webhook)}>Edit</Btn>
+                  <Btn
+                    size="sm"
+                    variant="ghost"
+                    className="text-red-400 hover:bg-red-500/10"
+                    onClick={() => setDeleting(webhook)}
+                  >
+                    Delete
+                  </Btn>
+                </div>
+              </div>
             </div>
           ))}
         </div>
+      ) : (
+        <EmptyState
+          icon={
+            <svg className="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+            </svg>
+          }
+          title="No webhook endpoints yet"
+          description="Add an endpoint to receive a signed POST every time one of your codes is scanned — useful for piping scans into a CRM, a data warehouse or Slack."
+          action={<Btn variant="primary" onClick={() => setFormOpen(true)}>Add your first endpoint</Btn>}
+        />
       )}
-      {/* Edit Modal */}
-      {editingWebhook && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 w-full max-w-lg">
-            <h3 className="text-lg font-semibold text-white mb-4">Edit Webhook</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm text-zinc-400 block mb-1">Endpoint URL</label>
-                <input
-                  type="url" value={editUrl} onChange={(e) => setEditUrl(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600"
+
+      <Panel title="Verifying deliveries" className="mt-5">
+        <p className="text-sm text-zinc-400">
+          Each request carries <code className="text-zinc-200">X-QRit-Signature: sha256=…</code>,
+          an HMAC of the raw request body keyed with your signing secret. Recompute it and compare
+          in constant time before trusting the payload.
+        </p>
+        <pre className="mt-3 overflow-x-auto rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-xs text-zinc-400">
+{`import hmac, hashlib
+
+def verify(raw_body: bytes, header: str, secret: str) -> bool:
+    expected = hmac.new(secret.encode(), raw_body, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(f"sha256={expected}", header)`}
+        </pre>
+      </Panel>
+
+      <Modal
+        open={formOpen}
+        onClose={close}
+        title={editing ? "Edit endpoint" : "Add webhook endpoint"}
+        description="We will POST a JSON payload to this URL when the selected events happen."
+        width="lg"
+        footer={
+          <>
+            <Btn variant="ghost" onClick={close}>Cancel</Btn>
+            <Btn
+              variant="primary"
+              loading={save.busy}
+              disabled={!url.startsWith("http") || events.length === 0}
+              onClick={() => save.run()}
+            >
+              {editing ? "Save changes" : "Create endpoint"}
+            </Btn>
+          </>
+        }
+      >
+        {save.error && <div className="mb-4"><ErrorState message={save.error} /></div>}
+        <div className="space-y-4">
+          <Field label="Endpoint URL" required hint="Must be reachable over the public internet.">
+            <TextInput
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="https://hooks.yourcompany.com/qrit"
+              autoFocus
+            />
+          </Field>
+          <Field label="Description">
+            <TextInput
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Pipes scans into the CRM"
+            />
+          </Field>
+          <Field label="Events" required>
+            <div className="space-y-2 rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
+              {catalogue.map((event) => (
+                <Toggle
+                  key={event.id}
+                  checked={events.includes(event.id)}
+                  onChange={(next) =>
+                    setEvents((current) =>
+                      next ? [...current, event.id] : current.filter((id) => id !== event.id),
+                    )
+                  }
+                  label={event.label}
+                  description={event.description}
                 />
-              </div>
-              <div>
-                <label className="text-sm text-zinc-400 block mb-2">Events</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {EVENT_OPTIONS.map((ev) => (
-                    <button key={ev.value} onClick={() => toggleEditEvent(ev.value)}
-                      className={`text-left px-3 py-2 rounded-lg text-sm transition-all border ${editEvents.includes(ev.value)
-                        ? "bg-violet-500/10 border-violet-500/30 text-violet-300"
-                        : "bg-zinc-800/50 border-zinc-700/50 text-zinc-400 hover:border-zinc-600"
-                      }`}>
-                      {ev.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="text-sm text-zinc-400 block mb-1">Description</label>
-                <input type="text" value={editDesc} onChange={(e) => setEditDesc(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600"
-                />
-              </div>
-              <div className="flex items-center justify-between p-3 bg-zinc-800/50 border border-zinc-700/50 rounded-lg">
-                <div>
-                  <p className="text-sm text-zinc-300 font-medium">Active Status</p>
-                  <p className="text-xs text-zinc-500">Toggle to pause/resume this webhook</p>
-                </div>
-                <button
-                  onClick={() => setEditActive(!editActive)}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${editActive ? "bg-emerald-500" : "bg-zinc-600"}`}
-                >
-                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${editActive ? "translate-x-6" : "translate-x-1"}`} />
-                </button>
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button onClick={() => setEditingWebhook(null)}
-                  className="flex-1 px-4 py-2.5 bg-zinc-800 text-zinc-300 rounded-lg hover:bg-zinc-700 transition-colors">
-                  Cancel
-                </button>
-                <button onClick={handleUpdate}
-                  className="flex-1 px-4 py-2.5 bg-violet-600 hover:bg-violet-500 text-white font-medium rounded-lg transition-colors">
-                  Save Changes
-                </button>
-              </div>
+              ))}
             </div>
-          </div>
+          </Field>
         </div>
-      )}
-    </div>
+      </Modal>
+
+      <Modal
+        open={Boolean(logsFor)}
+        onClose={() => setLogsFor(null)}
+        title="Recent deliveries"
+        description={logsFor?.url}
+        width="lg"
+      >
+        {logs.length ? (
+          <ul className="divide-y divide-zinc-800/60">
+            {logs.map((log) => (
+              <li key={log.id} className="py-2.5">
+                <div className="flex items-center gap-2">
+                  <Badge tone={log.success ? "success" : "danger"}>
+                    {log.status_code || "ERR"}
+                  </Badge>
+                  <span className="text-sm text-zinc-300">{log.event}</span>
+                  <span className="ml-auto text-xs text-zinc-600">
+                    {log.duration_ms}ms · {formatRelative(log.created_at)}
+                  </span>
+                </div>
+                {log.error && <p className="mt-1 text-xs text-red-400">{log.error}</p>}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <EmptyState title="No deliveries yet" description="Send a test to check the endpoint responds." />
+        )}
+      </Modal>
+
+      <ConfirmModal
+        open={Boolean(deleting)}
+        onClose={() => setDeleting(null)}
+        onConfirm={() => deleting && remove.run(deleting.id)}
+        busy={remove.busy}
+        title="Delete this endpoint?"
+        message="Deliveries stop immediately and the signing secret is destroyed. You will need a new secret if you recreate it."
+      />
+    </>
   );
 }

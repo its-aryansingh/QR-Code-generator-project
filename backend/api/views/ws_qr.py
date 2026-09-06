@@ -135,6 +135,43 @@ class WorkspaceQRListView(APIView):
             }
         )
 
+
+class WorkspaceQRDetailView(APIView):
+    @require_auth
+    @require_workspace("viewer")
+    def get(self, request, ws_id, qr_id):
+        row = QRRecord.objects.filter(id=qr_id, workspace_id=ws_id).first()
+        if not row:
+            return Response({"success": False, "error": "QR code not found"}, status=404)
+        return Response({"success": True, "data": _decorate(row, request.workspace)})
+
+    @require_auth
+    @require_workspace("editor")
+    def put(self, request, ws_id, qr_id):
+        row = QRRecord.objects.filter(id=qr_id, workspace_id=ws_id).first()
+        if not row:
+            return Response({"success": False, "error": "QR code not found"}, status=404)
+        updates = {"updated_at": timezone.now()}
+        for field in ("title", "content", "redirect_url", "tags", "geo_restrictions", "password", "max_scans", "expires_at"):
+            if field in request.data:
+                updates[field] = request.data[field]
+        if "is_active" in request.data:
+            updates["is_active"] = bool(request.data["is_active"])
+        QRRecord.objects.filter(pk=row.pk).update(**updates)
+        row.refresh_from_db()
+        audit.record(request, ws_id, audit.UPDATE, "qr", row.id, {"fields": sorted(updates)})
+        return Response({"success": True, "data": _decorate(row, request.workspace)})
+
+    @require_auth
+    @require_workspace("editor")
+    def delete(self, request, ws_id, qr_id):
+        row = QRRecord.objects.filter(id=qr_id, workspace_id=ws_id).first()
+        if not row:
+            return Response({"success": False, "error": "QR code not found"}, status=404)
+        row.delete()
+        audit.record(request, ws_id, audit.DELETE, "qr", qr_id, {})
+        return Response({"success": True, "data": {"message": "QR code deleted"}})
+
     @require_auth
     @require_workspace("editor")
     def post(self, request, ws_id):

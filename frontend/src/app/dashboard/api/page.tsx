@@ -14,7 +14,7 @@ interface APIKeyInfo {
 
 export default function APIKeyPage() {
   const { accessToken } = useAuthStore();
-  const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081/api/v1";
+  const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8084/api/v1";
 
   const [keyInfo, setKeyInfo] = useState<APIKeyInfo | null>(null);
   const [loading, setLoading] = useState(true);
@@ -74,7 +74,7 @@ export default function APIKeyPage() {
   const maskKey = (key: string) =>
     showKey ? key : key.slice(0, 8) + "•".repeat(16) + key.slice(-4);
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:8081";
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:8084";
 
   if (loading) {
     return (
@@ -179,12 +179,12 @@ export default function APIKeyPage() {
               <Terminal size={14} className="text-violet-400" /> Quick Start
             </h2>
 
-            <CodeBlock label="Generate a QR Code" code={`curl -X POST ${baseUrl}/api/v1/api/generate \\
+            <CodeBlock label="Generate a QR Code" code={`curl -X POST ${baseUrl}/api/v1/qr/api/generate \\
   -H "X-API-Key: ${keyInfo.api_key}" \\
   -H "Content-Type: application/json" \\
   -d '{"content": "https://example.com", "qr_type": "url", "size": 512}'`} />
 
-            <CodeBlock label="Bulk Generate (Pro/Enterprise)" code={`curl -X POST ${baseUrl}/api/v1/api/bulk \\
+            <CodeBlock label="Bulk Generate (Pro/Enterprise)" code={`curl -X POST ${baseUrl}/api/v1/workspaces/YOUR_WORKSPACE_ID/bulk \\
   -H "X-API-Key: ${keyInfo.api_key}" \\
   -H "Content-Type: application/json" \\
   -d '{"items": [

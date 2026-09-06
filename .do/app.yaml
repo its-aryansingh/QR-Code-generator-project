@@ -1,0 +1,54 @@
+name: qrit-app
+region: blr
+databases:
+  - name: qrit-db
+    engine: PG
+    version: "16"
+    production: false
+
+services:
+  - name: backend
+    github:
+      branch: main
+      repo: its-aryansingh/QR-Code-generator-project
+      deploy_on_push: true
+    source_dir: backend
+    environment_slug: python
+    build_command: pip install -r requirements.txt
+    run_command: python manage.py migrate --fake-initial --noinput && gunicorn qrapp.wsgi:application --bind 0.0.0.0:${PORT}
+    http_port: 8084
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    envs:
+      - key: DEBUG
+        value: "False"
+      - key: DATABASE_URL
+        value: ${qrit-db.DATABASE_URL}
+      - key: DJANGO_SECRET_KEY
+        generate_value: true
+      - key: JWT_SECRET
+        generate_value: true
+      - key: CORS_ALLOW_ALL_ORIGINS
+        value: "True"
+      - key: APP_BASE_URL
+        value: ${frontend.PUBLIC_URL}
+      - key: API_BASE_URL
+        value: ${APP_URL}
+      - key: ALLOWED_HOSTS
+        value: "*"
+
+  - name: frontend
+    github:
+      branch: main
+      repo: its-aryansingh/QR-Code-generator-project
+      deploy_on_push: true
+    source_dir: frontend
+    environment_slug: node-js
+    build_command: npm install && npm run build
+    run_command: npm start
+    http_port: 3000
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    envs:
+      - key: NEXT_PUBLIC_API_URL
+        value: ${backend.PUBLIC_URL}/api/v1

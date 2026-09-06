@@ -97,7 +97,7 @@ function ContentFields({ type, fields, onChange }: { type: string; fields: Recor
 export default function CreatePage() {
   const router = useRouter();
   const { accessToken } = useAuthStore();
-  const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081/api/v1";
+  const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8084/api/v1";
 
   const [step, setStep] = useState(0);
   const [qrType, setQrType] = useState("url");
