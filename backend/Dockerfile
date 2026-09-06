@@ -25,7 +25,7 @@ COPY . .
 RUN chmod +x entrypoint.sh
 
 # Collect static assets into staticfiles/
-RUN python manage.py collectstatic --noinput
+RUN DJANGO_SECRET_KEY=build-time-secret JWT_SECRET=build-time-secret python manage.py collectstatic --noinput
 
 # Transfer ownership to non-root user
 RUN chown -R appuser:appuser /app

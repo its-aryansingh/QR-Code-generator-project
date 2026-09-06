@@ -81,8 +81,10 @@ DATABASES = {
 }
 
 # ---------------------------------------------------------------- Auth
+import sys
+_is_build_cmd = any(arg in sys.argv for arg in ("collectstatic", "makemigrations", "showmigrations", "help"))
 JWT_SECRET = os.environ.get("JWT_SECRET", "your-super-secret-key-change-in-production")
-if not DEBUG and JWT_SECRET == "your-super-secret-key-change-in-production":
+if not DEBUG and not _is_build_cmd and JWT_SECRET == "your-super-secret-key-change-in-production":
     raise RuntimeError(
         "FATAL: JWT_SECRET is set to the insecure default. "
         "Set a strong, unique JWT_SECRET environment variable before running in production."
