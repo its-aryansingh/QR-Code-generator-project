@@ -1,0 +1,110 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": true,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 0 },
+      "id": 1,
+      "title": "Redirect Throughput (QPS)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{job=\"qrit-redirect\"}[1m])) by (status)",
+          "legendFormat": "{{status}}"
+        }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 8, "w": 6, "x": 6, "y": 0 },
+      "id": 2,
+      "title": "p99 Redirect Latency",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job=\"qrit-redirect\"}[1m])) by (le)) * 1000",
+          "legendFormat": "p99 (ms)"
+        },
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{job=\"qrit-redirect\"}[1m])) by (le)) * 1000",
+          "legendFormat": "p50 (ms)"
+        }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 0 },
+      "id": 3,
+      "title": "Edge Cache Hit Rate",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "sum(rate(redis_cache_hits_total[5m])) / (sum(rate(redis_cache_hits_total[5m])) + sum(rate(redis_cache_misses_total[5m]))) * 100",
+          "legendFormat": "Hit Rate %"
+        }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 0 },
+      "id": 4,
+      "title": "Scan Ingestion Stream Lag",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "redis_stream_lag_seconds{stream=\"scans:stream\"}",
+          "legendFormat": "Stream Lag (s)"
+        }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "id": 5,
+      "title": "Bot vs Human Traffic Breakdown",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(rate(scans_ingested_total{is_bot=\"false\"}[5m]))",
+          "legendFormat": "Human Scans"
+        },
+        {
+          "expr": "sum(rate(scans_ingested_total{is_bot=\"true\"}[5m]))",
+          "legendFormat": "Bot Scans"
+        }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "id": 6,
+      "title": "Webhook Delivery Success & Failure Rates",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(rate(webhook_deliveries_total{status=\"success\"}[5m]))",
+          "legendFormat": "Delivered (2xx)"
+        },
+        {
+          "expr": "sum(rate(webhook_deliveries_total{status=\"failure\"}[5m]))",
+          "legendFormat": "Failed (4xx/5xx)"
+        }
+      ]
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": ["qrit", "production", "observability"],
+  "time": { "from": "now-1h", "to": "now" },
+  "timezone": "browser",
+  "title": "QRit v2 Platform Overview"
+}

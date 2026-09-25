@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { CreditCard, Users, Webhook } from 'lucide-react';
+import { CreditCard, Users, Webhook, Lock } from 'lucide-react';
 
 export default function SettingsLayout({
   children,
@@ -19,6 +19,7 @@ export default function SettingsLayout({
     { label: 'Billing & Plans', href: `/w/${workspace}/settings/billing`, icon: CreditCard },
     { label: 'Team Members', href: `/w/${workspace}/settings/team`, icon: Users },
     { label: 'Webhooks & API', href: `/w/${workspace}/settings/webhooks`, icon: Webhook },
+    { label: 'Security & 2FA', href: `/w/${workspace}/settings/security`, icon: Lock },
   ];
 
   return (
