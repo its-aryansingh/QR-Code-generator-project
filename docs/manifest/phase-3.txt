@@ -1,0 +1,12 @@
+services/internal/routing/engine.go
+services/internal/routing/engine_test.go
+services/internal/domains/domains.go
+services/internal/domains/domains_test.go
+services/internal/urlsafety/webrisk.go
+services/internal/urlsafety/webrisk_test.go
+services/internal/version/scheduler.go
+services/internal/version/scheduler_test.go
+apps/web/src/app/p/[code]/page.tsx
+apps/web/src/app/w/[workspace]/domains/page.tsx
+apps/web/src/app/abuse/page.tsx
+apps/web/src/features/qr-detail/RulesBuilder.tsx
