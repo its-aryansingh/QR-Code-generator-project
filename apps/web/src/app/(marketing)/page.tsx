@@ -104,6 +104,12 @@ export default function MarketingPage() {
 
           <div className="flex items-center gap-4">
             <Link
+              href="/pricing"
+              className="text-sm font-medium text-[var(--text-muted)] hover:text-[var(--text)] transition-colors"
+            >
+              Pricing
+            </Link>
+            <Link
               href="/login"
               className="text-sm font-medium text-[var(--text-muted)] hover:text-[var(--text)] transition-colors"
             >

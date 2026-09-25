@@ -1,0 +1,10 @@
+services/internal/billing/provider.go
+services/internal/billing/stripe.go
+services/internal/billing/razorpay.go
+services/internal/billing/billing_test.go
+services/internal/webhooks/webhooks.go
+services/internal/webhooks/webhooks_test.go
+apps/web/src/app/(marketing)/pricing/page.tsx
+apps/web/src/app/w/[workspace]/settings/team/page.tsx
+apps/web/src/app/w/[workspace]/settings/billing/page.tsx
+apps/web/src/app/w/[workspace]/settings/webhooks/page.tsx
