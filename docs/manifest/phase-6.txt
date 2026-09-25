@@ -1,0 +1,10 @@
+apps/web/src/app/sitemap.ts
+apps/web/src/app/robots.ts
+apps/web/src/app/(marketing)/terms/page.tsx
+apps/web/src/app/(marketing)/privacy/page.tsx
+apps/web/src/app/(marketing)/wifi-qr-code/page.tsx
+apps/web/src/app/(marketing)/upi-qr-code/page.tsx
+apps/web/src/app/(marketing)/vcard-qr-code/page.tsx
+apps/web/src/app/docs/api/page.tsx
+services/internal/email/templates.go
+services/internal/email/templates_test.go
