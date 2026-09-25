@@ -1,0 +1,26 @@
+{
+  "name": "@qrit/render",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@qrit/qr-render": "workspace:*",
+    "@resvg/resvg-js": "^2.6.2",
+    "fastify": "^5.2.1",
+    "pdfkit": "^0.16.0",
+    "svg-to-pdfkit": "^0.1.8"
+  },
+  "devDependencies": {
+    "@qrit/config": "workspace:*",
+    "@types/node": "^22.13.4",
+    "@types/pdfkit": "^0.13.9",
+    "tsx": "^4.19.3",
+    "typescript": "^5.7.3"
+  }
+}

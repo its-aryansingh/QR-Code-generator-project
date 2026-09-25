@@ -1,0 +1,400 @@
+openapi: 3.1.0
+info:
+  title: QRit API
+  version: 2.0.0
+  description: High-performance Dynamic QR code, short-link resolution and analytics platform.
+servers:
+  - url: /v1
+    description: Current Environment
+paths:
+  /auth/register:
+    post:
+      summary: Register a new account
+      operationId: register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, minLength: 8 }
+                name: { type: string }
+      responses:
+        '201':
+          description: User registered successfully
+        '400':
+          $ref: '#/components/responses/ProblemDetails'
+        '409':
+          $ref: '#/components/responses/ProblemDetails'
+
+  /auth/login:
+    post:
+      summary: Log in with email and password
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+      responses:
+        '200':
+          description: Logged in successfully
+        '401':
+          $ref: '#/components/responses/ProblemDetails'
+
+  /auth/logout:
+    post:
+      summary: Log out of current session
+      operationId: logout
+      responses:
+        '204':
+          description: Logged out
+
+  /auth/refresh:
+    post:
+      summary: Rotate session refresh token
+      operationId: refreshSession
+      responses:
+        '200':
+          description: Session refreshed
+        '401':
+          $ref: '#/components/responses/ProblemDetails'
+
+  /me:
+    get:
+      summary: Get current authenticated user
+      operationId: getMe
+      responses:
+        '200':
+          description: Authenticated user details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/ProblemDetails'
+
+  /workspaces:
+    get:
+      summary: List user workspaces
+      operationId: listWorkspaces
+      responses:
+        '200':
+          description: List of workspaces
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Workspace'
+    post:
+      summary: Create a new workspace
+      operationId: createWorkspace
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, minLength: 1, maxLength: 64 }
+      responses:
+        '201':
+          description: Workspace created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workspace'
+
+  /workspaces/{ws}/entitlements:
+    get:
+      summary: Get workspace plan entitlements
+      operationId: getWorkspaceEntitlements
+      parameters:
+        - name: ws
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Workspace entitlements
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Entitlements'
+
+  /workspaces/{ws}/qr-codes:
+    get:
+      summary: List workspace QR codes
+      operationId: listQRCodes
+      parameters:
+        - name: ws
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 50, maximum: 100 }
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: search
+          in: query
+          schema: { type: string }
+        - name: status
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Paginated QR codes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/QRCode'
+                  next_cursor: { type: string, nullable: true }
+    post:
+      summary: Create a QR code
+      operationId: createQRCode
+      parameters:
+        - name: ws
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateQRCodeRequest'
+      responses:
+        '201':
+          description: QR code created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QRCode'
+        '402':
+          $ref: '#/components/responses/ProblemDetails'
+
+  /workspaces/{ws}/qr-codes/{id}:
+    get:
+      summary: Get QR code details
+      operationId: getQRCode
+      parameters:
+        - name: ws
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: QR code details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QRCode'
+        '404':
+          $ref: '#/components/responses/ProblemDetails'
+    patch:
+      summary: Update QR code metadata
+      operationId: updateQRCode
+      parameters:
+        - name: ws
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                folder_id: { type: string, format: uuid, nullable: true }
+                design: { $ref: '#/components/schemas/Design' }
+      responses:
+        '200':
+          description: QR code updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QRCode'
+
+  /workspaces/{ws}/qr-codes/{id}/versions:
+    post:
+      summary: Create new destination version
+      operationId: createQRCodeVersion
+      parameters:
+        - name: ws
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [destination_url]
+              properties:
+                destination_url: { type: string }
+                change_note: { type: string }
+      responses:
+        '201':
+          description: Version created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QRVersion'
+
+components:
+  schemas:
+    ProblemDetails:
+      type: object
+      required: [type, title, status]
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        code: { type: string }
+        detail: { type: string }
+        instance: { type: string }
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field: { type: string }
+              code: { type: string }
+              message: { type: string }
+
+    User:
+      type: object
+      required: [id, email, name, locale, timezone]
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        name: { type: string }
+        avatar_url: { type: string, nullable: true }
+        locale: { type: string }
+        timezone: { type: string }
+
+    Workspace:
+      type: object
+      required: [id, name, slug, plan_id, role]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        slug: { type: string }
+        plan_id: { type: string, enum: [free, pro, business, enterprise] }
+        role: { type: string, enum: [owner, admin, editor, analyst] }
+
+    Entitlements:
+      type: object
+      required: [plan_id, dynamic_codes, current_dynamic_codes]
+      properties:
+        plan_id: { type: string }
+        dynamic_codes: { type: integer }
+        current_dynamic_codes: { type: integer }
+        analytics_history_days: { type: integer }
+
+    Design:
+      type: object
+      required: [v, ecc, quiet_zone, modules, finder, background]
+      properties:
+        v: { type: integer, default: 1 }
+        ecc: { type: string, enum: [auto, L, M, Q, H], default: auto }
+        quiet_zone: { type: integer, minimum: 0, maximum: 10, default: 4 }
+        modules:
+          type: object
+          properties:
+            shape: { type: string, enum: [square, dots, rounded, extra-rounded, classy, classy-rounded] }
+            color: { type: string }
+            gradient: { type: object, nullable: true }
+        finder:
+          type: object
+          properties:
+            outer_shape: { type: string, enum: [square, rounded, circle, leaf] }
+            outer_color: { type: string }
+            inner_shape: { type: string, enum: [square, rounded, circle, dot] }
+            inner_color: { type: string }
+        background:
+          type: object
+          properties:
+            color: { type: string }
+            transparent: { type: boolean }
+        logo: { type: object, nullable: true }
+        frame: { type: object, nullable: true }
+
+    QRVersion:
+      type: object
+      required: [id, version_no, destination_url, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        version_no: { type: integer }
+        destination_url: { type: string }
+        change_note: { type: string, nullable: true }
+        created_at: { type: string, format: date-time }
+
+    QRCode:
+      type: object
+      required: [id, workspace_id, mode, content_type, name, status, short_code, short_url, encoded_payload]
+      properties:
+        id: { type: string, format: uuid }
+        workspace_id: { type: string, format: uuid }
+        mode: { type: string, enum: [static, dynamic] }
+        content_type: { type: string }
+        name: { type: string }
+        status: { type: string, enum: [active, paused, archived, blocked] }
+        short_code: { type: string }
+        short_url: { type: string }
+        encoded_payload: { type: string }
+        total_scans: { type: integer }
+        unique_scans: { type: integer }
+        design: { $ref: '#/components/schemas/Design' }
+        current_version: { $ref: '#/components/schemas/QRVersion', nullable: true }
+
+    CreateQRCodeRequest:
+      type: object
+      required: [mode, content_type, name]
+      properties:
+        mode: { type: string, enum: [static, dynamic] }
+        content_type: { type: string }
+        name: { type: string }
+        destination_url: { type: string }
+        static_content: { type: object }
+        design: { $ref: '#/components/schemas/Design' }
+
+  responses:
+    ProblemDetails:
+      description: Error problem response
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
