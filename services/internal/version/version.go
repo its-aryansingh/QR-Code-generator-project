@@ -45,35 +45,37 @@ type QRVersion struct {
 	CreatedAt       time.Time       `json:"created_at"`
 }
 
-// AppendUTM merges non-empty UTM parameters into destination URL query string.
+// AppendUTM adds the configured UTM parameters to the destination, but only those the
+// destination does not already carry (the destination's own tagging wins). The original
+// query string order and the fragment are preserved.
 func AppendUTM(rawURL string, utm UTMConfig) (string, error) {
 	if utm.Source == "" && utm.Medium == "" && utm.Campaign == "" && utm.Term == "" && utm.Content == "" {
 		return rawURL, nil
 	}
-
 	u, err := url.Parse(rawURL)
 	if err != nil {
 		return rawURL, err
 	}
-
-	q := u.Query()
-	if utm.Source != "" {
-		q.Set("utm_source", utm.Source)
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return rawURL, nil
 	}
-	if utm.Medium != "" {
-		q.Set("utm_medium", utm.Medium)
+	existing := u.Query()
+	var add []string
+	for _, kv := range [][2]string{{"utm_source", utm.Source}, {"utm_medium", utm.Medium},
+		{"utm_campaign", utm.Campaign}, {"utm_term", utm.Term}, {"utm_content", utm.Content}} {
+		if kv[1] == "" || existing.Has(kv[0]) {
+			continue
+		}
+		add = append(add, kv[0]+"="+url.QueryEscape(kv[1]))
 	}
-	if utm.Campaign != "" {
-		q.Set("utm_campaign", utm.Campaign)
+	if len(add) == 0 {
+		return rawURL, nil
 	}
-	if utm.Term != "" {
-		q.Set("utm_term", utm.Term)
+	if u.RawQuery == "" {
+		u.RawQuery = strings.Join(add, "&")
+	} else {
+		u.RawQuery += "&" + strings.Join(add, "&")
 	}
-	if utm.Content != "" {
-		q.Set("utm_content", utm.Content)
-	}
-
-	u.RawQuery = q.Encode()
 	return u.String(), nil
 }
 

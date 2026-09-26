@@ -31,7 +31,7 @@ type ScanEvent struct {
 	Timestamp   time.Time  `json:"ts"`
 	WorkspaceID string     `json:"ws"`
 	QRCodeID    string     `json:"qr"`
-	VersionID   string     `json:"ver"`
+	VersionID   *string    `json:"ver"`
 	CampaignID  *string    `json:"cmp,omitempty"`
 	DomainID    string     `json:"dom"`
 	Rule        *string    `json:"rule,omitempty"`
@@ -41,7 +41,7 @@ type ScanEvent struct {
 	UserAgent   string     `json:"ua"`
 	Datacenter  bool       `json:"dc"`
 	Geo         GeoFacts   `json:"geo"`
-	Language    string     `json:"lang"`
+	Language    *string    `json:"lang"`
 	Referrer    *string    `json:"ref,omitempty"`
 	UTM         *UTMParams `json:"utm,omitempty"`
 }
@@ -155,12 +155,11 @@ func NewScanEvent(
 	ref *string,
 	utm *UTMParams,
 ) *ScanEvent {
-	return &ScanEvent{
+	ev := &ScanEvent{
 		ID:          idgen.New().String(),
 		Timestamp:   now.UTC(),
 		WorkspaceID: wsID,
 		QRCodeID:    qrID,
-		VersionID:   verID,
 		CampaignID:  cmpID,
 		DomainID:    domID,
 		Rule:        rule,
@@ -170,10 +169,16 @@ func NewScanEvent(
 		UserAgent:   ua,
 		Datacenter:  dc,
 		Geo:         geo,
-		Language:    lang,
 		Referrer:    ref,
 		UTM:         utm,
 	}
+	if verID != "" {
+		ev.VersionID = &verID
+	}
+	if lang != "" {
+		ev.Language = &lang
+	}
+	return ev
 }
 
 // ParseRequestFacts extracts facts from an incoming HTTP request.

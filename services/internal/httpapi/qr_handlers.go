@@ -347,11 +347,11 @@ func (s *Server) buildDraft(ctx context.Context, ws dbgen.Workspace, in versionI
 		if err := ent.CheckFeature(ctx, ws, entitlements.FeatureHostedPages); err != nil {
 			return d, featureErr(err)
 		}
-		page, err := normaliseHostedPage(in.HostedPage)
+		page, st, err := s.normaliseHostedPage(ctx, ws, in.HostedPage)
 		if err != nil {
 			return d, err
 		}
-		d.DestinationKind, d.HostedPage = "hosted_page", page
+		d.DestinationKind, d.HostedPage, d.SafetyStatus = "hosted_page", page, st
 	case hostedTypes[in.ContentType]:
 		return d, unprocessable("hosted_page_required", in.ContentType+" codes need a hosted_page")
 	default:
@@ -1295,19 +1295,24 @@ func (s *Server) handleResolvePreview(w http.ResponseWriter, r *http.Request) {
 	if outcome == resolve.OutcomeActive && effective != nil {
 		var rules []routing.Rule
 		_ = json.Unmarshal(effective.Rules, &rules)
-		dest, ruleID := routing.Resolve(routing.Version{DefaultDestination: target, Rules: rules}, routing.RequestFacts{
+		res := routing.Evaluate(routing.Version{DefaultDestination: target, Rules: rules}, routing.RequestFacts{
 			QRCodeID: code.ID.String(), UserAgent: req.UserAgent, Country: strings.ToUpper(req.Country), Region: req.Region,
 			DeviceType: req.DeviceType, OS: req.OS, Language: req.Language, ScanCount: code.TotalScans,
 		}, at, loc)
+		dest, ruleID := res.URL, res.RuleID
+		if res.Blocked {
+			resp["outcome"] = "geo_blocked"
+		}
 		var utm version.UTMConfig
 		_ = json.Unmarshal(effective.Utm, &utm)
-		if effective.DestinationKind == "url" && dest != "" {
+		if dest != "" {
 			if withUTM, err := version.AppendUTM(dest, utm); err == nil {
 				dest = withUTM
 			}
 		}
 		if effective.DestinationKind == "hosted_page" && ruleID == "" {
 			resp["hosted_page"] = true
+			resp["outcome"] = "hosted_page"
 		}
 		target = dest
 		resp["rule_id"] = ruleID

@@ -33,6 +33,15 @@ type Rule struct {
 	When           *WhenGroup     `json:"when"`
 	DestinationURL string         `json:"destination_url,omitempty"`
 	Split          []SplitVariant `json:"split,omitempty"`
+	// Block denies matching scans (e.g. geo restriction) with a 451 page instead of redirecting.
+	Block bool `json:"block,omitempty"`
+}
+
+// Result is the outcome of evaluating a version's rules.
+type Result struct {
+	URL     string
+	RuleID  string
+	Blocked bool
 }
 
 type Version struct {
@@ -55,6 +64,12 @@ type RequestFacts struct {
 // Resolve evaluates routing rules against request facts and returns (destinationUrl, ruleID).
 // If no rule matches, it returns the version's default destination and an empty ruleID.
 func Resolve(v Version, facts RequestFacts, now time.Time, loc *time.Location) (string, string) {
+	r := Evaluate(v, facts, now, loc)
+	return r.URL, r.RuleID
+}
+
+// Evaluate is Resolve with block rules surfaced: the first matching enabled rule wins.
+func Evaluate(v Version, facts RequestFacts, now time.Time, loc *time.Location) Result {
 	if loc == nil {
 		loc = time.UTC
 	}
@@ -66,6 +81,9 @@ func Resolve(v Version, facts RequestFacts, now time.Time, loc *time.Location) (
 		}
 
 		if matchRule(rule.When, facts, localNow) {
+			if rule.Block {
+				return Result{RuleID: rule.ID, Blocked: true}
+			}
 			// A/B Split test rule
 			if len(rule.Split) > 0 {
 				h := sha256.New()
@@ -80,22 +98,22 @@ func Resolve(v Version, facts RequestFacts, now time.Time, loc *time.Location) (
 				for _, variant := range rule.Split {
 					cumWeight += variant.Weight
 					if bucket < cumWeight {
-						return variant.DestinationURL, fmt.Sprintf("%s:%s", rule.ID, variant.Variant)
+						return Result{URL: variant.DestinationURL, RuleID: fmt.Sprintf("%s:%s", rule.ID, variant.Variant)}
 					}
 				}
 				// Fallback to last variant if weights didn't reach 100
 				last := rule.Split[len(rule.Split)-1]
-				return last.DestinationURL, fmt.Sprintf("%s:%s", rule.ID, last.Variant)
+				return Result{URL: last.DestinationURL, RuleID: fmt.Sprintf("%s:%s", rule.ID, last.Variant)}
 			}
 
 			// Single destination rule
 			if rule.DestinationURL != "" {
-				return rule.DestinationURL, rule.ID
+				return Result{URL: rule.DestinationURL, RuleID: rule.ID}
 			}
 		}
 	}
 
-	return v.DefaultDestination, ""
+	return Result{URL: v.DefaultDestination}
 }
 
 func matchRule(when *WhenGroup, facts RequestFacts, localNow time.Time) bool {

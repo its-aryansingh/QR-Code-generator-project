@@ -15,6 +15,8 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/its-aryansingh/qrit/services/internal/apierr"
+	"github.com/its-aryansingh/qrit/services/internal/entitlements"
+	"github.com/its-aryansingh/qrit/services/internal/hosted"
 	"github.com/its-aryansingh/qrit/services/internal/platform/db/dbgen"
 	"github.com/its-aryansingh/qrit/services/internal/qr"
 	"github.com/its-aryansingh/qrit/services/internal/routing"
@@ -47,7 +49,7 @@ func (o opt[T]) ptr() *T {
 }
 
 const (
-	maxRules          = 25
+	maxRules          = 20
 	maxHostedPageSize = 64 << 10
 	maxStaticPayload  = 2953 // QR version 40-L binary capacity
 	safetyTimeout     = 3 * time.Second
@@ -156,6 +158,9 @@ func (s *Server) normaliseRules(ctx context.Context, ws dbgen.Workspace, raw jso
 		}
 		seen[rl.ID] = true
 		if rl.When != nil {
+			if len(rl.When.All)+len(rl.When.Any) > 10 {
+				return nil, "", unprocessable("invalid_rules", field+": at most 10 conditions per rule")
+			}
 			if len(rl.When.All) > 0 && len(rl.When.Any) > 0 {
 				return nil, "", unprocessable("invalid_rules", field+".when: use either all or any, not both")
 			}
@@ -171,7 +176,17 @@ func (s *Server) normaliseRules(ctx context.Context, ws dbgen.Workspace, raw jso
 			}
 		}
 		switch {
+		case rl.Block:
+			if rl.DestinationURL != "" || len(rl.Split) > 0 {
+				return nil, "", unprocessable("invalid_rules", field+": a block rule cannot have a destination")
+			}
+			if rl.When == nil || len(rl.When.All)+len(rl.When.Any) == 0 {
+				return nil, "", unprocessable("invalid_rules", field+": a block rule needs conditions")
+			}
 		case len(rl.Split) > 0:
+			if len(rl.Split) > 5 {
+				return nil, "", unprocessable("invalid_rules", field+": at most 5 split variants")
+			}
 			if rl.DestinationURL != "" {
 				return nil, "", unprocessable("invalid_rules", field+": a split rule cannot also set destination_url")
 			}
@@ -228,22 +243,33 @@ func normaliseUTM(raw json.RawMessage) (json.RawMessage, bool, error) {
 	return out, used, nil
 }
 
-var hostedPageTypes = map[string]bool{"vcard": true, "links_page": true, "file": true, "event": true, "app_store": true, "menu": true, "coupon": true}
-
-func normaliseHostedPage(raw json.RawMessage) ([]byte, error) {
+// normaliseHostedPage validates a hosted page and every URL inside it.
+func (s *Server) normaliseHostedPage(ctx context.Context, ws dbgen.Workspace, raw json.RawMessage) ([]byte, string, error) {
 	if len(raw) > maxHostedPageSize {
-		return nil, unprocessable("hosted_page_too_large", "hosted_page must be at most 64 KiB")
+		return nil, "", unprocessable("hosted_page_too_large", "hosted_page must be at most 64 KiB")
 	}
-	var page map[string]any
-	if err := json.Unmarshal(raw, &page); err != nil || page == nil {
-		return nil, unprocessable("invalid_hosted_page", "hosted_page must be a JSON object")
+	safety := "safe"
+	page, err := hosted.Parse(raw, func(field, u string) (string, error) {
+		norm, st, err := s.checkDestination(ctx, ws, "hosted_page."+field, u)
+		if err != nil {
+			return "", err
+		}
+		safety = combineSafety(safety, st)
+		return norm, nil
+	})
+	if err != nil {
+		var pd *apierr.ProblemDetails
+		if errors.As(err, &pd) {
+			return nil, "", pd
+		}
+		return nil, "", unprocessable("invalid_hosted_page", err.Error())
 	}
-	t, _ := page["type"].(string)
-	if !hostedPageTypes[t] {
-		return nil, unprocessable("invalid_hosted_page", "hosted_page.type must be one of vcard, links_page, file, event, app_store, menu, coupon")
+	if page.HideBranding {
+		if err := s.ent().CheckFeature(ctx, ws, entitlements.FeatureRemoveBranding); err != nil {
+			return nil, "", featureErr(err)
+		}
 	}
-	out, _ := json.Marshal(page)
-	return out, nil
+	return page.Marshal(), safety, nil
 }
 
 // staticContent is the structured form input for a static code.

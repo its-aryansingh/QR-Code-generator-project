@@ -103,3 +103,7 @@ func Prefix(ip net.IP) string {
 	}
 	return ip.Mask(net.CIDRMask(48, 128)).String() + "/48"
 }
+
+// TrustedPeer reports whether the TCP peer is a trusted proxy, i.e. whether edge-supplied
+// headers (CF-IPCountry, cf-ipcity, ...) can be believed.
+func (c *ClientIPResolver) TrustedPeer(r *http.Request) bool { return c.isTrusted(PeerIP(r)) }

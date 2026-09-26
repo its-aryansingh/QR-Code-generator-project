@@ -216,6 +216,7 @@ func (s *Server) Routes() http.Handler {
 						})
 					})
 					s.organizeRoutes(r)
+					s.analyticsRoutes(r)
 					for _, m := range s.wsMounts {
 						m(r)
 					}

@@ -5,10 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
-	lru "github.com/hashicorp/golang-lru/v2"
+	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/sync/singleflight"
 )
@@ -36,6 +37,8 @@ type ResolvedVersion struct {
 	URL   string          `json:"url"`
 	Rules json.RawMessage `json:"rules"`
 	UTM   json.RawMessage `json:"utm"`
+	// HostedPage is the page JSON when Kind is hosted_page (rendered by the redirect service).
+	HostedPage json.RawMessage `json:"hp,omitempty"`
 }
 
 type ResolvedLink struct {
@@ -103,28 +106,54 @@ func EvaluateState(link *ResolvedLink, now time.Time) (Outcome, string) {
 	return OutcomeActive, destURL
 }
 
-// Resolver manages LRU and Redis caching with DB fallback and singleflight deduplication.
+// ErrUnavailable means neither Redis nor Postgres could answer and no last-known-good
+// entry exists: the redirect serves a 503 "try again" page.
+var ErrUnavailable = errors.New("link store unavailable")
+
+const (
+	redisTTL     = 10 * time.Minute
+	negativeTTL  = 60 * time.Second
+	lastGoodTTL  = 24 * time.Hour
+	negativeMark = "-"
+	// InvalidateChannel carries "{domain_id}:{code}" whenever a code changes.
+	InvalidateChannel = "qr:invalidate"
+)
+
+// FetchFunc loads a link from Postgres; it returns (nil, nil) when the code does not exist.
+type FetchFunc func(ctx context.Context, domainID uuid.UUID, code string) (*ResolvedLink, error)
+
+// Resolver resolves (domain, code) through three tiers — in-process LRU (short TTL),
+// Redis (10 min, clamped to the next scheduled change) and Postgres — collapsing
+// concurrent misses with singleflight. Unknown codes are negative-cached for 60 s.
+// A 24 h last-known-good copy keeps known codes working if Redis and Postgres both fail.
 type Resolver struct {
-	lru   *lru.Cache[string, *ResolvedLink]
-	rdb   *redis.Client
-	sf    singleflight.Group
-	fetch func(ctx context.Context, domainID uuid.UUID, code string) (*ResolvedLink, error)
+	lru      *expirable.LRU[string, *ResolvedLink]
+	negative *expirable.LRU[string, struct{}]
+	lastGood *expirable.LRU[string, *ResolvedLink]
+	rdb      *redis.Client
+	sf       singleflight.Group
+	fetch    FetchFunc
 }
 
-func NewResolver(
-	lruSize int,
-	rdb *redis.Client,
-	fetchFunc func(ctx context.Context, domainID uuid.UUID, code string) (*ResolvedLink, error),
-) (*Resolver, error) {
-	c, err := lru.New[string, *ResolvedLink](lruSize)
-	if err != nil {
-		return nil, fmt.Errorf("init lru: %w", err)
-	}
+// NewResolver builds a resolver with a 30 s in-process TTL.
+func NewResolver(lruSize int, rdb *redis.Client, fetch FetchFunc) (*Resolver, error) {
+	return NewResolverTTL(lruSize, 30*time.Second, rdb, fetch)
+}
 
+// NewResolverTTL builds a resolver whose in-process entries expire after ttl (LRU_TTL).
+func NewResolverTTL(lruSize int, ttl time.Duration, rdb *redis.Client, fetch FetchFunc) (*Resolver, error) {
+	if lruSize <= 0 {
+		return nil, fmt.Errorf("lru size must be positive")
+	}
+	if ttl <= 0 {
+		ttl = 30 * time.Second
+	}
 	return &Resolver{
-		lru:   c,
-		rdb:   rdb,
-		fetch: fetchFunc,
+		lru:      expirable.NewLRU[string, *ResolvedLink](lruSize, nil, ttl),
+		negative: expirable.NewLRU[string, struct{}](lruSize/4+1, nil, negativeTTL),
+		lastGood: expirable.NewLRU[string, *ResolvedLink](lruSize, nil, lastGoodTTL),
+		rdb:      rdb,
+		fetch:    fetch,
 	}, nil
 }
 
@@ -132,75 +161,122 @@ func cacheKey(domainID uuid.UUID, code string) string {
 	return fmt.Sprintf("link:v1:%s:%s", domainID.String(), code)
 }
 
-// Resolve looks up a short code across LRU, Redis, and Database.
+func fresh(l *ResolvedLink, now time.Time) bool {
+	return l.NextChangeAt == nil || now.Before(*l.NextChangeAt)
+}
+
+// Resolve returns the link, ErrNotFound, or ErrUnavailable.
 func (r *Resolver) Resolve(ctx context.Context, domainID uuid.UUID, code string) (*ResolvedLink, error) {
 	key := cacheKey(domainID, code)
-
-	// 1. Check in-process LRU cache
+	now := time.Now().UTC()
 	if link, ok := r.lru.Get(key); ok {
-		if link.NextChangeAt == nil || time.Now().UTC().Before(*link.NextChangeAt) {
+		if fresh(link, now) {
 			return link, nil
 		}
-		// Stale due to scheduled version activation
 		r.lru.Remove(key)
 	}
-
-	// 2. Singleflight DB / Redis lookups
+	if _, ok := r.negative.Get(key); ok {
+		return nil, ErrNotFound
+	}
 	v, err, _ := r.sf.Do(key, func() (interface{}, error) {
-		// Check Redis
+		redisOK := false
 		if r.rdb != nil {
 			val, err := r.rdb.Get(ctx, key).Bytes()
-			if err == nil {
+			switch {
+			case err == nil && string(val) == negativeMark:
+				r.negative.Add(key, struct{}{})
+				return nil, ErrNotFound
+			case err == nil:
+				redisOK = true
 				var link ResolvedLink
-				if err := json.Unmarshal(val, &link); err == nil {
-					if link.NextChangeAt == nil || time.Now().UTC().Before(*link.NextChangeAt) {
-						r.lru.Add(key, &link)
-						return &link, nil
-					}
+				if json.Unmarshal(val, &link) == nil && fresh(&link, now) {
+					r.lru.Add(key, &link)
+					r.lastGood.Add(key, &link)
+					return &link, nil
 				}
+			case errors.Is(err, redis.Nil):
+				redisOK = true
 			}
 		}
-
-		// Fallback to fetch (Postgres DB)
 		link, err := r.fetch(ctx, domainID, code)
 		if err != nil {
-			return nil, err
+			if lg, ok := r.lastGood.Get(key); ok {
+				return lg, nil
+			}
+			return nil, fmt.Errorf("%w: %v", ErrUnavailable, err)
 		}
 		if link == nil {
+			r.negative.Add(key, struct{}{})
+			if r.rdb != nil && redisOK {
+				_ = r.rdb.Set(ctx, key, negativeMark, negativeTTL).Err()
+			}
 			return nil, ErrNotFound
 		}
-
 		link.CachedAt = time.Now().UTC()
-
-		// Warm Redis cache (TTL default 30 min, or clamped by next_change_at)
 		if r.rdb != nil {
-			ttl := 30 * time.Minute
+			ttl := redisTTL
 			if link.NextChangeAt != nil {
-				remaining := time.Until(*link.NextChangeAt)
-				if remaining > 0 && remaining < ttl {
+				if remaining := time.Until(*link.NextChangeAt); remaining > 0 && remaining < ttl {
 					ttl = remaining
 				}
 			}
-			bytes, _ := json.Marshal(link)
-			_ = r.rdb.Set(ctx, key, bytes, ttl).Err()
+			if b, err := json.Marshal(link); err == nil {
+				_ = r.rdb.Set(ctx, key, b, ttl).Err()
+			}
 		}
-
-		// Warm in-process LRU
 		r.lru.Add(key, link)
+		r.lastGood.Add(key, link)
 		return link, nil
 	})
-
 	if err != nil {
 		return nil, err
 	}
 	return v.(*ResolvedLink), nil
 }
 
-// Invalidate purges cache entries from LRU and Redis.
-func (r *Resolver) Invalidate(ctx context.Context, domainID uuid.UUID, code string) {
+// Evict drops local copies (called for pub/sub invalidations; the API deletes Redis).
+func (r *Resolver) Evict(domainID uuid.UUID, code string) {
 	key := cacheKey(domainID, code)
 	r.lru.Remove(key)
+	r.negative.Remove(key)
+	r.lastGood.Remove(key)
+}
+
+// Invalidate purges local caches and Redis.
+func (r *Resolver) Invalidate(ctx context.Context, domainID uuid.UUID, code string) {
+	r.Evict(domainID, code)
 	if r.rdb != nil {
-		_ = r.rdb.Del(ctx, key).Err()
+		_ = r.rdb.Del(ctx, cacheKey(domainID, code)).Err()
+	}
+}
+
+// Len reports how many live entries the in-process cache holds (readiness signal).
+func (r *Resolver) Len() int { return r.lru.Len() }
+
+// Subscribe evicts local entries on "{domain_id}:{code}" messages until ctx ends.
+// It reconnects automatically (go-redis PubSub) and returns when ctx is cancelled.
+func (r *Resolver) Subscribe(ctx context.Context) {
+	if r.rdb == nil {
+		return
+	}
+	sub := r.rdb.Subscribe(ctx, InvalidateChannel)
+	defer sub.Close()
+	ch := sub.Channel()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case msg, ok := <-ch:
+			if !ok {
+				return
+			}
+			i := strings.LastIndex(msg.Payload, ":")
+			if i <= 0 {
+				continue
+			}
+			if id, err := uuid.Parse(msg.Payload[:i]); err == nil {
+				r.Evict(id, msg.Payload[i+1:])
+			}
+		}
 	}
 }

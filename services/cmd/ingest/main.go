@@ -1,7 +1,13 @@
+// Command ingest consumes the "scans" stream into Postgres.
+//
+//	ingest                         run the consumer
+//	ingest rebuild --day 2026-09-25 recompute one UTC day's rollups from scan_events
 package main
 
 import (
 	"context"
+	"flag"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -9,19 +15,17 @@ import (
 	"time"
 
 	"github.com/caarlos0/env/v11"
-	"github.com/redis/go-redis/v9"
 
 	"github.com/its-aryansingh/qrit/services/internal/ingest"
 	"github.com/its-aryansingh/qrit/services/internal/platform/db"
 	"github.com/its-aryansingh/qrit/services/internal/platform/obs"
 	"github.com/its-aryansingh/qrit/services/internal/platform/redisx"
-	"github.com/its-aryansingh/qrit/services/internal/realtime"
 )
 
 type Config struct {
 	AppEnv       string        `env:"APP_ENV" envDefault:"local"`
 	LogLevel     string        `env:"LOG_LEVEL" envDefault:"info"`
-	DatabaseURL  string        `env:"DATABASE_URL" envDefault:"postgres://postgres:postgres@localhost:5432/qrit?sslmode=disable"`
+	DatabaseURL  string        `env:"DATABASE_URL,required"`
 	RedisURL     string        `env:"REDIS_URL" envDefault:"redis://localhost:6379/0"`
 	BatchSize    int64         `env:"INGEST_BATCH_SIZE" envDefault:"1000"`
 	BatchWait    time.Duration `env:"INGEST_BATCH_WAIT" envDefault:"1s"`
@@ -29,90 +33,51 @@ type Config struct {
 }
 
 func main() {
-	var cfg Config
-	if err := env.Parse(&cfg); err != nil {
-		slog.Error("Failed to parse ingest configuration", "err", err)
+	if err := run(); err != nil {
+		slog.Error("ingest exited", "error", err)
 		os.Exit(1)
 	}
+}
 
+func run() error {
+	var cfg Config
+	if err := env.Parse(&cfg); err != nil {
+		return err
+	}
 	logger := obs.InitLogger(cfg.LogLevel)
-	logger.Info("Starting QRit Ingest Service", "env", cfg.AppEnv)
-
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
-	pgPool, err := db.NewPool(ctx, cfg.DatabaseURL)
+	pool, err := db.NewPool(ctx, cfg.DatabaseURL)
 	if err != nil {
-		logger.Warn("Database connection failed, running in resilient mode", "err", err)
+		return err
 	}
-	if pgPool != nil {
-		defer pgPool.Close()
+	defer pool.Close()
+
+	if len(os.Args) > 1 && os.Args[1] == "rebuild" {
+		fs := flag.NewFlagSet("rebuild", flag.ExitOnError)
+		day := fs.String("day", "", "UTC day to rebuild (YYYY-MM-DD)")
+		_ = fs.Parse(os.Args[2:])
+		d, err := time.Parse("2006-01-02", *day)
+		if err != nil {
+			return fmt.Errorf("--day must be YYYY-MM-DD: %w", err)
+		}
+		if err := ingest.Rebuild(ctx, pool, d); err != nil {
+			return err
+		}
+		logger.Info("rollups rebuilt", "day", *day)
+		return nil
 	}
 
 	rdb, err := redisx.NewClient(ctx, cfg.RedisURL)
 	if err != nil {
-		logger.Error("Failed to connect to Redis", "err", err)
-		os.Exit(1)
+		return err
 	}
 	defer rdb.Close()
 
-	rt := realtime.New(rdb)
-
-	consumerName := cfg.ConsumerName
-	if consumerName == "" {
-		host, _ := os.Hostname()
-		consumerName = "ingest-" + host
-	}
-
-	batchCfg := ingest.BatchConfig{
-		StreamName:   "scans",
-		GroupName:    "ingest",
-		ConsumerName: consumerName,
-		BatchSize:    cfg.BatchSize,
-		BatchWait:    cfg.BatchWait,
-	}
-
-	consumer := ingest.NewConsumer(pgPool, rdb, rt, batchCfg, logger)
-	if err := consumer.InitGroup(ctx); err != nil {
-		logger.Warn("Consumer group initialization error", "err", err)
-	}
-
-	logger.Info("Ingest consumer loop running", "group", batchCfg.GroupName, "consumer", batchCfg.ConsumerName)
-
-	ticker := time.NewTicker(cfg.BatchWait)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			logger.Info("Ingest service shutting down gracefully")
-			return
-		case <-ticker.C:
-			streams, err := rdb.XReadGroup(ctx, &redis.XReadGroupArgs{
-				Group:    batchCfg.GroupName,
-				Consumer: batchCfg.ConsumerName,
-				Streams:  []string{batchCfg.StreamName, ">"},
-				Count:    batchCfg.BatchSize,
-				Block:    batchCfg.BatchWait,
-			}).Result()
-
-			if err != nil && err != redis.Nil {
-				if ctx.Err() == nil {
-					logger.Debug("XReadGroup tick", "err", err)
-				}
-				continue
-			}
-
-			for _, s := range streams {
-				if len(s.Messages) > 0 {
-					n, err := consumer.ProcessBatch(ctx, s.Messages)
-					if err != nil {
-						logger.Error("Failed to process batch", "err", err)
-					} else {
-						logger.Info("Processed scan batch", "count", n)
-					}
-				}
-			}
-		}
-	}
+	c := ingest.NewConsumer(pool, rdb, ingest.Config{
+		Consumer: cfg.ConsumerName, BatchSize: cfg.BatchSize, BlockWait: cfg.BatchWait,
+	}, logger)
+	logger.Info("ingest consuming", "stream", "scans", "group", "ingest")
+	return c.Run(ctx)
 }

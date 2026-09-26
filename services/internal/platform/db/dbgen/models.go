@@ -171,6 +171,25 @@ type Job struct {
 	FinishedAt   pgtype.Timestamptz `json:"finished_at"`
 }
 
+type JobQueue struct {
+	ID          int64              `json:"id"`
+	Kind        string             `json:"kind"`
+	Queue       string             `json:"queue"`
+	Payload     json.RawMessage    `json:"payload"`
+	Priority    int16              `json:"priority"`
+	State       string             `json:"state"`
+	Attempt     int32              `json:"attempt"`
+	MaxAttempts int32              `json:"max_attempts"`
+	RunAt       time.Time          `json:"run_at"`
+	LockedBy    *string            `json:"locked_by"`
+	LockedAt    pgtype.Timestamptz `json:"locked_at"`
+	LastError   *string            `json:"last_error"`
+	UniqueKey   *string            `json:"unique_key"`
+	WorkspaceID pgtype.UUID        `json:"workspace_id"`
+	CreatedAt   time.Time          `json:"created_at"`
+	FinishedAt  pgtype.Timestamptz `json:"finished_at"`
+}
+
 type OauthAccount struct {
 	ID             uuid.UUID `json:"id"`
 	UserID         uuid.UUID `json:"user_id"`
@@ -523,6 +542,17 @@ type WebhookDelivery struct {
 	NextAttemptAt  pgtype.Timestamptz `json:"next_attempt_at"`
 	DeliveredAt    pgtype.Timestamptz `json:"delivered_at"`
 	CreatedAt      time.Time          `json:"created_at"`
+}
+
+type WorkerTaskRun struct {
+	Name           string             `json:"name"`
+	LastStartedAt  pgtype.Timestamptz `json:"last_started_at"`
+	LastFinishedAt pgtype.Timestamptz `json:"last_finished_at"`
+	LastDurationMs *int32             `json:"last_duration_ms"`
+	LastError      *string            `json:"last_error"`
+	LockedUntil    pgtype.Timestamptz `json:"locked_until"`
+	Runs           int64              `json:"runs"`
+	Failures       int64              `json:"failures"`
 }
 
 type Workspace struct {
