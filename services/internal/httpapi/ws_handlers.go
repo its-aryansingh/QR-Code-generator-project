@@ -34,7 +34,8 @@ func (s *Server) handleListWorkspaces(w http.ResponseWriter, r *http.Request) {
 	out := make([]workspaceDTO, 0, len(rows))
 	for _, row := range rows {
 		out = append(out, toWorkspaceDTO(dbgen.Workspace{ID: row.ID, Name: row.Name, Slug: row.Slug, OwnerID: row.OwnerID,
-			PlanID: row.PlanID, Timezone: row.Timezone, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, row.Role))
+			PlanID: row.PlanID, Timezone: row.Timezone, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+			OrgID: row.OrgID, IsSandbox: row.IsSandbox}, row.Role))
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"data": out})
 }
@@ -72,10 +73,33 @@ func (s *Server) handleCreateWorkspace(w http.ResponseWriter, r *http.Request) {
 		fail(w, apierr.Unauthorized("user not found"))
 		return
 	}
-	// Workspace quota: the best plan among workspaces the user already owns decides how many
-	// they may own (a free user owns one). Organisation-owned workspaces are governed by the
-	// organisation's contract in the enterprise layer (Provisioner).
-	if req.OrgID == nil {
+	// Inside an organisation: org.manage is required and the org's plan/contract caps the
+	// number of workspaces. Without one, a new organisation is created and the best plan among
+	// organisations the user owns caps how many they may own (a free user owns one).
+	if req.OrgID != nil {
+		_, perms, err := s.access.OrgPermissions(r.Context(), *req.OrgID, u.ID)
+		if err != nil {
+			fail(w, apierr.Internal("failed to check organisation access"))
+			return
+		}
+		if !hasPerm(perms, authz.OrgManage) {
+			fail(w, apierr.NotFound("organization not found"))
+			return
+		}
+		eff, err := s.plans.ForOrg(r.Context(), *req.OrgID)
+		if err != nil {
+			fail(w, apierr.Internal("failed to check plan"))
+			return
+		}
+		var n int
+		_ = s.pool.QueryRow(r.Context(), `SELECT count(*) FROM workspaces WHERE org_id = $1 AND deleted_at IS NULL`, *req.OrgID).Scan(&n)
+		if n >= eff.Limits.OwnedWorkspaces {
+			pd := paymentRequired("limit_reached", "this organisation has reached its workspace limit")
+			pd.RequiredPlan = string(entitlements.NextPlan(eff.Plan))
+			fail(w, pd)
+			return
+		}
+	} else {
 		rows, err := s.q.ListWorkspacesForUser(r.Context(), u.ID)
 		if err != nil {
 			fail(w, apierr.Internal("failed to check workspace quota"))
@@ -351,6 +375,7 @@ func (s *Server) handleUpdateMember(w http.ResponseWriter, r *http.Request) {
 		fail(w, err)
 		return
 	}
+	s.access.Invalidate(r.Context())
 	writeJSON(w, http.StatusOK, map[string]any{"user_id": target, "role": role})
 }
 
@@ -402,6 +427,7 @@ func (s *Server) handleLeaveWorkspace(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) removeMember(r *http.Request, ws dbgen.Workspace, target uuid.UUID, role, action string) error {
+	defer s.access.Invalidate(r.Context())
 	return s.inTx(r.Context(), func(q *dbgen.Queries, tx pgx.Tx) error {
 		if err := q.RemoveWorkspaceMember(r.Context(), dbgen.RemoveWorkspaceMemberParams{WorkspaceID: ws.ID, UserID: target}); err != nil {
 			return err
@@ -461,6 +487,7 @@ func (s *Server) handleTransferOwnership(w http.ResponseWriter, r *http.Request)
 		fail(w, apierr.Internal("failed to transfer ownership"))
 		return
 	}
+	s.access.Invalidate(r.Context())
 	writeJSON(w, http.StatusOK, map[string]any{"owner_id": req.UserID})
 }
 
@@ -507,6 +534,19 @@ func (s *Server) handleCreateInvite(w http.ResponseWriter, r *http.Request) {
 	if role == "admin" && !g.IsOwner() {
 		fail(w, forbidden("owner_required", "only the workspace owner can invite admins"))
 		return
+	}
+	if pol, err := s.access.Policy(r.Context(), ws.OrgID); err == nil && len(pol.InviteEmailDomains) > 0 {
+		domain := emailAddr[strings.LastIndex(emailAddr, "@")+1:]
+		allowed := false
+		for _, d := range pol.InviteEmailDomains {
+			if strings.EqualFold(d, domain) {
+				allowed = true
+			}
+		}
+		if !allowed {
+			fail(w, forbidden("invite_domain_not_allowed", "your organisation only allows invites to "+strings.Join(pol.InviteEmailDomains, ", ")))
+			return
+		}
 	}
 	actor := principal(r)
 	if u, err := s.q.GetUserByEmail(r.Context(), emailAddr); err == nil {
@@ -699,5 +739,15 @@ func (s *Server) handleInviteAccept(w http.ResponseWriter, r *http.Request) {
 		fail(w, err)
 		return
 	}
+	s.access.Invalidate(r.Context())
 	writeJSON(w, http.StatusOK, map[string]any{"workspace": toWorkspaceDTO(ws, role)})
+}
+
+func hasPerm(perms []authz.Permission, p authz.Permission) bool {
+	for _, x := range perms {
+		if x == p || x == authz.All {
+			return true
+		}
+	}
+	return false
 }

@@ -15,14 +15,19 @@ import (
 
 const createAuditLog = `-- name: CreateAuditLog :one
 INSERT INTO audit_logs (
-    workspace_id, actor_type, actor_id, action, target_type, target_id,
+    org_id, workspace_id, actor_type, actor_id, action, target_type, target_id,
     changes, ip_prefix, user_agent, request_id
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-RETURNING id, workspace_id, actor_type, actor_id, action, target_type, target_id, changes, ip_prefix, user_agent, request_id, created_at
+VALUES (
+    COALESCE($1::uuid, (SELECT w.org_id FROM workspaces w WHERE w.id = $2::uuid)),
+    $2, $3, $4, $5, $6,
+    $7, $8, $9, $10, $11
+)
+RETURNING id
 `
 
 type CreateAuditLogParams struct {
+	OrgID       pgtype.UUID     `json:"org_id"`
 	WorkspaceID pgtype.UUID     `json:"workspace_id"`
 	ActorType   string          `json:"actor_type"`
 	ActorID     pgtype.UUID     `json:"actor_id"`
@@ -35,8 +40,10 @@ type CreateAuditLogParams struct {
 	RequestID   *string         `json:"request_id"`
 }
 
-func (q *Queries) CreateAuditLog(ctx context.Context, arg CreateAuditLogParams) (AuditLog, error) {
+// org_id defaults to the workspace's organisation so every entry joins its org's hash chain.
+func (q *Queries) CreateAuditLog(ctx context.Context, arg CreateAuditLogParams) (int64, error) {
 	row := q.db.QueryRow(ctx, createAuditLog,
+		arg.OrgID,
 		arg.WorkspaceID,
 		arg.ActorType,
 		arg.ActorID,
@@ -48,26 +55,13 @@ func (q *Queries) CreateAuditLog(ctx context.Context, arg CreateAuditLogParams) 
 		arg.UserAgent,
 		arg.RequestID,
 	)
-	var i AuditLog
-	err := row.Scan(
-		&i.ID,
-		&i.WorkspaceID,
-		&i.ActorType,
-		&i.ActorID,
-		&i.Action,
-		&i.TargetType,
-		&i.TargetID,
-		&i.Changes,
-		&i.IpPrefix,
-		&i.UserAgent,
-		&i.RequestID,
-		&i.CreatedAt,
-	)
-	return i, err
+	var id int64
+	err := row.Scan(&id)
+	return id, err
 }
 
 const listAuditLogs = `-- name: ListAuditLogs :many
-SELECT a.id, a.workspace_id, a.actor_type, a.actor_id, a.action, a.target_type, a.target_id, a.changes, a.ip_prefix, a.user_agent, a.request_id, a.created_at, u.email as actor_email, u.name as actor_name
+SELECT a.id, a.workspace_id, a.actor_type, a.actor_id, a.action, a.target_type, a.target_id, a.changes, a.ip_prefix, a.user_agent, a.request_id, a.created_at, a.org_id, a.seq, a.prev_hash, a.hash, a.sealed_at, u.email as actor_email, u.name as actor_name
 FROM audit_logs a
 LEFT JOIN users u ON u.id = a.actor_id AND a.actor_type = 'user'
 WHERE a.workspace_id = $1
@@ -81,20 +75,25 @@ type ListAuditLogsParams struct {
 }
 
 type ListAuditLogsRow struct {
-	ID          int64           `json:"id"`
-	WorkspaceID pgtype.UUID     `json:"workspace_id"`
-	ActorType   string          `json:"actor_type"`
-	ActorID     pgtype.UUID     `json:"actor_id"`
-	Action      string          `json:"action"`
-	TargetType  string          `json:"target_type"`
-	TargetID    pgtype.UUID     `json:"target_id"`
-	Changes     json.RawMessage `json:"changes"`
-	IpPrefix    *string         `json:"ip_prefix"`
-	UserAgent   *string         `json:"user_agent"`
-	RequestID   *string         `json:"request_id"`
-	CreatedAt   time.Time       `json:"created_at"`
-	ActorEmail  *string         `json:"actor_email"`
-	ActorName   *string         `json:"actor_name"`
+	ID          int64              `json:"id"`
+	WorkspaceID pgtype.UUID        `json:"workspace_id"`
+	ActorType   string             `json:"actor_type"`
+	ActorID     pgtype.UUID        `json:"actor_id"`
+	Action      string             `json:"action"`
+	TargetType  string             `json:"target_type"`
+	TargetID    pgtype.UUID        `json:"target_id"`
+	Changes     json.RawMessage    `json:"changes"`
+	IpPrefix    *string            `json:"ip_prefix"`
+	UserAgent   *string            `json:"user_agent"`
+	RequestID   *string            `json:"request_id"`
+	CreatedAt   time.Time          `json:"created_at"`
+	OrgID       pgtype.UUID        `json:"org_id"`
+	Seq         *int64             `json:"seq"`
+	PrevHash    []byte             `json:"prev_hash"`
+	Hash        []byte             `json:"hash"`
+	SealedAt    pgtype.Timestamptz `json:"sealed_at"`
+	ActorEmail  *string            `json:"actor_email"`
+	ActorName   *string            `json:"actor_name"`
 }
 
 func (q *Queries) ListAuditLogs(ctx context.Context, arg ListAuditLogsParams) ([]ListAuditLogsRow, error) {
@@ -119,6 +118,11 @@ func (q *Queries) ListAuditLogs(ctx context.Context, arg ListAuditLogsParams) ([
 			&i.UserAgent,
 			&i.RequestID,
 			&i.CreatedAt,
+			&i.OrgID,
+			&i.Seq,
+			&i.PrevHash,
+			&i.Hash,
+			&i.SealedAt,
 			&i.ActorEmail,
 			&i.ActorName,
 		); err != nil {

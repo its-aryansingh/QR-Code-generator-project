@@ -11,6 +11,7 @@ import (
 	"github.com/its-aryansingh/qrit/services/internal/audit"
 	"github.com/its-aryansingh/qrit/services/internal/auth"
 	"github.com/its-aryansingh/qrit/services/internal/netutil"
+	"github.com/its-aryansingh/qrit/services/internal/org"
 	"github.com/its-aryansingh/qrit/services/internal/platform/db/dbgen"
 )
 
@@ -23,8 +24,20 @@ type Provisioner interface {
 
 type baseProvisioner struct{}
 
-func (baseProvisioner) ProvisionWorkspace(ctx context.Context, q *dbgen.Queries, _ pgx.Tx, owner dbgen.User, ws dbgen.Workspace, _ *uuid.UUID) error {
-	return q.AddWorkspaceMember(ctx, dbgen.AddWorkspaceMemberParams{WorkspaceID: ws.ID, UserID: owner.ID, Role: "owner"})
+// ProvisionWorkspace makes the creator the workspace owner (membership + owner role
+// binding + org membership) and creates the default workspace policy.
+func (baseProvisioner) ProvisionWorkspace(ctx context.Context, q *dbgen.Queries, tx pgx.Tx, owner dbgen.User, ws dbgen.Workspace, _ *uuid.UUID) error {
+	if err := q.AddWorkspaceMember(ctx, dbgen.AddWorkspaceMemberParams{WorkspaceID: ws.ID, UserID: owner.ID, Role: "owner"}); err != nil {
+		return err
+	}
+	if err := org.EnsureMember(ctx, tx, ws.OrgID, owner.ID, "creator"); err != nil {
+		return err
+	}
+	if err := org.BindMemberRole(ctx, tx, ws.OrgID, ws.ID, owner.ID, "owner", &owner.ID); err != nil {
+		return err
+	}
+	_, err := tx.Exec(ctx, `INSERT INTO workspace_policies (workspace_id) VALUES ($1) ON CONFLICT DO NOTHING`, ws.ID)
+	return err
 }
 
 // SessionPolicy validates a session at refresh time (idle/max lifetime per org policy).
@@ -139,23 +152,28 @@ type MemberHooks interface {
 	MemberRemoved(ctx context.Context, q *dbgen.Queries, tx pgx.Tx, ws dbgen.Workspace, userID uuid.UUID) error
 }
 
-type noMemberHooks struct{}
+// orgMemberSync mirrors workspace membership into org membership and role bindings, which
+// are what authorization reads.
+type orgMemberSync struct{}
 
-func (noMemberHooks) MemberAdded(context.Context, *dbgen.Queries, pgx.Tx, dbgen.Workspace, uuid.UUID, string) error {
-	return nil
+func (orgMemberSync) MemberAdded(ctx context.Context, _ *dbgen.Queries, tx pgx.Tx, ws dbgen.Workspace, userID uuid.UUID, role string) error {
+	if err := org.EnsureMember(ctx, tx, ws.OrgID, userID, "invite"); err != nil {
+		return err
+	}
+	return org.BindMemberRole(ctx, tx, ws.OrgID, ws.ID, userID, role, nil)
 }
-func (noMemberHooks) MemberRoleChanged(context.Context, *dbgen.Queries, pgx.Tx, dbgen.Workspace, uuid.UUID, string) error {
-	return nil
+func (orgMemberSync) MemberRoleChanged(ctx context.Context, _ *dbgen.Queries, tx pgx.Tx, ws dbgen.Workspace, userID uuid.UUID, role string) error {
+	return org.BindMemberRole(ctx, tx, ws.OrgID, ws.ID, userID, role, nil)
 }
-func (noMemberHooks) MemberRemoved(context.Context, *dbgen.Queries, pgx.Tx, dbgen.Workspace, uuid.UUID) error {
-	return nil
+func (orgMemberSync) MemberRemoved(ctx context.Context, _ *dbgen.Queries, tx pgx.Tx, ws dbgen.Workspace, userID uuid.UUID) error {
+	return org.UnbindMember(ctx, tx, ws.ID, userID)
 }
 
 func (s *Server) SetMemberHooks(h MemberHooks) { s.memberHooks = h }
 
 func (s *Server) mem() MemberHooks {
 	if s.memberHooks == nil {
-		return noMemberHooks{}
+		return orgMemberSync{}
 	}
 	return s.memberHooks
 }

@@ -1,6 +1,6 @@
 -- name: CreateWorkspace :one
-INSERT INTO workspaces (id, name, slug, owner_id, plan_id, timezone, brand, settings)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+INSERT INTO workspaces (id, org_id, name, slug, owner_id, plan_id, timezone, brand, settings)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 RETURNING *;
 
 -- name: GetWorkspaceByID :one
@@ -12,10 +12,13 @@ SELECT * FROM workspaces
 WHERE slug = $1 AND deleted_at IS NULL;
 
 -- name: ListWorkspacesForUser :many
-SELECT w.*, m.role
+-- Workspaces the user is a member of, plus every workspace of organisations they administer
+-- (org owners/admins have implicit admin on all of their org's workspaces).
+SELECT w.*, COALESCE(m.role, CASE om.org_role WHEN 'org_owner' THEN 'org_owner' ELSE 'org_admin' END)::text AS role
 FROM workspaces w
-JOIN workspace_members m ON m.workspace_id = w.id
-WHERE m.user_id = $1 AND w.deleted_at IS NULL
+JOIN org_members om ON om.org_id = w.org_id AND om.user_id = $1 AND om.status = 'active'
+LEFT JOIN workspace_members m ON m.workspace_id = w.id AND m.user_id = $1
+WHERE w.deleted_at IS NULL AND (m.user_id IS NOT NULL OR om.org_role IN ('org_owner','org_admin'))
 ORDER BY w.name;
 
 -- name: AddWorkspaceMember :exec

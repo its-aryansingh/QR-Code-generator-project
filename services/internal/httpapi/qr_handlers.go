@@ -518,6 +518,9 @@ func (s *Server) handleCreateQRCode(w http.ResponseWriter, r *http.Request) {
 			fail(w, featureErr(err))
 			return
 		}
+	} else if wp, err := s.wsPolicy(ctx, ws.ID); err == nil && wp.RequireTemplate && !s.can(r, authz.QRDesignBypassLock, req.FolderID) {
+		fail(w, unprocessable("template_required", "this workspace requires every new code to use a brand template"))
+		return
 	}
 	design, designHash, tplID, err := s.resolveDesign(ctx, ws, req.TemplateID, req.Design, s.can(r, authz.QRDesignBypassLock, req.FolderID))
 	if err != nil {

@@ -60,14 +60,14 @@ func (s *Scheduler) threshold(t Task, now time.Time) (time.Time, bool) {
 	return now.Add(-t.Every), t.Every > 0
 }
 
-// Run ticks every 15 s until ctx ends.
+// Run ticks every 5 s until ctx ends.
 func (s *Scheduler) Run(ctx context.Context) error {
 	for _, t := range s.tasks {
 		if _, err := s.pool.Exec(ctx, `INSERT INTO worker_task_runs (name) VALUES ($1) ON CONFLICT DO NOTHING`, t.Name); err != nil {
 			return err
 		}
 	}
-	tick := time.NewTicker(15 * time.Second)
+	tick := time.NewTicker(5 * time.Second)
 	defer tick.Stop()
 	for {
 		s.RunDue(ctx)

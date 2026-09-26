@@ -130,13 +130,14 @@ func (q *Queries) CreateInvite(ctx context.Context, arg CreateInviteParams) (Inv
 }
 
 const createWorkspace = `-- name: CreateWorkspace :one
-INSERT INTO workspaces (id, name, slug, owner_id, plan_id, timezone, brand, settings)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING id, name, slug, owner_id, plan_id, timezone, default_domain_id, brand, settings, created_at, updated_at, deleted_at
+INSERT INTO workspaces (id, org_id, name, slug, owner_id, plan_id, timezone, brand, settings)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+RETURNING id, name, slug, owner_id, plan_id, timezone, default_domain_id, brand, settings, created_at, updated_at, deleted_at, org_id, is_sandbox
 `
 
 type CreateWorkspaceParams struct {
 	ID       uuid.UUID       `json:"id"`
+	OrgID    uuid.UUID       `json:"org_id"`
 	Name     string          `json:"name"`
 	Slug     string          `json:"slug"`
 	OwnerID  uuid.UUID       `json:"owner_id"`
@@ -149,6 +150,7 @@ type CreateWorkspaceParams struct {
 func (q *Queries) CreateWorkspace(ctx context.Context, arg CreateWorkspaceParams) (Workspace, error) {
 	row := q.db.QueryRow(ctx, createWorkspace,
 		arg.ID,
+		arg.OrgID,
 		arg.Name,
 		arg.Slug,
 		arg.OwnerID,
@@ -171,6 +173,8 @@ func (q *Queries) CreateWorkspace(ctx context.Context, arg CreateWorkspaceParams
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.OrgID,
+		&i.IsSandbox,
 	)
 	return i, err
 }
@@ -267,7 +271,7 @@ func (q *Queries) GetInviteScoped(ctx context.Context, arg GetInviteScopedParams
 }
 
 const getWorkspaceByID = `-- name: GetWorkspaceByID :one
-SELECT id, name, slug, owner_id, plan_id, timezone, default_domain_id, brand, settings, created_at, updated_at, deleted_at FROM workspaces
+SELECT id, name, slug, owner_id, plan_id, timezone, default_domain_id, brand, settings, created_at, updated_at, deleted_at, org_id, is_sandbox FROM workspaces
 WHERE id = $1 AND deleted_at IS NULL
 `
 
@@ -287,12 +291,14 @@ func (q *Queries) GetWorkspaceByID(ctx context.Context, id uuid.UUID) (Workspace
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.OrgID,
+		&i.IsSandbox,
 	)
 	return i, err
 }
 
 const getWorkspaceBySlug = `-- name: GetWorkspaceBySlug :one
-SELECT id, name, slug, owner_id, plan_id, timezone, default_domain_id, brand, settings, created_at, updated_at, deleted_at FROM workspaces
+SELECT id, name, slug, owner_id, plan_id, timezone, default_domain_id, brand, settings, created_at, updated_at, deleted_at, org_id, is_sandbox FROM workspaces
 WHERE slug = $1 AND deleted_at IS NULL
 `
 
@@ -312,6 +318,8 @@ func (q *Queries) GetWorkspaceBySlug(ctx context.Context, slug string) (Workspac
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.OrgID,
+		&i.IsSandbox,
 	)
 	return i, err
 }
@@ -422,10 +430,11 @@ func (q *Queries) ListWorkspaceMembers(ctx context.Context, workspaceID uuid.UUI
 }
 
 const listWorkspacesForUser = `-- name: ListWorkspacesForUser :many
-SELECT w.id, w.name, w.slug, w.owner_id, w.plan_id, w.timezone, w.default_domain_id, w.brand, w.settings, w.created_at, w.updated_at, w.deleted_at, m.role
+SELECT w.id, w.name, w.slug, w.owner_id, w.plan_id, w.timezone, w.default_domain_id, w.brand, w.settings, w.created_at, w.updated_at, w.deleted_at, w.org_id, w.is_sandbox, COALESCE(m.role, CASE om.org_role WHEN 'org_owner' THEN 'org_owner' ELSE 'org_admin' END)::text AS role
 FROM workspaces w
-JOIN workspace_members m ON m.workspace_id = w.id
-WHERE m.user_id = $1 AND w.deleted_at IS NULL
+JOIN org_members om ON om.org_id = w.org_id AND om.user_id = $1 AND om.status = 'active'
+LEFT JOIN workspace_members m ON m.workspace_id = w.id AND m.user_id = $1
+WHERE w.deleted_at IS NULL AND (m.user_id IS NOT NULL OR om.org_role IN ('org_owner','org_admin'))
 ORDER BY w.name
 `
 
@@ -442,9 +451,13 @@ type ListWorkspacesForUserRow struct {
 	CreatedAt       time.Time          `json:"created_at"`
 	UpdatedAt       time.Time          `json:"updated_at"`
 	DeletedAt       pgtype.Timestamptz `json:"deleted_at"`
+	OrgID           uuid.UUID          `json:"org_id"`
+	IsSandbox       bool               `json:"is_sandbox"`
 	Role            string             `json:"role"`
 }
 
+// Workspaces the user is a member of, plus every workspace of organisations they administer
+// (org owners/admins have implicit admin on all of their org's workspaces).
 func (q *Queries) ListWorkspacesForUser(ctx context.Context, userID uuid.UUID) ([]ListWorkspacesForUserRow, error) {
 	rows, err := q.db.Query(ctx, listWorkspacesForUser, userID)
 	if err != nil {
@@ -467,6 +480,8 @@ func (q *Queries) ListWorkspacesForUser(ctx context.Context, userID uuid.UUID) (
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DeletedAt,
+			&i.OrgID,
+			&i.IsSandbox,
 			&i.Role,
 		); err != nil {
 			return nil, err
@@ -569,7 +584,7 @@ UPDATE workspaces SET
     timezone = COALESCE($2, timezone),
     updated_at = now()
 WHERE id = $3 AND deleted_at IS NULL
-RETURNING id, name, slug, owner_id, plan_id, timezone, default_domain_id, brand, settings, created_at, updated_at, deleted_at
+RETURNING id, name, slug, owner_id, plan_id, timezone, default_domain_id, brand, settings, created_at, updated_at, deleted_at, org_id, is_sandbox
 `
 
 type UpdateWorkspaceSettingsParams struct {
@@ -594,6 +609,8 @@ func (q *Queries) UpdateWorkspaceSettings(ctx context.Context, arg UpdateWorkspa
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.OrgID,
+		&i.IsSandbox,
 	)
 	return i, err
 }

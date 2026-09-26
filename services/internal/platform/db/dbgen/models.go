@@ -6,6 +6,7 @@ package dbgen
 
 import (
 	"encoding/json"
+	"net/netip"
 	"time"
 
 	"github.com/google/uuid"
@@ -27,6 +28,30 @@ type AbuseReport struct {
 	CreatedAt        time.Time          `json:"created_at"`
 }
 
+type AlertEvent struct {
+	ID         uuid.UUID          `json:"id"`
+	RuleID     uuid.UUID          `json:"rule_id"`
+	FiredAt    time.Time          `json:"fired_at"`
+	Payload    json.RawMessage    `json:"payload"`
+	ResolvedAt pgtype.Timestamptz `json:"resolved_at"`
+}
+
+type AlertRule struct {
+	ID              uuid.UUID          `json:"id"`
+	WorkspaceID     uuid.UUID          `json:"workspace_id"`
+	Name            string             `json:"name"`
+	Kind            string             `json:"kind"`
+	TargetType      string             `json:"target_type"`
+	TargetID        pgtype.UUID        `json:"target_id"`
+	Params          json.RawMessage    `json:"params"`
+	Channels        json.RawMessage    `json:"channels"`
+	CooldownMinutes int32              `json:"cooldown_minutes"`
+	IsActive        bool               `json:"is_active"`
+	LastFiredAt     pgtype.Timestamptz `json:"last_fired_at"`
+	CreatedBy       pgtype.UUID        `json:"created_by"`
+	CreatedAt       time.Time          `json:"created_at"`
+}
+
 type ApiKey struct {
 	ID          uuid.UUID          `json:"id"`
 	WorkspaceID uuid.UUID          `json:"workspace_id"`
@@ -39,21 +64,83 @@ type ApiKey struct {
 	ExpiresAt   pgtype.Timestamptz `json:"expires_at"`
 	RevokedAt   pgtype.Timestamptz `json:"revoked_at"`
 	CreatedAt   time.Time          `json:"created_at"`
+	Environment string             `json:"environment"`
+	IpAllowlist []netip.Prefix     `json:"ip_allowlist"`
+}
+
+type ApiUsageDaily struct {
+	ApiKeyID  uuid.UUID   `json:"api_key_id"`
+	Day       pgtype.Date `json:"day"`
+	Requests  int32       `json:"requests"`
+	Errors    int32       `json:"errors"`
+	Throttled int32       `json:"throttled"`
+}
+
+type ApprovalDecision struct {
+	RequestID  uuid.UUID `json:"request_id"`
+	ApproverID uuid.UUID `json:"approver_id"`
+	Decision   string    `json:"decision"`
+	Comment    *string   `json:"comment"`
+	CreatedAt  time.Time `json:"created_at"`
+}
+
+type ApprovalRequest struct {
+	ID                uuid.UUID          `json:"id"`
+	WorkspaceID       uuid.UUID          `json:"workspace_id"`
+	Kind              string             `json:"kind"`
+	QrCodeID          pgtype.UUID        `json:"qr_code_id"`
+	JobID             pgtype.UUID        `json:"job_id"`
+	Reasons           []string           `json:"reasons"`
+	RequestedBy       uuid.UUID          `json:"requested_by"`
+	RequiredApprovals int32              `json:"required_approvals"`
+	Status            string             `json:"status"`
+	Note              *string            `json:"note"`
+	OverrideReason    *string            `json:"override_reason"`
+	ExpiresAt         time.Time          `json:"expires_at"`
+	DecidedAt         pgtype.Timestamptz `json:"decided_at"`
+	CreatedAt         time.Time          `json:"created_at"`
+}
+
+type AuditAnchor struct {
+	OrgID     uuid.UUID   `json:"org_id"`
+	Day       pgtype.Date `json:"day"`
+	LastSeq   int64       `json:"last_seq"`
+	HeadHash  []byte      `json:"head_hash"`
+	ObjectKey *string     `json:"object_key"`
+	CreatedAt time.Time   `json:"created_at"`
 }
 
 type AuditLog struct {
-	ID          int64           `json:"id"`
-	WorkspaceID pgtype.UUID     `json:"workspace_id"`
-	ActorType   string          `json:"actor_type"`
-	ActorID     pgtype.UUID     `json:"actor_id"`
-	Action      string          `json:"action"`
-	TargetType  string          `json:"target_type"`
-	TargetID    pgtype.UUID     `json:"target_id"`
-	Changes     json.RawMessage `json:"changes"`
-	IpPrefix    *string         `json:"ip_prefix"`
-	UserAgent   *string         `json:"user_agent"`
-	RequestID   *string         `json:"request_id"`
-	CreatedAt   time.Time       `json:"created_at"`
+	ID          int64              `json:"id"`
+	WorkspaceID pgtype.UUID        `json:"workspace_id"`
+	ActorType   string             `json:"actor_type"`
+	ActorID     pgtype.UUID        `json:"actor_id"`
+	Action      string             `json:"action"`
+	TargetType  string             `json:"target_type"`
+	TargetID    pgtype.UUID        `json:"target_id"`
+	Changes     json.RawMessage    `json:"changes"`
+	IpPrefix    *string            `json:"ip_prefix"`
+	UserAgent   *string            `json:"user_agent"`
+	RequestID   *string            `json:"request_id"`
+	CreatedAt   time.Time          `json:"created_at"`
+	OrgID       pgtype.UUID        `json:"org_id"`
+	Seq         *int64             `json:"seq"`
+	PrevHash    []byte             `json:"prev_hash"`
+	Hash        []byte             `json:"hash"`
+	SealedAt    pgtype.Timestamptz `json:"sealed_at"`
+}
+
+type AuditStream struct {
+	ID        uuid.UUID       `json:"id"`
+	OrgID     uuid.UUID       `json:"org_id"`
+	Kind      string          `json:"kind"`
+	Config    json.RawMessage `json:"config"`
+	SecretCt  []byte          `json:"secret_ct"`
+	CursorSeq int64           `json:"cursor_seq"`
+	Status    string          `json:"status"`
+	LastError *string         `json:"last_error"`
+	CreatedAt time.Time       `json:"created_at"`
+	UpdatedAt time.Time       `json:"updated_at"`
 }
 
 type BillingEvent struct {
@@ -80,6 +167,25 @@ type Campaign struct {
 	UpdatedAt   time.Time          `json:"updated_at"`
 }
 
+type Contract struct {
+	ID               uuid.UUID       `json:"id"`
+	OrgID            uuid.UUID       `json:"org_id"`
+	Name             string          `json:"name"`
+	StartsOn         pgtype.Date     `json:"starts_on"`
+	EndsOn           pgtype.Date     `json:"ends_on"`
+	BillingInterval  string          `json:"billing_interval"`
+	Currency         string          `json:"currency"`
+	AmountMinor      int64           `json:"amount_minor"`
+	Seats            int32           `json:"seats"`
+	LimitsOverride   json.RawMessage `json:"limits_override"`
+	SlaUptime        pgtype.Numeric  `json:"sla_uptime"`
+	PoNumber         *string         `json:"po_number"`
+	PaymentTermsDays int32           `json:"payment_terms_days"`
+	Status           string          `json:"status"`
+	CreatedBy        pgtype.UUID     `json:"created_by"`
+	CreatedAt        time.Time       `json:"created_at"`
+}
+
 type Domain struct {
 	ID                 uuid.UUID          `json:"id"`
 	WorkspaceID        pgtype.UUID        `json:"workspace_id"`
@@ -95,6 +201,19 @@ type Domain struct {
 	CreatedAt          time.Time          `json:"created_at"`
 }
 
+type DsarRequest struct {
+	ID           uuid.UUID          `json:"id"`
+	OrgID        uuid.UUID          `json:"org_id"`
+	Kind         string             `json:"kind"`
+	SubjectBidx  []byte             `json:"subject_bidx"`
+	Status       string             `json:"status"`
+	DueAt        time.Time          `json:"due_at"`
+	ResultFileID pgtype.UUID        `json:"result_file_id"`
+	HandledBy    pgtype.UUID        `json:"handled_by"`
+	CreatedAt    time.Time          `json:"created_at"`
+	CompletedAt  pgtype.Timestamptz `json:"completed_at"`
+}
+
 type EmailToken struct {
 	ID        uuid.UUID          `json:"id"`
 	UserID    uuid.UUID          `json:"user_id"`
@@ -103,6 +222,14 @@ type EmailToken struct {
 	ExpiresAt time.Time          `json:"expires_at"`
 	UsedAt    pgtype.Timestamptz `json:"used_at"`
 	CreatedAt time.Time          `json:"created_at"`
+}
+
+type FeatureFlag struct {
+	Key       string      `json:"key"`
+	OrgID     pgtype.UUID `json:"org_id"`
+	Enabled   bool        `json:"enabled"`
+	UpdatedBy pgtype.UUID `json:"updated_by"`
+	UpdatedAt time.Time   `json:"updated_at"`
 }
 
 type File struct {
@@ -128,6 +255,83 @@ type Folder struct {
 	UpdatedAt   time.Time   `json:"updated_at"`
 }
 
+type Form struct {
+	ID            uuid.UUID       `json:"id"`
+	WorkspaceID   uuid.UUID       `json:"workspace_id"`
+	Name          string          `json:"name"`
+	Fields        json.RawMessage `json:"fields"`
+	Notice        json.RawMessage `json:"notice"`
+	NoticeVersion int32           `json:"notice_version"`
+	DoubleOptIn   bool            `json:"double_opt_in"`
+	RetentionDays int32           `json:"retention_days"`
+	NotifyEmails  []string        `json:"notify_emails"`
+	IsActive      bool            `json:"is_active"`
+	CreatedBy     pgtype.UUID     `json:"created_by"`
+	CreatedAt     time.Time       `json:"created_at"`
+	UpdatedAt     time.Time       `json:"updated_at"`
+}
+
+type FormSubmission struct {
+	ID          uuid.UUID          `json:"id"`
+	FormID      uuid.UUID          `json:"form_id"`
+	WorkspaceID uuid.UUID          `json:"workspace_id"`
+	QrCodeID    pgtype.UUID        `json:"qr_code_id"`
+	KeyID       int32              `json:"key_id"`
+	DataCt      []byte             `json:"data_ct"`
+	EmailBidx   []byte             `json:"email_bidx"`
+	Consent     json.RawMessage    `json:"consent"`
+	Status      string             `json:"status"`
+	DeleteAfter pgtype.Date        `json:"delete_after"`
+	CreatedAt   time.Time          `json:"created_at"`
+	ConfirmedAt pgtype.Timestamptz `json:"confirmed_at"`
+	WithdrawnAt pgtype.Timestamptz `json:"withdrawn_at"`
+}
+
+type Group struct {
+	ID          uuid.UUID   `json:"id"`
+	OrgID       uuid.UUID   `json:"org_id"`
+	DisplayName string      `json:"display_name"`
+	Source      string      `json:"source"`
+	DirectoryID pgtype.UUID `json:"directory_id"`
+	ExternalID  *string     `json:"external_id"`
+	Version     int32       `json:"version"`
+	CreatedAt   time.Time   `json:"created_at"`
+	UpdatedAt   time.Time   `json:"updated_at"`
+}
+
+type GroupMember struct {
+	GroupID uuid.UUID `json:"group_id"`
+	UserID  uuid.UUID `json:"user_id"`
+	AddedAt time.Time `json:"added_at"`
+}
+
+type Gs1Item struct {
+	ID          uuid.UUID   `json:"id"`
+	WorkspaceID uuid.UUID   `json:"workspace_id"`
+	DomainID    uuid.UUID   `json:"domain_id"`
+	QrCodeID    pgtype.UUID `json:"qr_code_id"`
+	Gtin        string      `json:"gtin"`
+	Cpv         *string     `json:"cpv"`
+	Lot         *string     `json:"lot"`
+	Serial      *string     `json:"serial"`
+	Title       string      `json:"title"`
+	CreatedAt   time.Time   `json:"created_at"`
+	UpdatedAt   time.Time   `json:"updated_at"`
+}
+
+type Gs1Link struct {
+	ID        uuid.UUID `json:"id"`
+	ItemID    uuid.UUID `json:"item_id"`
+	LinkType  string    `json:"link_type"`
+	Href      string    `json:"href"`
+	Title     string    `json:"title"`
+	Hreflang  []string  `json:"hreflang"`
+	MediaType *string   `json:"media_type"`
+	IsDefault bool      `json:"is_default"`
+	Position  int32     `json:"position"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 type IdempotencyKey struct {
 	WorkspaceID  uuid.UUID `json:"workspace_id"`
 	Key          string    `json:"key"`
@@ -138,6 +342,35 @@ type IdempotencyKey struct {
 	ResponseBody []byte    `json:"response_body"`
 	CreatedAt    time.Time `json:"created_at"`
 	ExpiresAt    time.Time `json:"expires_at"`
+}
+
+type Integration struct {
+	ID            uuid.UUID          `json:"id"`
+	WorkspaceID   uuid.UUID          `json:"workspace_id"`
+	Provider      string             `json:"provider"`
+	Name          string             `json:"name"`
+	Status        string             `json:"status"`
+	Config        json.RawMessage    `json:"config"`
+	CredentialsCt []byte             `json:"credentials_ct"`
+	Events        []string           `json:"events"`
+	LastSuccessAt pgtype.Timestamptz `json:"last_success_at"`
+	LastError     *string            `json:"last_error"`
+	CreatedBy     pgtype.UUID        `json:"created_by"`
+	CreatedAt     time.Time          `json:"created_at"`
+	UpdatedAt     time.Time          `json:"updated_at"`
+}
+
+type IntegrationDelivery struct {
+	ID            uuid.UUID          `json:"id"`
+	IntegrationID uuid.UUID          `json:"integration_id"`
+	EventID       uuid.UUID          `json:"event_id"`
+	EventType     string             `json:"event_type"`
+	Status        string             `json:"status"`
+	Attempts      int32              `json:"attempts"`
+	LastError     *string            `json:"last_error"`
+	NextAttemptAt pgtype.Timestamptz `json:"next_attempt_at"`
+	CreatedAt     time.Time          `json:"created_at"`
+	DeliveredAt   pgtype.Timestamptz `json:"delivered_at"`
 }
 
 type Invite struct {
@@ -151,6 +384,36 @@ type Invite struct {
 	AcceptedAt  pgtype.Timestamptz `json:"accepted_at"`
 	RevokedAt   pgtype.Timestamptz `json:"revoked_at"`
 	CreatedAt   time.Time          `json:"created_at"`
+}
+
+type Invoice struct {
+	ID            uuid.UUID          `json:"id"`
+	OrgID         uuid.UUID          `json:"org_id"`
+	ContractID    pgtype.UUID        `json:"contract_id"`
+	Number        string             `json:"number"`
+	IssueDate     pgtype.Date        `json:"issue_date"`
+	DueDate       pgtype.Date        `json:"due_date"`
+	Currency      string             `json:"currency"`
+	TaxMode       string             `json:"tax_mode"`
+	PlaceOfSupply string             `json:"place_of_supply"`
+	Seller        json.RawMessage    `json:"seller"`
+	Buyer         json.RawMessage    `json:"buyer"`
+	Lines         json.RawMessage    `json:"lines"`
+	SubtotalMinor int64              `json:"subtotal_minor"`
+	CgstMinor     int64              `json:"cgst_minor"`
+	SgstMinor     int64              `json:"sgst_minor"`
+	IgstMinor     int64              `json:"igst_minor"`
+	TotalMinor    int64              `json:"total_minor"`
+	Endorsement   *string            `json:"endorsement"`
+	Status        string             `json:"status"`
+	PdfFileID     pgtype.UUID        `json:"pdf_file_id"`
+	PaidAt        pgtype.Timestamptz `json:"paid_at"`
+	CreatedAt     time.Time          `json:"created_at"`
+}
+
+type InvoiceSequence struct {
+	Fy      string `json:"fy"`
+	LastSeq int32  `json:"last_seq"`
 }
 
 type Job struct {
@@ -198,6 +461,107 @@ type OauthAccount struct {
 	CreatedAt      time.Time `json:"created_at"`
 }
 
+type OrgBranding struct {
+	OrgID              uuid.UUID   `json:"org_id"`
+	AppHostname        *string     `json:"app_hostname"`
+	AppHostnameStatus  string      `json:"app_hostname_status"`
+	ProviderHostnameID *string     `json:"provider_hostname_id"`
+	EmailDomain        *string     `json:"email_domain"`
+	EmailDomainStatus  string      `json:"email_domain_status"`
+	EmailProviderID    *string     `json:"email_provider_id"`
+	ProductName        *string     `json:"product_name"`
+	LogoFileID         pgtype.UUID `json:"logo_file_id"`
+	FaviconFileID      pgtype.UUID `json:"favicon_file_id"`
+	PrimaryColor       *string     `json:"primary_color"`
+	SupportUrl         *string     `json:"support_url"`
+	HidePlatformBrand  bool        `json:"hide_platform_brand"`
+	UpdatedAt          time.Time   `json:"updated_at"`
+}
+
+type OrgDataKey struct {
+	OrgID     uuid.UUID          `json:"org_id"`
+	KeyID     int32              `json:"key_id"`
+	DekCt     []byte             `json:"dek_ct"`
+	CreatedAt time.Time          `json:"created_at"`
+	RetiredAt pgtype.Timestamptz `json:"retired_at"`
+}
+
+type OrgDomain struct {
+	ID                  uuid.UUID          `json:"id"`
+	OrgID               uuid.UUID          `json:"org_id"`
+	Domain              string             `json:"domain"`
+	VerificationToken   string             `json:"verification_token"`
+	VerifiedAt          pgtype.Timestamptz `json:"verified_at"`
+	AutoJoin            bool               `json:"auto_join"`
+	AutoJoinWorkspaceID pgtype.UUID        `json:"auto_join_workspace_id"`
+	CreatedAt           time.Time          `json:"created_at"`
+}
+
+type OrgMember struct {
+	OrgID     uuid.UUID `json:"org_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	OrgRole   string    `json:"org_role"`
+	Status    string    `json:"status"`
+	Source    string    `json:"source"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type OrgSecurityPolicy struct {
+	OrgID                uuid.UUID      `json:"org_id"`
+	EnforceSso           bool           `json:"enforce_sso"`
+	SsoBreakGlassUserIds []uuid.UUID    `json:"sso_break_glass_user_ids"`
+	RequireMfa           bool           `json:"require_mfa"`
+	AllowedMfaKinds      []string       `json:"allowed_mfa_kinds"`
+	SessionIdleMinutes   int32          `json:"session_idle_minutes"`
+	SessionMaxHours      int32          `json:"session_max_hours"`
+	DashboardIpAllowlist []netip.Prefix `json:"dashboard_ip_allowlist"`
+	ApiIpAllowlist       []netip.Prefix `json:"api_ip_allowlist"`
+	PasswordMinLength    int32          `json:"password_min_length"`
+	InviteEmailDomains   []string       `json:"invite_email_domains"`
+	ApiKeyMaxDays        int32          `json:"api_key_max_days"`
+	ExportPermission     string         `json:"export_permission"`
+	UpdatedBy            pgtype.UUID    `json:"updated_by"`
+	UpdatedAt            time.Time      `json:"updated_at"`
+}
+
+type Organization struct {
+	ID             uuid.UUID          `json:"id"`
+	Name           string             `json:"name"`
+	Slug           string             `json:"slug"`
+	Kind           string             `json:"kind"`
+	ParentOrgID    pgtype.UUID        `json:"parent_org_id"`
+	PlanID         string             `json:"plan_id"`
+	DataRegion     string             `json:"data_region"`
+	LegalName      *string            `json:"legal_name"`
+	BillingEmail   *string            `json:"billing_email"`
+	Gstin          *string            `json:"gstin"`
+	TaxCountry     string             `json:"tax_country"`
+	BillingAddress json.RawMessage    `json:"billing_address"`
+	Settings       json.RawMessage    `json:"settings"`
+	CreatedAt      time.Time          `json:"created_at"`
+	UpdatedAt      time.Time          `json:"updated_at"`
+	DeletedAt      pgtype.Timestamptz `json:"deleted_at"`
+}
+
+type Pixel struct {
+	ID          uuid.UUID `json:"id"`
+	WorkspaceID uuid.UUID `json:"workspace_id"`
+	Provider    string    `json:"provider"`
+	ExternalID  string    `json:"external_id"`
+	Name        string    `json:"name"`
+	CreatedAt   time.Time `json:"created_at"`
+}
+
+type PixelConsentDaily struct {
+	QrCodeID  uuid.UUID   `json:"qr_code_id"`
+	Day       pgtype.Date `json:"day"`
+	Shown     int32       `json:"shown"`
+	Accepted  int32       `json:"accepted"`
+	Declined  int32       `json:"declined"`
+	AutoFired int32       `json:"auto_fired"`
+}
+
 type QrCode struct {
 	ID               uuid.UUID          `json:"id"`
 	WorkspaceID      uuid.UUID          `json:"workspace_id"`
@@ -234,27 +598,77 @@ type QrCode struct {
 	DeletedAt        pgtype.Timestamptz `json:"deleted_at"`
 }
 
+type QrCodePixel struct {
+	QrCodeID uuid.UUID `json:"qr_code_id"`
+	PixelID  uuid.UUID `json:"pixel_id"`
+}
+
 type QrCodeTag struct {
 	QrCodeID uuid.UUID `json:"qr_code_id"`
 	TagID    uuid.UUID `json:"tag_id"`
 }
 
 type QrVersion struct {
-	ID              uuid.UUID       `json:"id"`
-	QrCodeID        uuid.UUID       `json:"qr_code_id"`
-	VersionNo       int32           `json:"version_no"`
-	DestinationKind string          `json:"destination_kind"`
-	DestinationUrl  *string         `json:"destination_url"`
-	HostedPage      []byte          `json:"hosted_page"`
-	Rules           json.RawMessage `json:"rules"`
-	Utm             json.RawMessage `json:"utm"`
-	EffectiveAt     time.Time       `json:"effective_at"`
-	SafetyStatus    string          `json:"safety_status"`
-	RestoredFrom    pgtype.UUID     `json:"restored_from"`
-	ChangeNote      *string         `json:"change_note"`
-	CreatedBy       pgtype.UUID     `json:"created_by"`
-	CreatedByKey    pgtype.UUID     `json:"created_by_key"`
-	CreatedAt       time.Time       `json:"created_at"`
+	ID                uuid.UUID       `json:"id"`
+	QrCodeID          uuid.UUID       `json:"qr_code_id"`
+	VersionNo         int32           `json:"version_no"`
+	DestinationKind   string          `json:"destination_kind"`
+	DestinationUrl    *string         `json:"destination_url"`
+	HostedPage        []byte          `json:"hosted_page"`
+	Rules             json.RawMessage `json:"rules"`
+	Utm               json.RawMessage `json:"utm"`
+	EffectiveAt       time.Time       `json:"effective_at"`
+	SafetyStatus      string          `json:"safety_status"`
+	RestoredFrom      pgtype.UUID     `json:"restored_from"`
+	ChangeNote        *string         `json:"change_note"`
+	CreatedBy         pgtype.UUID     `json:"created_by"`
+	CreatedByKey      pgtype.UUID     `json:"created_by_key"`
+	CreatedAt         time.Time       `json:"created_at"`
+	ApprovalStatus    string          `json:"approval_status"`
+	ApprovalRequestID pgtype.UUID     `json:"approval_request_id"`
+}
+
+type ReportSchedule struct {
+	ID          uuid.UUID          `json:"id"`
+	WorkspaceID uuid.UUID          `json:"workspace_id"`
+	Name        string             `json:"name"`
+	Frequency   string             `json:"frequency"`
+	Weekday     *int32             `json:"weekday"`
+	MonthDay    *int32             `json:"month_day"`
+	HourLocal   int32              `json:"hour_local"`
+	Timezone    string             `json:"timezone"`
+	Filters     json.RawMessage    `json:"filters"`
+	Format      string             `json:"format"`
+	Recipients  []string           `json:"recipients"`
+	IsActive    bool               `json:"is_active"`
+	NextRunAt   time.Time          `json:"next_run_at"`
+	LastRunAt   pgtype.Timestamptz `json:"last_run_at"`
+	CreatedBy   pgtype.UUID        `json:"created_by"`
+	CreatedAt   time.Time          `json:"created_at"`
+}
+
+type Role struct {
+	ID          uuid.UUID   `json:"id"`
+	OrgID       pgtype.UUID `json:"org_id"`
+	Key         string      `json:"key"`
+	Name        string      `json:"name"`
+	Description string      `json:"description"`
+	Permissions []string    `json:"permissions"`
+	CreatedAt   time.Time   `json:"created_at"`
+	UpdatedAt   time.Time   `json:"updated_at"`
+}
+
+type RoleBinding struct {
+	ID            uuid.UUID   `json:"id"`
+	OrgID         uuid.UUID   `json:"org_id"`
+	WorkspaceID   uuid.UUID   `json:"workspace_id"`
+	PrincipalType string      `json:"principal_type"`
+	PrincipalID   uuid.UUID   `json:"principal_id"`
+	RoleID        uuid.UUID   `json:"role_id"`
+	ScopeType     string      `json:"scope_type"`
+	FolderID      pgtype.UUID `json:"folder_id"`
+	CreatedBy     pgtype.UUID `json:"created_by"`
+	CreatedAt     time.Time   `json:"created_at"`
 }
 
 type ScanEvent struct {
@@ -286,6 +700,7 @@ type ScanEvent struct {
 	UtmSource      *string     `json:"utm_source"`
 	UtmMedium      *string     `json:"utm_medium"`
 	UtmCampaign    *string     `json:"utm_campaign"`
+	Serial         *string     `json:"serial"`
 }
 
 type ScanEvents202609 struct {
@@ -441,6 +856,60 @@ type ScanVisitorsDaily struct {
 	FirstSeenAt time.Time   `json:"first_seen_at"`
 }
 
+type ScimDirectory struct {
+	ID                uuid.UUID          `json:"id"`
+	OrgID             uuid.UUID          `json:"org_id"`
+	Label             string             `json:"label"`
+	TokenPrefix       string             `json:"token_prefix"`
+	TokenHash         []byte             `json:"token_hash"`
+	Status            string             `json:"status"`
+	DeprovisionAction string             `json:"deprovision_action"`
+	LastRequestAt     pgtype.Timestamptz `json:"last_request_at"`
+	CreatedBy         pgtype.UUID        `json:"created_by"`
+	CreatedAt         time.Time          `json:"created_at"`
+}
+
+type ScimUser struct {
+	ID          uuid.UUID       `json:"id"`
+	DirectoryID uuid.UUID       `json:"directory_id"`
+	UserID      uuid.UUID       `json:"user_id"`
+	ExternalID  *string         `json:"external_id"`
+	UserName    string          `json:"user_name"`
+	Active      bool            `json:"active"`
+	Resource    json.RawMessage `json:"resource"`
+	Version     int32           `json:"version"`
+	CreatedAt   time.Time       `json:"created_at"`
+	UpdatedAt   time.Time       `json:"updated_at"`
+}
+
+type SerialBatch struct {
+	ID          uuid.UUID       `json:"id"`
+	WorkspaceID uuid.UUID       `json:"workspace_id"`
+	QrCodeID    uuid.UUID       `json:"qr_code_id"`
+	Name        string          `json:"name"`
+	Gtin        *string         `json:"gtin"`
+	Quantity    int32           `json:"quantity"`
+	Rules       json.RawMessage `json:"rules"`
+	VerifyPage  json.RawMessage `json:"verify_page"`
+	Status      string          `json:"status"`
+	Generated   int32           `json:"generated"`
+	CreatedBy   pgtype.UUID     `json:"created_by"`
+	CreatedAt   time.Time       `json:"created_at"`
+}
+
+type SerialCode struct {
+	Serial        string             `json:"serial"`
+	BatchID       uuid.UUID          `json:"batch_id"`
+	Status        string             `json:"status"`
+	ScanCount     int32              `json:"scan_count"`
+	FirstScanAt   pgtype.Timestamptz `json:"first_scan_at"`
+	FirstCountry  *string            `json:"first_country"`
+	FirstCity     *string            `json:"first_city"`
+	LastScanAt    pgtype.Timestamptz `json:"last_scan_at"`
+	Countries     []string           `json:"countries"`
+	FlaggedReason *string            `json:"flagged_reason"`
+}
+
 type Session struct {
 	ID               uuid.UUID          `json:"id"`
 	UserID           uuid.UUID          `json:"user_id"`
@@ -453,6 +922,10 @@ type Session struct {
 	ExpiresAt        time.Time          `json:"expires_at"`
 	RevokedAt        pgtype.Timestamptz `json:"revoked_at"`
 	ReplacedBy       pgtype.UUID        `json:"replaced_by"`
+	AuthMethod       string             `json:"auth_method"`
+	SsoConnectionID  pgtype.UUID        `json:"sso_connection_id"`
+	MfaVerifiedAt    pgtype.Timestamptz `json:"mfa_verified_at"`
+	StepUpAt         pgtype.Timestamptz `json:"step_up_at"`
 }
 
 type ShortCodeTombstone struct {
@@ -461,9 +934,29 @@ type ShortCodeTombstone struct {
 	PurgedAt  time.Time `json:"purged_at"`
 }
 
+type SsoConnection struct {
+	ID                 uuid.UUID          `json:"id"`
+	OrgID              uuid.UUID          `json:"org_id"`
+	Protocol           string             `json:"protocol"`
+	Label              string             `json:"label"`
+	Status             string             `json:"status"`
+	BridgeTenant       *string            `json:"bridge_tenant"`
+	OidcIssuer         *string            `json:"oidc_issuer"`
+	OidcClientID       *string            `json:"oidc_client_id"`
+	OidcClientSecretCt []byte             `json:"oidc_client_secret_ct"`
+	JitProvisioning    bool               `json:"jit_provisioning"`
+	DefaultWorkspaceID pgtype.UUID        `json:"default_workspace_id"`
+	DefaultRoleKey     string             `json:"default_role_key"`
+	AttributeMapping   json.RawMessage    `json:"attribute_mapping"`
+	LastLoginAt        pgtype.Timestamptz `json:"last_login_at"`
+	CreatedBy          pgtype.UUID        `json:"created_by"`
+	CreatedAt          time.Time          `json:"created_at"`
+	UpdatedAt          time.Time          `json:"updated_at"`
+}
+
 type Subscription struct {
 	ID                     uuid.UUID          `json:"id"`
-	WorkspaceID            uuid.UUID          `json:"workspace_id"`
+	WorkspaceID            pgtype.UUID        `json:"workspace_id"`
 	Provider               string             `json:"provider"`
 	ProviderCustomerID     string             `json:"provider_customer_id"`
 	ProviderSubscriptionID string             `json:"provider_subscription_id"`
@@ -477,6 +970,18 @@ type Subscription struct {
 	CanceledAt             pgtype.Timestamptz `json:"canceled_at"`
 	CreatedAt              time.Time          `json:"created_at"`
 	UpdatedAt              time.Time          `json:"updated_at"`
+	OrgID                  uuid.UUID          `json:"org_id"`
+}
+
+type SupportAccessGrant struct {
+	ID        uuid.UUID          `json:"id"`
+	OrgID     uuid.UUID          `json:"org_id"`
+	GrantedBy uuid.UUID          `json:"granted_by"`
+	Scope     string             `json:"scope"`
+	Reason    string             `json:"reason"`
+	ExpiresAt time.Time          `json:"expires_at"`
+	RevokedAt pgtype.Timestamptz `json:"revoked_at"`
+	CreatedAt time.Time          `json:"created_at"`
 }
 
 type Tag struct {
@@ -513,6 +1018,38 @@ type User struct {
 	CreatedAt       time.Time          `json:"created_at"`
 	UpdatedAt       time.Time          `json:"updated_at"`
 	DeletedAt       pgtype.Timestamptz `json:"deleted_at"`
+}
+
+type UserIdentity struct {
+	ID           uuid.UUID          `json:"id"`
+	UserID       uuid.UUID          `json:"user_id"`
+	ConnectionID uuid.UUID          `json:"connection_id"`
+	Subject      string             `json:"subject"`
+	EmailAtLogin string             `json:"email_at_login"`
+	RawClaims    json.RawMessage    `json:"raw_claims"`
+	LastLoginAt  pgtype.Timestamptz `json:"last_login_at"`
+	CreatedAt    time.Time          `json:"created_at"`
+}
+
+type UserMfaFactor struct {
+	ID           uuid.UUID          `json:"id"`
+	UserID       uuid.UUID          `json:"user_id"`
+	Kind         string             `json:"kind"`
+	Name         string             `json:"name"`
+	TotpSecretCt []byte             `json:"totp_secret_ct"`
+	CredentialID []byte             `json:"credential_id"`
+	PublicKey    []byte             `json:"public_key"`
+	SignCount    int64              `json:"sign_count"`
+	Aaguid       pgtype.UUID        `json:"aaguid"`
+	Transports   []string           `json:"transports"`
+	CreatedAt    time.Time          `json:"created_at"`
+	LastUsedAt   pgtype.Timestamptz `json:"last_used_at"`
+}
+
+type UserRecoveryCode struct {
+	UserID   uuid.UUID          `json:"user_id"`
+	CodeHash []byte             `json:"code_hash"`
+	UsedAt   pgtype.Timestamptz `json:"used_at"`
 }
 
 type Webhook struct {
@@ -556,10 +1093,11 @@ type WorkerTaskRun struct {
 }
 
 type Workspace struct {
-	ID              uuid.UUID          `json:"id"`
-	Name            string             `json:"name"`
-	Slug            string             `json:"slug"`
-	OwnerID         uuid.UUID          `json:"owner_id"`
+	ID      uuid.UUID `json:"id"`
+	Name    string    `json:"name"`
+	Slug    string    `json:"slug"`
+	OwnerID uuid.UUID `json:"owner_id"`
+	// DEPRECATED since 00003: entitlements resolve from organizations.plan_id. Dropped in a later contract migration.
 	PlanID          string             `json:"plan_id"`
 	Timezone        string             `json:"timezone"`
 	DefaultDomainID pgtype.UUID        `json:"default_domain_id"`
@@ -568,11 +1106,29 @@ type Workspace struct {
 	CreatedAt       time.Time          `json:"created_at"`
 	UpdatedAt       time.Time          `json:"updated_at"`
 	DeletedAt       pgtype.Timestamptz `json:"deleted_at"`
+	OrgID           uuid.UUID          `json:"org_id"`
+	IsSandbox       bool               `json:"is_sandbox"`
 }
 
 type WorkspaceMember struct {
 	WorkspaceID uuid.UUID `json:"workspace_id"`
 	UserID      uuid.UUID `json:"user_id"`
-	Role        string    `json:"role"`
-	CreatedAt   time.Time `json:"created_at"`
+	// Display-only primary role. Authorization reads role_bindings.
+	Role      string    `json:"role"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type WorkspacePolicy struct {
+	WorkspaceID             uuid.UUID   `json:"workspace_id"`
+	AllowedDestinationHosts []string    `json:"allowed_destination_hosts"`
+	BlockedDestinationHosts []string    `json:"blocked_destination_hosts"`
+	RequireHttps            bool        `json:"require_https"`
+	ApprovalMode            string      `json:"approval_mode"`
+	ApprovalsRequired       int32       `json:"approvals_required"`
+	ApprovalExpiryHours     int32       `json:"approval_expiry_hours"`
+	RequireTemplate         bool        `json:"require_template"`
+	PixelConsentMode        string      `json:"pixel_consent_mode"`
+	DisabledFeatures        []string    `json:"disabled_features"`
+	UpdatedBy               pgtype.UUID `json:"updated_by"`
+	UpdatedAt               time.Time   `json:"updated_at"`
 }

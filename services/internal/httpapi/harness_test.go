@@ -198,3 +198,10 @@ func mustURL(s string) *url.URL {
 	}
 	return u
 }
+
+// setPlan changes the plan of the workspace's organisation (plans live on the org).
+func (h *harness) setPlan(ws, plan string) {
+	h.t.Helper()
+	h.exec(`UPDATE organizations SET plan_id = $2 WHERE id = (SELECT org_id FROM workspaces WHERE id = $1)`, ws, plan)
+	h.srv.plans.Invalidate()
+}

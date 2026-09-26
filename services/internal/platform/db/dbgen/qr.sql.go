@@ -231,7 +231,7 @@ INSERT INTO qr_versions (
     hosted_page, rules, utm, effective_at, change_note, created_by
 )
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-RETURNING id, qr_code_id, version_no, destination_kind, destination_url, hosted_page, rules, utm, effective_at, safety_status, restored_from, change_note, created_by, created_by_key, created_at
+RETURNING id, qr_code_id, version_no, destination_kind, destination_url, hosted_page, rules, utm, effective_at, safety_status, restored_from, change_note, created_by, created_by_key, created_at, approval_status, approval_request_id
 `
 
 type CreateQRVersionParams struct {
@@ -279,6 +279,8 @@ func (q *Queries) CreateQRVersion(ctx context.Context, arg CreateQRVersionParams
 		&i.CreatedBy,
 		&i.CreatedByKey,
 		&i.CreatedAt,
+		&i.ApprovalStatus,
+		&i.ApprovalRequestID,
 	)
 	return i, err
 }
@@ -291,7 +293,7 @@ INSERT INTO qr_versions (
     $1, $2, $3, $4, $5,
     $6, $7, $8, $9, $10,
     $11, $12, $13, $14
-) RETURNING id, qr_code_id, version_no, destination_kind, destination_url, hosted_page, rules, utm, effective_at, safety_status, restored_from, change_note, created_by, created_by_key, created_at
+) RETURNING id, qr_code_id, version_no, destination_kind, destination_url, hosted_page, rules, utm, effective_at, safety_status, restored_from, change_note, created_by, created_by_key, created_at, approval_status, approval_request_id
 `
 
 type CreateQRVersionFullParams struct {
@@ -345,12 +347,14 @@ func (q *Queries) CreateQRVersionFull(ctx context.Context, arg CreateQRVersionFu
 		&i.CreatedBy,
 		&i.CreatedByKey,
 		&i.CreatedAt,
+		&i.ApprovalStatus,
+		&i.ApprovalRequestID,
 	)
 	return i, err
 }
 
 const currentEffectiveVersion = `-- name: CurrentEffectiveVersion :one
-SELECT id, qr_code_id, version_no, destination_kind, destination_url, hosted_page, rules, utm, effective_at, safety_status, restored_from, change_note, created_by, created_by_key, created_at FROM qr_versions
+SELECT id, qr_code_id, version_no, destination_kind, destination_url, hosted_page, rules, utm, effective_at, safety_status, restored_from, change_note, created_by, created_by_key, created_at, approval_status, approval_request_id FROM qr_versions
 WHERE qr_code_id = $1 AND effective_at <= now()
 ORDER BY effective_at DESC, version_no DESC
 LIMIT 1
@@ -375,6 +379,8 @@ func (q *Queries) CurrentEffectiveVersion(ctx context.Context, qrCodeID uuid.UUI
 		&i.CreatedBy,
 		&i.CreatedByKey,
 		&i.CreatedAt,
+		&i.ApprovalStatus,
+		&i.ApprovalRequestID,
 	)
 	return i, err
 }
@@ -402,7 +408,7 @@ func (q *Queries) DeleteScheduledVersion(ctx context.Context, arg DeleteSchedule
 }
 
 const getLatestQRVersion = `-- name: GetLatestQRVersion :one
-SELECT id, qr_code_id, version_no, destination_kind, destination_url, hosted_page, rules, utm, effective_at, safety_status, restored_from, change_note, created_by, created_by_key, created_at FROM qr_versions
+SELECT id, qr_code_id, version_no, destination_kind, destination_url, hosted_page, rules, utm, effective_at, safety_status, restored_from, change_note, created_by, created_by_key, created_at, approval_status, approval_request_id FROM qr_versions
 WHERE qr_code_id = $1
 ORDER BY version_no DESC
 LIMIT 1
@@ -427,6 +433,8 @@ func (q *Queries) GetLatestQRVersion(ctx context.Context, qrCodeID uuid.UUID) (Q
 		&i.CreatedBy,
 		&i.CreatedByKey,
 		&i.CreatedAt,
+		&i.ApprovalStatus,
+		&i.ApprovalRequestID,
 	)
 	return i, err
 }
@@ -586,7 +594,7 @@ func (q *Queries) GetQRCodeForUpdate(ctx context.Context, arg GetQRCodeForUpdate
 }
 
 const getQRVersionScoped = `-- name: GetQRVersionScoped :one
-SELECT v.id, v.qr_code_id, v.version_no, v.destination_kind, v.destination_url, v.hosted_page, v.rules, v.utm, v.effective_at, v.safety_status, v.restored_from, v.change_note, v.created_by, v.created_by_key, v.created_at FROM qr_versions v
+SELECT v.id, v.qr_code_id, v.version_no, v.destination_kind, v.destination_url, v.hosted_page, v.rules, v.utm, v.effective_at, v.safety_status, v.restored_from, v.change_note, v.created_by, v.created_by_key, v.created_at, v.approval_status, v.approval_request_id FROM qr_versions v
 JOIN qr_codes q ON q.id = v.qr_code_id
 WHERE v.id = $1 AND v.qr_code_id = $2 AND q.workspace_id = $3
 `
@@ -616,6 +624,8 @@ func (q *Queries) GetQRVersionScoped(ctx context.Context, arg GetQRVersionScoped
 		&i.CreatedBy,
 		&i.CreatedByKey,
 		&i.CreatedAt,
+		&i.ApprovalStatus,
+		&i.ApprovalRequestID,
 	)
 	return i, err
 }
@@ -647,7 +657,7 @@ SELECT q.id AS qr_code_id,
 FROM qr_codes q
 JOIN workspaces w ON w.id = q.workspace_id
 LEFT JOIN LATERAL (
-    SELECT id, qr_code_id, version_no, destination_kind, destination_url, hosted_page, rules, utm, effective_at, safety_status, restored_from, change_note, created_by, created_by_key, created_at FROM qr_versions v1
+    SELECT id, qr_code_id, version_no, destination_kind, destination_url, hosted_page, rules, utm, effective_at, safety_status, restored_from, change_note, created_by, created_by_key, created_at, approval_status, approval_request_id FROM qr_versions v1
     WHERE v1.qr_code_id = q.id AND v1.effective_at <= now()
     ORDER BY v1.effective_at DESC, v1.version_no DESC
     LIMIT 1
@@ -997,7 +1007,7 @@ func (q *Queries) ListQRCodesPage(ctx context.Context, arg ListQRCodesPageParams
 }
 
 const listQRVersions = `-- name: ListQRVersions :many
-SELECT id, qr_code_id, version_no, destination_kind, destination_url, hosted_page, rules, utm, effective_at, safety_status, restored_from, change_note, created_by, created_by_key, created_at FROM qr_versions
+SELECT id, qr_code_id, version_no, destination_kind, destination_url, hosted_page, rules, utm, effective_at, safety_status, restored_from, change_note, created_by, created_by_key, created_at, approval_status, approval_request_id FROM qr_versions
 WHERE qr_code_id = $1
 ORDER BY version_no DESC
 `
@@ -1027,6 +1037,8 @@ func (q *Queries) ListQRVersions(ctx context.Context, qrCodeID uuid.UUID) ([]QrV
 			&i.CreatedBy,
 			&i.CreatedByKey,
 			&i.CreatedAt,
+			&i.ApprovalStatus,
+			&i.ApprovalRequestID,
 		); err != nil {
 			return nil, err
 		}
@@ -1039,7 +1051,7 @@ func (q *Queries) ListQRVersions(ctx context.Context, qrCodeID uuid.UUID) ([]QrV
 }
 
 const listQRVersionsScoped = `-- name: ListQRVersionsScoped :many
-SELECT v.id, v.qr_code_id, v.version_no, v.destination_kind, v.destination_url, v.hosted_page, v.rules, v.utm, v.effective_at, v.safety_status, v.restored_from, v.change_note, v.created_by, v.created_by_key, v.created_at FROM qr_versions v
+SELECT v.id, v.qr_code_id, v.version_no, v.destination_kind, v.destination_url, v.hosted_page, v.rules, v.utm, v.effective_at, v.safety_status, v.restored_from, v.change_note, v.created_by, v.created_by_key, v.created_at, v.approval_status, v.approval_request_id FROM qr_versions v
 JOIN qr_codes q ON q.id = v.qr_code_id
 WHERE v.qr_code_id = $1 AND q.workspace_id = $2
 ORDER BY v.version_no DESC
@@ -1075,6 +1087,8 @@ func (q *Queries) ListQRVersionsScoped(ctx context.Context, arg ListQRVersionsSc
 			&i.CreatedBy,
 			&i.CreatedByKey,
 			&i.CreatedAt,
+			&i.ApprovalStatus,
+			&i.ApprovalRequestID,
 		); err != nil {
 			return nil, err
 		}
@@ -1098,7 +1112,7 @@ func (q *Queries) MaxQRVersionNo(ctx context.Context, qrCodeID uuid.UUID) (int32
 }
 
 const nextScheduledVersion = `-- name: NextScheduledVersion :one
-SELECT id, qr_code_id, version_no, destination_kind, destination_url, hosted_page, rules, utm, effective_at, safety_status, restored_from, change_note, created_by, created_by_key, created_at FROM qr_versions
+SELECT id, qr_code_id, version_no, destination_kind, destination_url, hosted_page, rules, utm, effective_at, safety_status, restored_from, change_note, created_by, created_by_key, created_at, approval_status, approval_request_id FROM qr_versions
 WHERE qr_code_id = $1 AND effective_at > now()
 ORDER BY effective_at, version_no
 LIMIT 1
@@ -1123,6 +1137,8 @@ func (q *Queries) NextScheduledVersion(ctx context.Context, qrCodeID uuid.UUID) 
 		&i.CreatedBy,
 		&i.CreatedByKey,
 		&i.CreatedAt,
+		&i.ApprovalStatus,
+		&i.ApprovalRequestID,
 	)
 	return i, err
 }

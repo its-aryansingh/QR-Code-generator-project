@@ -301,6 +301,8 @@ func (s *Server) handleCreateTag(w http.ResponseWriter, r *http.Request) {
 		fail(w, apierr.Internal("failed to create tag"))
 		return
 	}
+	wsID := ws.ID
+	_ = s.audit(r, s.q, &wsID, "tag.created", "tag", &t.ID, map[string]any{"name": t.Name})
 	writeJSON(w, http.StatusCreated, t)
 }
 
@@ -340,6 +342,8 @@ func (s *Server) handleUpdateTag(w http.ResponseWriter, r *http.Request) {
 		fail(w, apierr.Internal("failed to update tag"))
 		return
 	}
+	wsID := ws.ID
+	_ = s.audit(r, s.q, &wsID, "tag.updated", "tag", &id, map[string]any{"name": req.Name, "color": req.Color})
 	writeJSON(w, http.StatusOK, t)
 }
 
@@ -349,11 +353,13 @@ func (s *Server) handleDeleteTag(w http.ResponseWriter, r *http.Request) {
 		fail(w, apierr.NotFound("tag not found"))
 		return
 	}
-	n, err := s.q.DeleteTag(r.Context(), dbgen.DeleteTagParams{ID: id, WorkspaceID: workspaceRow(r).ID})
+	wsID := workspaceRow(r).ID
+	n, err := s.q.DeleteTag(r.Context(), dbgen.DeleteTagParams{ID: id, WorkspaceID: wsID})
 	if err != nil || n == 0 {
 		fail(w, apierr.NotFound("tag not found"))
 		return
 	}
+	_ = s.audit(r, s.q, &wsID, "tag.deleted", "tag", &id, nil)
 	w.WriteHeader(http.StatusNoContent)
 }
 

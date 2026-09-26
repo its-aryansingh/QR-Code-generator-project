@@ -43,13 +43,19 @@ type workspaceDTO struct {
 	Timezone  string    `json:"timezone"`
 	Role      string    `json:"role,omitempty"`
 	OrgID     *uuid.UUID `json:"org_id,omitempty"`
+	IsSandbox bool       `json:"is_sandbox"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
 func toWorkspaceDTO(w dbgen.Workspace, role string) workspaceDTO {
-	return workspaceDTO{ID: w.ID, Name: w.Name, Slug: w.Slug, OwnerID: w.OwnerID, PlanID: w.PlanID,
-		Timezone: w.Timezone, Role: role, CreatedAt: w.CreatedAt, UpdatedAt: w.UpdatedAt}
+	d := workspaceDTO{ID: w.ID, Name: w.Name, Slug: w.Slug, OwnerID: w.OwnerID, PlanID: w.PlanID,
+		Timezone: w.Timezone, Role: role, IsSandbox: w.IsSandbox, CreatedAt: w.CreatedAt, UpdatedAt: w.UpdatedAt}
+	if w.OrgID != uuid.Nil {
+		id := w.OrgID
+		d.OrgID = &id
+	}
+	return d
 }
 
 type versionDTO struct {

@@ -55,14 +55,9 @@ const (
 	safetyTimeout     = 3 * time.Second
 )
 
-// workspacePolicy reads URL policy from workspace settings (enterprise policies extend it).
+// wsSettings are legacy per-workspace settings (JSON); governance lives in workspace_policies.
 type wsSettings struct {
-	RequireHTTPS     bool     `json:"require_https"`
-	AllowedHosts     []string `json:"allowed_hosts"`
-	AllowShorteners  bool     `json:"allow_shorteners"`
-	RequireApproval  bool     `json:"require_approval"`
-	DefaultFolderID  *string  `json:"default_folder_id"`
-	PasswordMinChars int      `json:"qr_password_min_chars"`
+	AllowShorteners bool `json:"allow_shorteners"`
 }
 
 func settingsOf(ws dbgen.Workspace) wsSettings {
@@ -73,16 +68,22 @@ func settingsOf(ws dbgen.Workspace) wsSettings {
 	return st
 }
 
-func (s *Server) urlPolicy(ws dbgen.Workspace) urlsafety.Policy {
-	st := settingsOf(ws)
+// urlPolicy combines platform rules with the workspace policy. With approval mode
+// "outside_allowlist" the allowlist routes changes to approval instead of refusing them.
+func (s *Server) urlPolicy(ctx context.Context, ws dbgen.Workspace) urlsafety.Policy {
 	own := []string{strings.ToLower(s.cfg.PlatformShortDomain)}
 	if u, err := url.Parse(s.cfg.AppBaseURL); err == nil && u.Hostname() != "" {
 		own = append(own, strings.ToLower(u.Hostname()))
 	}
-	return urlsafety.Policy{
-		RequireHTTPS: st.RequireHTTPS, AllowShorteners: st.AllowShorteners,
-		OwnHosts: own, AllowedHosts: st.AllowedHosts,
+	p := urlsafety.Policy{OwnHosts: own, AllowShorteners: settingsOf(ws).AllowShorteners}
+	if wp, err := s.wsPolicy(ctx, ws.ID); err == nil {
+		p.RequireHTTPS = wp.RequireHTTPS
+		p.BlockedHosts = wp.BlockedDestinationHosts
+		if wp.ApprovalMode != "outside_allowlist" {
+			p.AllowedHosts = wp.AllowedDestinationHosts
+		}
 	}
+	return p
 }
 
 func validationProblem(field string, err error) *apierr.ProblemDetails {
@@ -97,7 +98,7 @@ func validationProblem(field string, err error) *apierr.ProblemDetails {
 // checkDestination validates syntax and policy, then asks the reputation service.
 // Returns the normalised URL and a safety status (safe|pending). Unsafe URLs are rejected.
 func (s *Server) checkDestination(ctx context.Context, ws dbgen.Workspace, field, raw string) (string, string, error) {
-	norm, err := urlsafety.Validate(raw, s.urlPolicy(ws))
+	norm, err := urlsafety.Validate(raw, s.urlPolicy(ctx, ws))
 	if err != nil {
 		return "", "", validationProblem(field, err)
 	}

@@ -147,7 +147,7 @@ func TestQRCodeLifecycle(t *testing.T) {
 	if v2["status"] != "current" || v2["version_no"] != float64(2) {
 		t.Fatalf("v2: %v", v2)
 	}
-	h.exec(`UPDATE workspaces SET plan_id = 'pro' WHERE id = $1`, ws)
+	h.setPlan(ws, "pro")
 	sched := c.must(201, "POST", base+"/"+id+"/versions", map[string]any{"destination_url": "https://example.com/v3", "effective_at": future})
 	if sched["status"] != "scheduled" {
 		t.Fatalf("scheduled: %v", sched)
@@ -209,7 +209,7 @@ func TestQRCodeLifecycle(t *testing.T) {
 func TestRulesPreviewAndIdempotency(t *testing.T) {
 	h := newHarness(t)
 	c, ws, _ := h.register("biz")
-	h.exec(`UPDATE workspaces SET plan_id = 'business' WHERE id = $1`, ws)
+	h.setPlan(ws, "business")
 	base := "/v1/workspaces/" + ws + "/qr-codes"
 	body := map[string]any{"name": "Geo", "destination_url": "https://example.com/global",
 		"utm": map[string]any{"source": "qr", "medium": "print"},
@@ -258,7 +258,7 @@ func TestTenantIsolationAndTeams(t *testing.T) {
 	if r.Status != 402 {
 		t.Fatalf("seat gate: %d %s", r.Status, r.Body)
 	}
-	h.exec(`UPDATE workspaces SET plan_id = 'business' WHERE id = $1`, aws)
+	h.setPlan(aws, "business")
 	carol, _, cem := h.register("carol")
 	inv := alice.must(201, "POST", "/v1/workspaces/"+aws+"/invites", map[string]any{"email": cem, "role": "editor"})
 	token := inv["accept_url"].(string)[strings.LastIndex(inv["accept_url"].(string), "/")+1:]

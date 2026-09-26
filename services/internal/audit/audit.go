@@ -46,6 +46,8 @@ func TruncateIPToPrefix(rawIP string) *string {
 
 // Entry contains the audit trail record details.
 type Entry struct {
+	// OrgID defaults to the workspace's organisation when nil.
+	OrgID       *uuid.UUID
 	WorkspaceID *uuid.UUID
 	ActorType   ActorType
 	ActorID     *uuid.UUID
@@ -69,7 +71,7 @@ func toPgUUID(u *uuid.UUID) pgtype.UUID {
 func Record(ctx context.Context, q *dbgen.Queries, entry Entry) error {
 	var changesBytes []byte
 	if entry.Changes != nil {
-		changesBytes, _ = json.Marshal(entry.Changes)
+		changesBytes, _ = json.Marshal(Redact(entry.Changes))
 	} else {
 		changesBytes = []byte("{}")
 	}
@@ -90,6 +92,7 @@ func Record(ctx context.Context, q *dbgen.Queries, entry Entry) error {
 	}
 
 	params := dbgen.CreateAuditLogParams{
+		OrgID:       toPgUUID(entry.OrgID),
 		WorkspaceID: toPgUUID(entry.WorkspaceID),
 		ActorType:   string(entry.ActorType),
 		ActorID:     toPgUUID(entry.ActorID),
@@ -104,4 +107,37 @@ func Record(ctx context.Context, q *dbgen.Queries, entry Entry) error {
 
 	_, err := q.CreateAuditLog(ctx, params)
 	return err
+}
+
+// sensitiveKeys are never written to the audit log, whatever the caller passes.
+var sensitiveKeys = []string{"password", "secret", "token", "private_key", "api_key", "credential", "totp", "recovery"}
+
+// Redact masks values of sensitive keys at any depth.
+func Redact(m map[string]interface{}) map[string]interface{} {
+	out := make(map[string]interface{}, len(m))
+	for k, v := range m {
+		lk := strings.ToLower(k)
+		masked := false
+		for _, s := range sensitiveKeys {
+			if strings.Contains(lk, s) {
+				masked = true
+				break
+			}
+		}
+		switch {
+		case masked:
+			if str, ok := v.(string); ok && (str == "set" || str == "cleared" || str == "rotated") {
+				out[k] = str
+			} else {
+				out[k] = "[redacted]"
+			}
+		default:
+			if sub, ok := v.(map[string]interface{}); ok {
+				out[k] = Redact(sub)
+			} else {
+				out[k] = v
+			}
+		}
+	}
+	return out
 }

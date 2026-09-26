@@ -14,6 +14,7 @@ import (
 
 	"github.com/its-aryansingh/qrit/services/internal/apierr"
 	"github.com/its-aryansingh/qrit/services/internal/auth"
+	"github.com/its-aryansingh/qrit/services/internal/org"
 	"github.com/its-aryansingh/qrit/services/internal/platform/crypto"
 	"github.com/its-aryansingh/qrit/services/internal/platform/db/dbgen"
 	"github.com/its-aryansingh/qrit/services/internal/platform/idgen"
@@ -112,8 +113,19 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// createWorkspace inserts a workspace with a unique slug and runs the provisioner.
+// createWorkspace inserts a workspace (in orgID, or in a new organisation owned by owner)
+// with a unique slug, then runs the provisioner.
 func (s *Server) createWorkspace(ctx context.Context, q *dbgen.Queries, tx pgx.Tx, owner dbgen.User, name, slug string, orgID *uuid.UUID) (dbgen.Workspace, error) {
+	var o org.Org
+	var err error
+	if orgID == nil {
+		o, err = org.Create(ctx, tx, org.CreateParams{Name: name, Kind: "standard", OwnerID: owner.ID})
+	} else {
+		o, err = org.Get(ctx, tx, *orgID)
+	}
+	if err != nil {
+		return dbgen.Workspace{}, err
+	}
 	base := slug
 	if base == "" {
 		base = workspace.Slugify(name)
@@ -137,13 +149,13 @@ func (s *Server) createWorkspace(ctx context.Context, q *dbgen.Queries, tx pgx.T
 		candidate = base + "-" + strings.ToLower(hexString(suffix))
 	}
 	ws, err := q.CreateWorkspace(ctx, dbgen.CreateWorkspaceParams{
-		ID: idgen.New(), Name: strings.TrimSpace(name), Slug: candidate, OwnerID: owner.ID, PlanID: "free",
+		ID: idgen.New(), OrgID: o.ID, Name: strings.TrimSpace(name), Slug: candidate, OwnerID: owner.ID, PlanID: o.PlanID,
 		Timezone: "UTC", Brand: []byte("{}"), Settings: []byte("{}"),
 	})
 	if err != nil {
 		return ws, err
 	}
-	if err := s.prov().ProvisionWorkspace(ctx, q, tx, owner, ws, orgID); err != nil {
+	if err := s.prov().ProvisionWorkspace(ctx, q, tx, owner, ws, &o.ID); err != nil {
 		return ws, err
 	}
 	return ws, nil
@@ -294,12 +306,13 @@ func (s *Server) handleRefresh(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return err
 		}
-		if _, err := tx.Exec(r.Context(), `UPDATE sessions SET replaced_by = $2, last_used_at = now() WHERE id = $1`, sess.ID, newSess.ID); err != nil {
+		if _, err := tx.Exec(r.Context(), `UPDATE sessions SET replaced_by = $2 WHERE id = $1`, sess.ID, newSess.ID); err != nil {
 			return err
 		}
 		// Carry enterprise session attributes (auth method, MFA, step-up) to the rotated session.
 		_, err = tx.Exec(r.Context(), `
-			UPDATE sessions n SET created_at = o.created_at
+			UPDATE sessions n SET created_at = o.created_at, last_used_at = o.last_used_at, auth_method = o.auth_method,
+			       sso_connection_id = o.sso_connection_id, mfa_verified_at = o.mfa_verified_at, step_up_at = o.step_up_at
 			FROM sessions o WHERE n.id = $1 AND o.id = $2`, newSess.ID, sess.ID)
 		if err != nil {
 			return err
@@ -344,9 +357,13 @@ func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
 	list := make([]workspaceDTO, 0, len(rows))
 	for _, row := range rows {
 		list = append(list, toWorkspaceDTO(dbgen.Workspace{ID: row.ID, Name: row.Name, Slug: row.Slug, OwnerID: row.OwnerID,
-			PlanID: row.PlanID, Timezone: row.Timezone, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, row.Role))
+			PlanID: row.PlanID, Timezone: row.Timezone, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+			OrgID: row.OrgID, IsSandbox: row.IsSandbox}, row.Role))
 	}
 	resp := map[string]any{"user": toUserDTO(u), "workspaces": list}
+	if orgs, err := org.ListForUser(r.Context(), s.pool, u.ID); err == nil {
+		resp["organizations"] = orgs
+	}
 	for k, v := range s.idh().MeExtras(r.Context(), u) {
 		resp[k] = v
 	}

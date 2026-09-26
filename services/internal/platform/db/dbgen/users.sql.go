@@ -94,7 +94,7 @@ func (q *Queries) CreateOAuthAccount(ctx context.Context, arg CreateOAuthAccount
 const createSession = `-- name: CreateSession :one
 INSERT INTO sessions (id, user_id, family_id, refresh_token_hash, user_agent, ip_prefix, expires_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, user_id, family_id, refresh_token_hash, user_agent, ip_prefix, created_at, last_used_at, expires_at, revoked_at, replaced_by
+RETURNING id, user_id, family_id, refresh_token_hash, user_agent, ip_prefix, created_at, last_used_at, expires_at, revoked_at, replaced_by, auth_method, sso_connection_id, mfa_verified_at, step_up_at
 `
 
 type CreateSessionParams struct {
@@ -130,6 +130,10 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (S
 		&i.ExpiresAt,
 		&i.RevokedAt,
 		&i.ReplacedBy,
+		&i.AuthMethod,
+		&i.SsoConnectionID,
+		&i.MfaVerifiedAt,
+		&i.StepUpAt,
 	)
 	return i, err
 }
@@ -225,7 +229,7 @@ func (q *Queries) GetOAuthAccount(ctx context.Context, arg GetOAuthAccountParams
 }
 
 const getSessionByHash = `-- name: GetSessionByHash :one
-SELECT id, user_id, family_id, refresh_token_hash, user_agent, ip_prefix, created_at, last_used_at, expires_at, revoked_at, replaced_by FROM sessions
+SELECT id, user_id, family_id, refresh_token_hash, user_agent, ip_prefix, created_at, last_used_at, expires_at, revoked_at, replaced_by, auth_method, sso_connection_id, mfa_verified_at, step_up_at FROM sessions
 WHERE refresh_token_hash = $1
 `
 
@@ -244,12 +248,16 @@ func (q *Queries) GetSessionByHash(ctx context.Context, refreshTokenHash []byte)
 		&i.ExpiresAt,
 		&i.RevokedAt,
 		&i.ReplacedBy,
+		&i.AuthMethod,
+		&i.SsoConnectionID,
+		&i.MfaVerifiedAt,
+		&i.StepUpAt,
 	)
 	return i, err
 }
 
 const getSessionByID = `-- name: GetSessionByID :one
-SELECT id, user_id, family_id, refresh_token_hash, user_agent, ip_prefix, created_at, last_used_at, expires_at, revoked_at, replaced_by FROM sessions WHERE id = $1
+SELECT id, user_id, family_id, refresh_token_hash, user_agent, ip_prefix, created_at, last_used_at, expires_at, revoked_at, replaced_by, auth_method, sso_connection_id, mfa_verified_at, step_up_at FROM sessions WHERE id = $1
 `
 
 func (q *Queries) GetSessionByID(ctx context.Context, id uuid.UUID) (Session, error) {
@@ -267,6 +275,10 @@ func (q *Queries) GetSessionByID(ctx context.Context, id uuid.UUID) (Session, er
 		&i.ExpiresAt,
 		&i.RevokedAt,
 		&i.ReplacedBy,
+		&i.AuthMethod,
+		&i.SsoConnectionID,
+		&i.MfaVerifiedAt,
+		&i.StepUpAt,
 	)
 	return i, err
 }
@@ -363,7 +375,7 @@ func (q *Queries) InvalidateEmailTokens(ctx context.Context, arg InvalidateEmail
 }
 
 const listUserSessions = `-- name: ListUserSessions :many
-SELECT id, user_id, family_id, refresh_token_hash, user_agent, ip_prefix, created_at, last_used_at, expires_at, revoked_at, replaced_by FROM sessions
+SELECT id, user_id, family_id, refresh_token_hash, user_agent, ip_prefix, created_at, last_used_at, expires_at, revoked_at, replaced_by, auth_method, sso_connection_id, mfa_verified_at, step_up_at FROM sessions
 WHERE user_id = $1 AND revoked_at IS NULL AND replaced_by IS NULL AND expires_at > now()
 ORDER BY last_used_at DESC
 `
@@ -389,6 +401,10 @@ func (q *Queries) ListUserSessions(ctx context.Context, userID uuid.UUID) ([]Ses
 			&i.ExpiresAt,
 			&i.RevokedAt,
 			&i.ReplacedBy,
+			&i.AuthMethod,
+			&i.SsoConnectionID,
+			&i.MfaVerifiedAt,
+			&i.StepUpAt,
 		); err != nil {
 			return nil, err
 		}
@@ -473,7 +489,7 @@ UPDATE sessions
 SET replaced_by = $2,
     last_used_at = now()
 WHERE id = $1
-RETURNING id, user_id, family_id, refresh_token_hash, user_agent, ip_prefix, created_at, last_used_at, expires_at, revoked_at, replaced_by
+RETURNING id, user_id, family_id, refresh_token_hash, user_agent, ip_prefix, created_at, last_used_at, expires_at, revoked_at, replaced_by, auth_method, sso_connection_id, mfa_verified_at, step_up_at
 `
 
 type RotateSessionParams struct {
@@ -496,6 +512,10 @@ func (q *Queries) RotateSession(ctx context.Context, arg RotateSessionParams) (S
 		&i.ExpiresAt,
 		&i.RevokedAt,
 		&i.ReplacedBy,
+		&i.AuthMethod,
+		&i.SsoConnectionID,
+		&i.MfaVerifiedAt,
+		&i.StepUpAt,
 	)
 	return i, err
 }

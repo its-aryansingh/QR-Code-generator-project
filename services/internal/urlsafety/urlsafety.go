@@ -60,6 +60,7 @@ var (
 	ErrOwnDomain           = &ValidationError{Code: "own_domain", Message: "cannot redirect to our own domain"}
 	ErrShortenerNotAllowed = &ValidationError{Code: "shortener_not_allowed", Message: "nested url shorteners are not permitted"}
 	ErrHostNotAllowed      = &ValidationError{Code: "host_not_allowed", Message: "destination host is not allowed by workspace policy"}
+	ErrHostBlocked         = &ValidationError{Code: "host_blocked", Message: "destination host is blocked by workspace policy"}
 	ErrConfusableHost      = &ValidationError{Code: "confusable_host", Message: "host contains confusable mixed scripts"}
 	ErrDestinationUnsafe   = &ValidationError{Code: "destination_unsafe", Message: "destination flagged as unsafe"}
 )
@@ -70,6 +71,8 @@ type Policy struct {
 	AllowShorteners bool
 	OwnHosts        []string
 	AllowedHosts    []string
+	// BlockedHosts are refused even when allowed ("*.suffix" matches subdomains).
+	BlockedHosts []string
 }
 
 // Validate normalises and validates a destination URL according to security rules and policy.
@@ -151,6 +154,10 @@ func Validate(raw string, policy Policy) (string, error) {
 		if isShortener(punyHost) {
 			return "", ErrShortenerNotAllowed
 		}
+	}
+
+	if len(policy.BlockedHosts) > 0 && isHostAllowed(punyHost, policy.BlockedHosts) {
+		return "", ErrHostBlocked
 	}
 
 	// Check against allowed host whitelist (if non-empty)

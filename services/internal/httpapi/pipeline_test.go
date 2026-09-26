@@ -63,7 +63,7 @@ func TestScanPipelineEndToEnd(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	c, ws, _ := h.register("pipe")
-	h.exec(`UPDATE workspaces SET plan_id = 'business' WHERE id = $1`, ws)
+	h.setPlan(ws, "business")
 	base := "/v1/workspaces/" + ws + "/qr-codes"
 	q := c.must(201, "POST", base, map[string]any{"name": "Poster", "destination_url": "https://example.com/menu?table=4",
 		"utm": map[string]any{"source": "qr", "medium": "poster"},
@@ -269,7 +269,7 @@ func TestScanPipelineEndToEnd(t *testing.T) {
 		t.Fatalf("export: %d %s", exp.Status, exp.Body)
 	}
 	// Free plans see at most 30 days of history.
-	h.exec(`UPDATE workspaces SET plan_id = 'free' WHERE id = $1`, ws)
+	h.setPlan(ws, "free")
 	cl := c.must(200, "GET", an+"/summary?range=90d", nil)
 	if dig(cl, "range", "clamped") != true {
 		t.Fatalf("history clamp: %v", cl)

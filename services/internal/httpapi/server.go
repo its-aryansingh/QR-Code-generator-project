@@ -18,6 +18,10 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/its-aryansingh/qrit/services/internal/abuse"
+	"github.com/its-aryansingh/qrit/services/internal/access"
+	"github.com/its-aryansingh/qrit/services/internal/envelope"
+	"github.com/its-aryansingh/qrit/services/internal/flags"
+	"github.com/its-aryansingh/qrit/services/internal/plans"
 	"github.com/its-aryansingh/qrit/services/internal/auth"
 	"github.com/its-aryansingh/qrit/services/internal/authz"
 	"github.com/its-aryansingh/qrit/services/internal/config"
@@ -39,8 +43,8 @@ type Deps struct {
 	Tokens  *auth.TokenManager
 	Email   email.Sender
 	Safety  urlsafety.SafetyClient
-	Grants  GrantSource // nil → membership-based grants
-	Gate    AccessGate  // nil → no org gate
+	Grants  GrantSource // nil → role bindings + org roles (access.Engine)
+	Gate    AccessGate  // nil → organisation identity gate
 	Limiter abuse.VelocityLimiter
 }
 
@@ -70,10 +74,16 @@ type Server struct {
 	memberHooks   MemberHooks
 	sessions      *sessionCache
 
+	access  *access.Engine
+	plans   *plans.Service
+	flags   *flags.Flags
+	keyring *envelope.Keyring
+
 	// extension points registered by enterprise modules
 	mounts       []func(r chi.Router)
 	wsMounts     []func(r chi.Router)
 	publicMounts []func(r chi.Router)
+	orgMounts    []func(r chi.Router)
 }
 
 func New(d Deps) (*Server, error) {
@@ -88,11 +98,24 @@ func New(d Deps) (*Server, error) {
 		domainHosts: map[uuid.UUID]string{},
 		sessions:    newSessionCache(20 * time.Second),
 	}
+	s.access = access.NewEngine(d.Pool, d.Redis)
+	s.plans = plans.NewService(d.Pool)
+	s.flags = flags.New(d.Pool)
+	master, err := d.Config.EncryptionKey()
+	if err != nil {
+		return nil, err
+	}
+	if s.keyring, err = envelope.NewKeyring(d.Pool, master); err != nil {
+		return nil, err
+	}
 	if s.grants == nil {
-		s.grants = membershipGrants{q: s.q}
+		s.grants = s.access
 	}
 	if s.gate == nil {
-		s.gate = noGate{}
+		s.gate = identityGate{s: s}
+	}
+	if s.entitle == nil {
+		s.entitle = planEntitlementsV2{p: s.plans}
 	}
 	if s.limiter == nil {
 		if d.Redis != nil {
@@ -106,6 +129,18 @@ func New(d Deps) (*Server, error) {
 	}
 	return s, nil
 }
+
+// Access exposes the permission engine (call Invalidate after grant changes).
+func (s *Server) Access() *access.Engine { return s.access }
+
+// Keyring exposes per-organisation envelope encryption.
+func (s *Server) Keyring() *envelope.Keyring { return s.keyring }
+
+// Plans exposes effective entitlements.
+func (s *Server) Plans() *plans.Service { return s.plans }
+
+// Pool exposes the database pool for enterprise modules.
+func (s *Server) Pool() *pgxpool.Pool { return s.pool }
 
 // Queries exposes the query set for enterprise modules.
 func (s *Server) Queries() *dbgen.Queries { return s.q }
@@ -173,6 +208,7 @@ func (s *Server) Routes() http.Handler {
 			r.Get("/me/sessions", s.handleListSessions)
 			r.Delete("/me/sessions/{id}", s.handleRevokeSession)
 			r.Post("/invites/{token}/accept", s.handleInviteAccept)
+			s.orgRoutes(r)
 			for _, m := range s.mounts {
 				m(r)
 			}
@@ -217,6 +253,9 @@ func (s *Server) Routes() http.Handler {
 					})
 					s.organizeRoutes(r)
 					s.analyticsRoutes(r)
+					r.With(authz.RequireWorkspaceWide(authz.WorkspaceRead)).Get("/policies", s.handleGetWorkspacePolicy)
+					r.With(authz.RequireWorkspaceWide(authz.PolicyManage)).Put("/policies", s.handlePutWorkspacePolicy)
+					r.With(authz.Require(authz.AuditRead)).Get("/audit-logs", s.handleWorkspaceAuditLogs)
 					for _, m := range s.wsMounts {
 						m(r)
 					}

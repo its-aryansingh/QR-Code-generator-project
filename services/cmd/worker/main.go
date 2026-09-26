@@ -57,6 +57,7 @@ func run() error {
 	deps := &worker.Deps{Pool: pool, Redis: rdb, Safety: safety, Logger: logger}
 	sched := jobs.NewScheduler(pool, logger)
 	worker.Register(sched, deps)
+	worker.RegisterAudit(sched, deps)
 	runner := jobs.NewRunner(pool, cfg.WorkerConcurrency, logger)
 	if err := registerExtensions(ctx, cfg, deps, sched, runner); err != nil {
 		return err

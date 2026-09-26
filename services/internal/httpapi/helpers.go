@@ -15,6 +15,7 @@ import (
 
 	"github.com/its-aryansingh/qrit/services/internal/auth"
 	"github.com/its-aryansingh/qrit/services/internal/entitlements"
+	"github.com/its-aryansingh/qrit/services/internal/plans"
 	"github.com/its-aryansingh/qrit/services/internal/platform/db/dbgen"
 	"github.com/its-aryansingh/qrit/services/internal/platform/idgen"
 )
@@ -51,6 +52,8 @@ type IdentityHooks interface {
 	SessionRotated(ctx context.Context, tx pgx.Tx, oldID, newID uuid.UUID) error
 	// MeExtras adds fields (organisations, MFA state) to GET /me.
 	MeExtras(ctx context.Context, u dbgen.User) map[string]any
+	// VerifySecondFactor checks a TOTP/recovery code for step-up when the user has factors.
+	VerifySecondFactor(ctx context.Context, userID uuid.UUID, code string) error
 }
 
 type noIdentity struct{}
@@ -60,6 +63,7 @@ func (noIdentity) LoginAllowed(context.Context, dbgen.User, string) error    { r
 func (noIdentity) MFAPending(context.Context, uuid.UUID) bool                { return false }
 func (noIdentity) SessionRotated(context.Context, pgx.Tx, uuid.UUID, uuid.UUID) error { return nil }
 func (noIdentity) MeExtras(context.Context, dbgen.User) map[string]any       { return nil }
+func (noIdentity) VerifySecondFactor(context.Context, uuid.UUID, string) error { return nil }
 func (noIdentity) SessionCreated(context.Context, dbgen.Session, string, *uuid.UUID) error {
 	return nil
 }
@@ -177,4 +181,27 @@ func maskEmail(e string) string {
 		local = local[:1] + "***" + local[len(local)-1:]
 	}
 	return local + e[at:]
+}
+
+// planEntitlementsV2 resolves org plan ⊕ contract ⊖ workspace-disabled features.
+type planEntitlementsV2 struct{ p *plans.Service }
+
+func (e planEntitlementsV2) Limits(ctx context.Context, ws dbgen.Workspace) entitlements.Limits {
+	eff, err := e.p.ForWorkspace(ctx, ws)
+	if err != nil {
+		return entitlements.GetLimits(ws.PlanID)
+	}
+	return eff.Limits
+}
+
+func (e planEntitlementsV2) CheckFeature(ctx context.Context, ws dbgen.Workspace, feature string) error {
+	return e.p.CheckFeature(ctx, ws, feature)
+}
+
+func (e planEntitlementsV2) Features(ctx context.Context, ws dbgen.Workspace) []string {
+	eff, err := e.p.ForWorkspace(ctx, ws)
+	if err != nil {
+		return nil
+	}
+	return eff.Features
 }
