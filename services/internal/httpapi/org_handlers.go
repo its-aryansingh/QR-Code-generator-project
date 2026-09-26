@@ -160,6 +160,8 @@ func (s *Server) orgRoutes(r chi.Router) {
 			r.With(requireOrg(authz.OrgAudit)).Get("/audit-logs", s.handleOrgAuditLogs)
 			r.With(requireOrg(authz.OrgAudit)).Get("/audit-logs/verify", s.handleAuditVerify)
 			r.With(requireOrg(authz.OrgAudit), s.requireStepUp(10*time.Minute)).Get("/audit-logs/export", s.handleAuditExport)
+			s.ssoOrgRoutes(r)
+			s.scimDirectoryRoutes(r)
 			for _, m := range s.orgMounts {
 				m(r)
 			}

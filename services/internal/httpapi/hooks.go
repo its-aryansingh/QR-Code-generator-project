@@ -177,3 +177,11 @@ func (s *Server) mem() MemberHooks {
 	}
 	return s.memberHooks
 }
+
+// auditEntryFor is an entry acted by userID (e.g. during SSO login, before a principal exists).
+func auditEntryFor(r *http.Request, orgID *uuid.UUID, userID uuid.UUID, action string, changes map[string]any) audit.Entry {
+	e := auditUserEntry(r, userID, action)
+	e.OrgID = orgID
+	e.Changes = changes
+	return e
+}

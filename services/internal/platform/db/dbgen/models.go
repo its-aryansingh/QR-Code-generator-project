@@ -495,6 +495,8 @@ type OrgDomain struct {
 	AutoJoin            bool               `json:"auto_join"`
 	AutoJoinWorkspaceID pgtype.UUID        `json:"auto_join_workspace_id"`
 	CreatedAt           time.Time          `json:"created_at"`
+	LastCheckedAt       pgtype.Timestamptz `json:"last_checked_at"`
+	CheckAttempts       int32              `json:"check_attempts"`
 }
 
 type OrgMember struct {
@@ -926,6 +928,7 @@ type Session struct {
 	SsoConnectionID  pgtype.UUID        `json:"sso_connection_id"`
 	MfaVerifiedAt    pgtype.Timestamptz `json:"mfa_verified_at"`
 	StepUpAt         pgtype.Timestamptz `json:"step_up_at"`
+	MfaPending       bool               `json:"mfa_pending"`
 }
 
 type ShortCodeTombstone struct {
@@ -952,6 +955,11 @@ type SsoConnection struct {
 	CreatedBy          pgtype.UUID        `json:"created_by"`
 	CreatedAt          time.Time          `json:"created_at"`
 	UpdatedAt          time.Time          `json:"updated_at"`
+	OidcScopes         string             `json:"oidc_scopes"`
+	GroupsClaim        string             `json:"groups_claim"`
+	TestPassedAt       pgtype.Timestamptz `json:"test_passed_at"`
+	SamlMetadataUrl    *string            `json:"saml_metadata_url"`
+	IdpKind            string             `json:"idp_kind"`
 }
 
 type Subscription struct {

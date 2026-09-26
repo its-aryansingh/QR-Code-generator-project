@@ -31,6 +31,7 @@ import (
 	"github.com/its-aryansingh/qrit/services/internal/platform/db/dbgen"
 	"github.com/its-aryansingh/qrit/services/internal/platform/idgen"
 	"github.com/its-aryansingh/qrit/services/internal/shortcode"
+	"github.com/its-aryansingh/qrit/services/internal/sso"
 	"github.com/its-aryansingh/qrit/services/internal/urlsafety"
 	"github.com/its-aryansingh/qrit/services/internal/workspace"
 )
@@ -79,6 +80,11 @@ type Server struct {
 	flags   *flags.Flags
 	keyring *envelope.Keyring
 
+	ssoHTTP *http.Client
+	oidc    *sso.OIDC
+	dns     sso.TXTResolver
+	polis   *sso.Polis
+
 	// extension points registered by enterprise modules
 	mounts       []func(r chi.Router)
 	wsMounts     []func(r chi.Router)
@@ -108,6 +114,8 @@ func New(d Deps) (*Server, error) {
 	if s.keyring, err = envelope.NewKeyring(d.Pool, master); err != nil {
 		return nil, err
 	}
+	s.initSSO()
+	s.identity = coreIdentity{s: s}
 	if s.grants == nil {
 		s.grants = s.access
 	}
@@ -176,12 +184,14 @@ func (s *Server) Routes() http.Handler {
 	r.Use(s.cors)
 	r.Use(auth.AuthenticateMiddleware(s.tm))
 	r.Use(s.sessionGuard)
+	r.Use(s.mfaGate)
 	r.Use(auth.CSRFMiddleware)
 
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
 	r.Get("/readyz", s.handleReady)
+	s.scimRoutes(r)
 
 	v1 := func(r chi.Router) {
 		r.Route("/auth", func(r chi.Router) {
@@ -192,6 +202,8 @@ func (s *Server) Routes() http.Handler {
 			r.Post("/verify-email", s.handleVerifyEmail)
 			r.Post("/password/forgot", s.handleForgotPassword)
 			r.Post("/password/reset", s.handleResetPassword)
+			r.Post("/sso/start", s.handleSSOStart)
+			r.Get("/sso/callback", s.handleSSOCallback)
 			r.With(auth.RequireAuth).Post("/resend-verification", s.handleResendVerification)
 			r.With(auth.RequireAuth).Get("/me", s.handleMe)
 		})
@@ -209,6 +221,7 @@ func (s *Server) Routes() http.Handler {
 			r.Delete("/me/sessions/{id}", s.handleRevokeSession)
 			r.Post("/invites/{token}/accept", s.handleInviteAccept)
 			s.orgRoutes(r)
+			s.mfaRoutes(r)
 			for _, m := range s.mounts {
 				m(r)
 			}
