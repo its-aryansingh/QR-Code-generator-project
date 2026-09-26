@@ -67,8 +67,9 @@ type versionDTO struct {
 	Rules           json.RawMessage `json:"rules"`
 	UTM             json.RawMessage `json:"utm"`
 	EffectiveAt     time.Time       `json:"effective_at"`
-	Status          string          `json:"status"` // current | scheduled | superseded | pending_approval | rejected
-	ApprovalStatus  string          `json:"approval_status,omitempty"`
+	Status          string          `json:"status"` // current | scheduled | superseded | pending_approval | rejected | cancelled
+	ApprovalStatus  string          `json:"approval_status"`
+	ApprovalID      *uuid.UUID      `json:"approval_request_id,omitempty"`
 	SafetyStatus    string          `json:"safety_status"`
 	RestoredFrom    *uuid.UUID      `json:"restored_from"`
 	ChangeNote      *string         `json:"change_note"`
@@ -79,6 +80,10 @@ type versionDTO struct {
 func toVersionDTO(v dbgen.QrVersion, currentID *uuid.UUID, now time.Time) versionDTO {
 	status := "superseded"
 	switch {
+	case v.ApprovalStatus == "pending":
+		status = "pending_approval"
+	case v.ApprovalStatus == "rejected" || v.ApprovalStatus == "cancelled":
+		status = v.ApprovalStatus
 	case v.EffectiveAt.After(now):
 		status = "scheduled"
 	case currentID != nil && *currentID == v.ID:
@@ -93,7 +98,7 @@ func toVersionDTO(v dbgen.QrVersion, currentID *uuid.UUID, now time.Time) versio
 		HostedPage: hp, Rules: nonNullJSON(v.Rules, "[]"), UTM: nonNullJSON(v.Utm, "{}"),
 		EffectiveAt: v.EffectiveAt, Status: status, SafetyStatus: v.SafetyStatus,
 		RestoredFrom: uuidPtr(v.RestoredFrom), ChangeNote: v.ChangeNote, CreatedBy: uuidPtr(v.CreatedBy),
-		CreatedAt: v.CreatedAt,
+		CreatedAt: v.CreatedAt, ApprovalStatus: v.ApprovalStatus, ApprovalID: uuidPtr(v.ApprovalRequestID),
 	}
 }
 

@@ -88,12 +88,14 @@ SELECT q.id AS qr_code_id,
          SELECT min(v2.effective_at)
          FROM qr_versions v2
          WHERE v2.qr_code_id = q.id AND v2.effective_at > now()
+           AND v2.approval_status IN ('not_required','approved')
        ) AS next_change_at
 FROM qr_codes q
 JOIN workspaces w ON w.id = q.workspace_id
 LEFT JOIN LATERAL (
     SELECT * FROM qr_versions v1
     WHERE v1.qr_code_id = q.id AND v1.effective_at <= now()
+      AND v1.approval_status IN ('not_required','approved')
     ORDER BY v1.effective_at DESC, v1.version_no DESC
     LIMIT 1
 ) v ON true
@@ -185,7 +187,7 @@ INSERT INTO qr_versions (
 
 -- name: CurrentEffectiveVersion :one
 SELECT * FROM qr_versions
-WHERE qr_code_id = $1 AND effective_at <= now()
+WHERE qr_code_id = $1 AND effective_at <= now() AND approval_status IN ('not_required','approved')
 ORDER BY effective_at DESC, version_no DESC
 LIMIT 1;
 
@@ -195,8 +197,10 @@ SELECT v.id AS version_id, q.id AS qr_code_id, q.workspace_id, q.domain_id, q.sh
 FROM qr_versions v
 JOIN qr_codes q ON q.id = v.qr_code_id
 WHERE v.effective_at <= now() AND v.effective_at > now() - interval '2 days'
+  AND v.approval_status IN ('not_required','approved')
   AND q.current_version_id IS DISTINCT FROM v.id
   AND v.id = (SELECT v3.id FROM qr_versions v3 WHERE v3.qr_code_id = q.id AND v3.effective_at <= now()
+              AND v3.approval_status IN ('not_required','approved')
               ORDER BY v3.effective_at DESC, v3.version_no DESC LIMIT 1)
 LIMIT 500;
 
@@ -205,7 +209,7 @@ DELETE FROM qr_versions v
 USING qr_codes q
 WHERE v.id = sqlc.arg(version_id) AND v.qr_code_id = sqlc.arg(qr_code_id)
   AND q.id = v.qr_code_id AND q.workspace_id = sqlc.arg(workspace_id)
-  AND v.effective_at > now();
+  AND v.effective_at > now() AND v.approval_status IN ('not_required','approved');
 
 -- name: CreateQRCodeFull :one
 INSERT INTO qr_codes (
@@ -237,10 +241,13 @@ SELECT count(*)::int FROM qr_codes WHERE workspace_id = $1 AND folder_id = $2 AN
 
 -- name: NextScheduledVersion :one
 SELECT * FROM qr_versions
-WHERE qr_code_id = $1 AND effective_at > now()
+WHERE qr_code_id = $1 AND effective_at > now() AND approval_status IN ('not_required','approved')
 ORDER BY effective_at, version_no
 LIMIT 1;
 
 -- name: ListDomainsUsable :many
 -- Domains a workspace may issue codes on: the platform domain plus its own active domains.
 SELECT * FROM domains WHERE (workspace_id IS NULL OR workspace_id = $1) AND status = 'active';
+
+-- name: ListApprovalVersions :many
+SELECT * FROM qr_versions WHERE approval_request_id = $1 ORDER BY version_no;

@@ -16,6 +16,24 @@ type Sender interface {
 	SendInvite(ctx context.Context, to, inviterName, workspaceName, token, appBaseURL string) error
 }
 
+// Notifier sends plain-text notices (approval requests, alerts, scheduled reports).
+type Notifier interface {
+	SendNotice(ctx context.Context, to, subject, body string) error
+}
+
+// Notify sends a notice when the sender supports it (all built-in senders do).
+func Notify(s Sender, ctx context.Context, to, subject, body string) error {
+	if n, ok := s.(Notifier); ok {
+		return n.SendNotice(ctx, to, subject, body)
+	}
+	return nil
+}
+
+// headerSafe strips CR/LF so user-controlled text can't inject mail headers.
+func headerSafe(s string) string {
+	return strings.NewReplacer("\r", " ", "\n", " ").Replace(s)
+}
+
 // MemorySender records sent emails in memory for testing.
 type MemorySender struct {
 	mu     sync.Mutex
@@ -36,6 +54,11 @@ func (m *MemorySender) record(to, subject, body string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.Emails = append(m.Emails, SentEmail{To: to, Subject: subject, Body: body})
+}
+
+func (m *MemorySender) SendNotice(ctx context.Context, to, subject, body string) error {
+	m.record(to, headerSafe(subject), body)
+	return nil
 }
 
 func (m *MemorySender) SendVerification(ctx context.Context, to, token, appBaseURL string) error {
@@ -85,8 +108,13 @@ func NewSMTPSender(addr, from string) *SMTPSender {
 }
 
 func (s *SMTPSender) send(to, subject, body string) error {
-	msg := []byte(fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\n\r\n%s", s.from, to, subject, body))
+	msg := []byte(fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n%s",
+		s.from, headerSafe(to), headerSafe(subject), body))
 	return smtp.SendMail(s.addr, s.auth, s.from, []string{to}, msg)
+}
+
+func (s *SMTPSender) SendNotice(ctx context.Context, to, subject, body string) error {
+	return s.send(to, subject, body)
 }
 
 func (s *SMTPSender) SendVerification(ctx context.Context, to, token, appBaseURL string) error {
@@ -119,6 +147,11 @@ func (s *SMTPSender) SendInvite(ctx context.Context, to, inviterName, workspaceN
 
 // ConsoleSender logs emails to slog (useful during development).
 type ConsoleSender struct{}
+
+func (c *ConsoleSender) SendNotice(ctx context.Context, to, subject, body string) error {
+	slog.Info("email.notice", "to", to, "subject", subject)
+	return nil
+}
 
 func (c *ConsoleSender) SendVerification(ctx context.Context, to, token, appBaseURL string) error {
 	link := fmt.Sprintf("%s/verify-email?token=%s", strings.TrimRight(appBaseURL, "/"), token)

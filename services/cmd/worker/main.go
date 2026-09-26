@@ -14,6 +14,8 @@ import (
 	"syscall"
 
 	"github.com/its-aryansingh/qrit/services/internal/config"
+	"github.com/its-aryansingh/qrit/services/internal/email"
+	"github.com/its-aryansingh/qrit/services/internal/envelope"
 	"github.com/its-aryansingh/qrit/services/internal/jobs"
 	"github.com/its-aryansingh/qrit/services/internal/platform/db"
 	"github.com/its-aryansingh/qrit/services/internal/platform/obs"
@@ -54,7 +56,19 @@ func run() error {
 		safety = urlsafety.NewFakeSafetyClient()
 	}
 
-	deps := &worker.Deps{Pool: pool, Redis: rdb, Safety: safety, Logger: logger}
+	var sender email.Sender = &email.ConsoleSender{}
+	if cfg.SMTPAddr != "" {
+		sender = email.NewSMTPSender(cfg.SMTPAddr, cfg.EmailFrom)
+	}
+	master, err := cfg.EncryptionKey()
+	if err != nil {
+		return err
+	}
+	keyring, err := envelope.NewKeyring(pool, master)
+	if err != nil {
+		return err
+	}
+	deps := &worker.Deps{Pool: pool, Redis: rdb, Safety: safety, Logger: logger, Mail: sender, AppBaseURL: cfg.AppBaseURL, Keyring: keyring}
 	sched := jobs.NewScheduler(pool, logger)
 	worker.Register(sched, deps)
 	worker.RegisterAudit(sched, deps)

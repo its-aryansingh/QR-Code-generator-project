@@ -17,15 +17,15 @@ import (
 	"fmt"
 	"io"
 	"math/big"
-	"net"
 	"net/http"
 	"net/url"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+
+	"github.com/its-aryansingh/qrit/services/internal/netutil"
 )
 
 // Claims is the normalised identity asserted by an IdP.
@@ -43,27 +43,7 @@ type Claims struct {
 // NewHTTPClient returns a client that refuses private, loopback and link-local targets
 // (SSRF protection for admin-configured IdP URLs) unless allowPrivate is set.
 func NewHTTPClient(allowPrivate bool) *http.Client {
-	d := &net.Dialer{Timeout: 5 * time.Second}
-	if !allowPrivate {
-		d.Control = func(_, address string, _ syscall.RawConn) error {
-			host, _, err := net.SplitHostPort(address)
-			if err != nil {
-				return err
-			}
-			ip := net.ParseIP(host)
-			if ip == nil || ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() ||
-				ip.IsUnspecified() || ip.IsMulticast() || ip.Equal(net.ParseIP("169.254.169.254")) {
-				return fmt.Errorf("sso: refusing to connect to %s", host)
-			}
-			if v4 := ip.To4(); v4 != nil && v4[0] == 100 && v4[1]&0xc0 == 64 { // CGNAT 100.64/10
-				return fmt.Errorf("sso: refusing to connect to %s", host)
-			}
-			return nil
-		}
-	}
-	return &http.Client{Timeout: 10 * time.Second, Transport: &http.Transport{DialContext: d.DialContext,
-		TLSHandshakeTimeout: 5 * time.Second, MaxIdleConns: 20, IdleConnTimeout: 60 * time.Second},
-		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	return netutil.SafeHTTPClient(allowPrivate, 10*time.Second)
 }
 
 // PKCE returns a verifier and its S256 challenge.

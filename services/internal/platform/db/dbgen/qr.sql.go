@@ -355,7 +355,7 @@ func (q *Queries) CreateQRVersionFull(ctx context.Context, arg CreateQRVersionFu
 
 const currentEffectiveVersion = `-- name: CurrentEffectiveVersion :one
 SELECT id, qr_code_id, version_no, destination_kind, destination_url, hosted_page, rules, utm, effective_at, safety_status, restored_from, change_note, created_by, created_by_key, created_at, approval_status, approval_request_id FROM qr_versions
-WHERE qr_code_id = $1 AND effective_at <= now()
+WHERE qr_code_id = $1 AND effective_at <= now() AND approval_status IN ('not_required','approved')
 ORDER BY effective_at DESC, version_no DESC
 LIMIT 1
 `
@@ -390,7 +390,7 @@ DELETE FROM qr_versions v
 USING qr_codes q
 WHERE v.id = $1 AND v.qr_code_id = $2
   AND q.id = v.qr_code_id AND q.workspace_id = $3
-  AND v.effective_at > now()
+  AND v.effective_at > now() AND v.approval_status IN ('not_required','approved')
 `
 
 type DeleteScheduledVersionParams struct {
@@ -653,12 +653,14 @@ SELECT q.id AS qr_code_id,
          SELECT min(v2.effective_at)
          FROM qr_versions v2
          WHERE v2.qr_code_id = q.id AND v2.effective_at > now()
+           AND v2.approval_status IN ('not_required','approved')
        ) AS next_change_at
 FROM qr_codes q
 JOIN workspaces w ON w.id = q.workspace_id
 LEFT JOIN LATERAL (
     SELECT id, qr_code_id, version_no, destination_kind, destination_url, hosted_page, rules, utm, effective_at, safety_status, restored_from, change_note, created_by, created_by_key, created_at, approval_status, approval_request_id FROM qr_versions v1
     WHERE v1.qr_code_id = q.id AND v1.effective_at <= now()
+      AND v1.approval_status IN ('not_required','approved')
     ORDER BY v1.effective_at DESC, v1.version_no DESC
     LIMIT 1
 ) v ON true
@@ -717,6 +719,48 @@ func (q *Queries) GetResolvedLink(ctx context.Context, arg GetResolvedLinkParams
 		&i.NextChangeAt,
 	)
 	return i, err
+}
+
+const listApprovalVersions = `-- name: ListApprovalVersions :many
+SELECT id, qr_code_id, version_no, destination_kind, destination_url, hosted_page, rules, utm, effective_at, safety_status, restored_from, change_note, created_by, created_by_key, created_at, approval_status, approval_request_id FROM qr_versions WHERE approval_request_id = $1 ORDER BY version_no
+`
+
+func (q *Queries) ListApprovalVersions(ctx context.Context, approvalRequestID pgtype.UUID) ([]QrVersion, error) {
+	rows, err := q.db.Query(ctx, listApprovalVersions, approvalRequestID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []QrVersion{}
+	for rows.Next() {
+		var i QrVersion
+		if err := rows.Scan(
+			&i.ID,
+			&i.QrCodeID,
+			&i.VersionNo,
+			&i.DestinationKind,
+			&i.DestinationUrl,
+			&i.HostedPage,
+			&i.Rules,
+			&i.Utm,
+			&i.EffectiveAt,
+			&i.SafetyStatus,
+			&i.RestoredFrom,
+			&i.ChangeNote,
+			&i.CreatedBy,
+			&i.CreatedByKey,
+			&i.CreatedAt,
+			&i.ApprovalStatus,
+			&i.ApprovalRequestID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listDomainsUsable = `-- name: ListDomainsUsable :many
@@ -1113,7 +1157,7 @@ func (q *Queries) MaxQRVersionNo(ctx context.Context, qrCodeID uuid.UUID) (int32
 
 const nextScheduledVersion = `-- name: NextScheduledVersion :one
 SELECT id, qr_code_id, version_no, destination_kind, destination_url, hosted_page, rules, utm, effective_at, safety_status, restored_from, change_note, created_by, created_by_key, created_at, approval_status, approval_request_id FROM qr_versions
-WHERE qr_code_id = $1 AND effective_at > now()
+WHERE qr_code_id = $1 AND effective_at > now() AND approval_status IN ('not_required','approved')
 ORDER BY effective_at, version_no
 LIMIT 1
 `
@@ -1200,8 +1244,10 @@ SELECT v.id AS version_id, q.id AS qr_code_id, q.workspace_id, q.domain_id, q.sh
 FROM qr_versions v
 JOIN qr_codes q ON q.id = v.qr_code_id
 WHERE v.effective_at <= now() AND v.effective_at > now() - interval '2 days'
+  AND v.approval_status IN ('not_required','approved')
   AND q.current_version_id IS DISTINCT FROM v.id
   AND v.id = (SELECT v3.id FROM qr_versions v3 WHERE v3.qr_code_id = q.id AND v3.effective_at <= now()
+              AND v3.approval_status IN ('not_required','approved')
               ORDER BY v3.effective_at DESC, v3.version_no DESC LIMIT 1)
 LIMIT 500
 `

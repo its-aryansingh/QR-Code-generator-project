@@ -430,11 +430,14 @@ func (q *Queries) ListWorkspaceMembers(ctx context.Context, workspaceID uuid.UUI
 }
 
 const listWorkspacesForUser = `-- name: ListWorkspacesForUser :many
-SELECT w.id, w.name, w.slug, w.owner_id, w.plan_id, w.timezone, w.default_domain_id, w.brand, w.settings, w.created_at, w.updated_at, w.deleted_at, w.org_id, w.is_sandbox, COALESCE(m.role, CASE om.org_role WHEN 'org_owner' THEN 'org_owner' ELSE 'org_admin' END)::text AS role
+SELECT w.id, w.name, w.slug, w.owner_id, w.plan_id, w.timezone, w.default_domain_id, w.brand, w.settings, w.created_at, w.updated_at, w.deleted_at, w.org_id, w.is_sandbox, COALESCE(m.role, CASE om.org_role WHEN 'org_owner' THEN 'org_owner' WHEN 'org_admin' THEN 'org_admin' ELSE 'custom' END)::text AS role
 FROM workspaces w
 JOIN org_members om ON om.org_id = w.org_id AND om.user_id = $1 AND om.status = 'active'
 LEFT JOIN workspace_members m ON m.workspace_id = w.id AND m.user_id = $1
-WHERE w.deleted_at IS NULL AND (m.user_id IS NOT NULL OR om.org_role IN ('org_owner','org_admin'))
+WHERE w.deleted_at IS NULL AND (m.user_id IS NOT NULL OR om.org_role IN ('org_owner','org_admin')
+   OR EXISTS (SELECT 1 FROM role_bindings b WHERE b.workspace_id = w.id
+              AND ((b.principal_type = 'user' AND b.principal_id = $1)
+                OR (b.principal_type = 'group' AND b.principal_id IN (SELECT gm.group_id FROM group_members gm WHERE gm.user_id = $1)))))
 ORDER BY w.name
 `
 
@@ -458,6 +461,7 @@ type ListWorkspacesForUserRow struct {
 
 // Workspaces the user is a member of, plus every workspace of organisations they administer
 // (org owners/admins have implicit admin on all of their org's workspaces).
+// Folder-scoped, custom-role and group bindings also make a workspace visible.
 func (q *Queries) ListWorkspacesForUser(ctx context.Context, userID uuid.UUID) ([]ListWorkspacesForUserRow, error) {
 	rows, err := q.db.Query(ctx, listWorkspacesForUser, userID)
 	if err != nil {

@@ -51,6 +51,7 @@ const (
 	FeatureSCIM            = "scim"
 	FeatureSLA             = "sla"
 	FeatureDedicatedDomain = "dedicated_domain"
+	FeatureAuditStreams    = "audit_streams"
 )
 
 var PlanLimits = map[Plan]Limits{
@@ -128,6 +129,7 @@ var enterpriseFeatures = map[string]struct{}{
 	FeatureSCIM:            {},
 	FeatureSLA:             {},
 	FeatureDedicatedDomain: {},
+	FeatureAuditStreams:    {},
 }
 
 // EntitlementError represents an entitlement check failure (HTTP 402 Payment Required).
@@ -259,5 +261,5 @@ var AllFeatures = []string{
 	FeatureTemplates, FeatureCSVExport, FeatureRemoveBranding,
 	FeatureRules, FeatureCampaigns, FeatureAPI, FeatureWebhooks, FeatureRawScanLog,
 	FeatureLockedTemplates, FeatureAuditLog, FeatureGS1, FeatureRoles,
-	FeatureSSO, FeatureSCIM, FeatureSLA, FeatureDedicatedDomain,
+	FeatureSSO, FeatureSCIM, FeatureSLA, FeatureDedicatedDomain, FeatureAuditStreams,
 }

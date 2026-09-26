@@ -1150,7 +1150,7 @@ func (s *Server) commitVersion(w http.ResponseWriter, r *http.Request, code dbge
 		return
 	}
 	if pending != nil {
-		writeJSON(w, http.StatusAccepted, map[string]any{"pending_approval": pending})
+		writeJSON(w, http.StatusAccepted, pending) // {version, approval}
 		return
 	}
 	s.invalidateCode(r.Context(), code)

@@ -21,12 +21,14 @@ const resolvedLinkSQL = `
 SELECT q.id, q.workspace_id, q.campaign_id, q.status, q.safety_status, q.starts_at, q.expires_at,
        q.scan_limit, q.total_scans, q.password_hash, q.fallback_url, w.timezone,
        v.id, v.version_no, v.destination_kind, v.destination_url, v.rules, v.utm, v.hosted_page,
-       (SELECT min(v2.effective_at) FROM qr_versions v2 WHERE v2.qr_code_id = q.id AND v2.effective_at > now())
+       (SELECT min(v2.effective_at) FROM qr_versions v2 WHERE v2.qr_code_id = q.id AND v2.effective_at > now()
+          AND v2.approval_status IN ('not_required','approved'))
 FROM qr_codes q
 JOIN workspaces w ON w.id = q.workspace_id AND w.deleted_at IS NULL
 LEFT JOIN LATERAL (
     SELECT * FROM qr_versions v1
     WHERE v1.qr_code_id = q.id AND v1.effective_at <= now()
+      AND v1.approval_status IN ('not_required','approved') -- versions awaiting approval are never served
     ORDER BY v1.effective_at DESC, v1.version_no DESC
     LIMIT 1
 ) v ON true

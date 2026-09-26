@@ -15,7 +15,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 
+	"github.com/its-aryansingh/qrit/services/internal/email"
 	"github.com/its-aryansingh/qrit/services/internal/entitlements"
+	"github.com/its-aryansingh/qrit/services/internal/envelope"
 	"github.com/its-aryansingh/qrit/services/internal/ingest"
 	"github.com/its-aryansingh/qrit/services/internal/jobs"
 	"github.com/its-aryansingh/qrit/services/internal/platform/db/dbgen"
@@ -30,6 +32,11 @@ type Deps struct {
 	Safety urlsafety.SafetyClient
 	Logger *slog.Logger
 	Now    func() time.Time
+	// Mail sends notices (approvals, alerts, reports); AppBaseURL builds links in them.
+	Mail       email.Sender
+	AppBaseURL string
+	// Keyring decrypts per-organisation secrets (stream credentials, integration tokens).
+	Keyring *envelope.Keyring
 }
 
 func (d *Deps) now() time.Time {
@@ -221,6 +228,7 @@ const currentVersionsSQL = `
 SELECT v.id, q.id, q.workspace_id, q.domain_id, q.short_code, v.destination_url
 FROM qr_codes q
 JOIN LATERAL (SELECT * FROM qr_versions v1 WHERE v1.qr_code_id = q.id AND v1.effective_at <= now()
+              AND v1.approval_status IN ('not_required','approved')
               ORDER BY v1.effective_at DESC, v1.version_no DESC LIMIT 1) v ON true
 WHERE q.mode = 'dynamic' AND q.deleted_at IS NULL AND q.status <> 'blocked' AND v.destination_url LIKE 'http%' `
 

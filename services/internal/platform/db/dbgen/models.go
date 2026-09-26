@@ -131,16 +131,20 @@ type AuditLog struct {
 }
 
 type AuditStream struct {
-	ID        uuid.UUID       `json:"id"`
-	OrgID     uuid.UUID       `json:"org_id"`
-	Kind      string          `json:"kind"`
-	Config    json.RawMessage `json:"config"`
-	SecretCt  []byte          `json:"secret_ct"`
-	CursorSeq int64           `json:"cursor_seq"`
-	Status    string          `json:"status"`
-	LastError *string         `json:"last_error"`
-	CreatedAt time.Time       `json:"created_at"`
-	UpdatedAt time.Time       `json:"updated_at"`
+	ID              uuid.UUID          `json:"id"`
+	OrgID           uuid.UUID          `json:"org_id"`
+	Kind            string             `json:"kind"`
+	Config          json.RawMessage    `json:"config"`
+	SecretCt        []byte             `json:"secret_ct"`
+	CursorSeq       int64              `json:"cursor_seq"`
+	Status          string             `json:"status"`
+	LastError       *string            `json:"last_error"`
+	CreatedAt       time.Time          `json:"created_at"`
+	UpdatedAt       time.Time          `json:"updated_at"`
+	Label           string             `json:"label"`
+	FailingSince    pgtype.Timestamptz `json:"failing_since"`
+	LastDeliveredAt pgtype.Timestamptz `json:"last_delivered_at"`
+	CreatedBy       pgtype.UUID        `json:"created_by"`
 }
 
 type BillingEvent struct {

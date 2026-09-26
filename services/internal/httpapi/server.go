@@ -79,6 +79,8 @@ type Server struct {
 	plans   *plans.Service
 	flags   *flags.Flags
 	keyring *envelope.Keyring
+	// streamHTTP delivers SIEM stream tests (SSRF-guarded).
+	streamHTTP *http.Client
 
 	ssoHTTP *http.Client
 	oidc    *sso.OIDC
@@ -115,7 +117,9 @@ func New(d Deps) (*Server, error) {
 		return nil, err
 	}
 	s.initSSO()
+	s.streamHTTP = netutil.SafeHTTPClient(s.cfg.IsLocal(), 15*time.Second)
 	s.identity = coreIdentity{s: s}
+	s.versionGate = approvalGate{s: s}
 	if s.grants == nil {
 		s.grants = s.access
 	}
@@ -222,6 +226,7 @@ func (s *Server) Routes() http.Handler {
 			r.Post("/invites/{token}/accept", s.handleInviteAccept)
 			s.orgRoutes(r)
 			s.mfaRoutes(r)
+			r.Get("/me/approvals", s.handleMyApprovals)
 			for _, m := range s.mounts {
 				m(r)
 			}
@@ -266,6 +271,8 @@ func (s *Server) Routes() http.Handler {
 					})
 					s.organizeRoutes(r)
 					s.analyticsRoutes(r)
+					s.approvalRoutes(r)
+					s.governanceWSRoutes(r)
 					r.With(authz.RequireWorkspaceWide(authz.WorkspaceRead)).Get("/policies", s.handleGetWorkspacePolicy)
 					r.With(authz.RequireWorkspaceWide(authz.PolicyManage)).Put("/policies", s.handlePutWorkspacePolicy)
 					r.With(authz.Require(authz.AuditRead)).Get("/audit-logs", s.handleWorkspaceAuditLogs)

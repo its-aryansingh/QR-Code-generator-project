@@ -209,6 +209,11 @@ func isShortener(host string) bool {
 	return false
 }
 
+// HostMatches reports whether host matches any pattern (exact or "*.suffix").
+func HostMatches(host string, patterns []string) bool {
+	return isHostAllowed(strings.ToLower(strings.TrimSuffix(host, ".")), patterns)
+}
+
 func isHostAllowed(host string, allowedHosts []string) bool {
 	for _, allowed := range allowedHosts {
 		allowed = strings.ToLower(strings.TrimSpace(allowed))
