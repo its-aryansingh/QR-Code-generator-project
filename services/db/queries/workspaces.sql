@@ -66,3 +66,43 @@ WHERE id = $1;
 UPDATE invites
 SET revoked_at = now()
 WHERE id = $1 AND workspace_id = $2;
+
+-- name: UpdateWorkspaceSettings :one
+UPDATE workspaces SET
+    name = COALESCE(sqlc.narg(name), name),
+    timezone = COALESCE(sqlc.narg(timezone), timezone),
+    updated_at = now()
+WHERE id = sqlc.arg(id) AND deleted_at IS NULL
+RETURNING *;
+
+-- name: SlugExists :one
+SELECT EXISTS (SELECT 1 FROM workspaces WHERE slug = $1)::bool;
+
+-- name: ListInvites :many
+SELECT * FROM invites
+WHERE workspace_id = $1 AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at > now()
+ORDER BY created_at DESC;
+
+-- name: GetInviteByHashAny :one
+SELECT i.*, w.name AS workspace_name, w.slug AS workspace_slug
+FROM invites i JOIN workspaces w ON w.id = i.workspace_id
+WHERE i.token_hash = $1;
+
+-- name: CountWorkspaceMembers :one
+SELECT count(*)::int FROM workspace_members WHERE workspace_id = $1;
+
+-- name: CountOwners :one
+SELECT count(*)::int FROM workspace_members WHERE workspace_id = $1 AND role = 'owner';
+
+-- name: GetInviteScoped :one
+SELECT * FROM invites WHERE id = $1 AND workspace_id = $2;
+
+-- name: CountOwnedWorkspaces :one
+SELECT count(*)::int FROM workspaces WHERE owner_id = $1 AND deleted_at IS NULL;
+
+-- name: CountPendingInvites :one
+SELECT count(*)::int FROM invites
+WHERE workspace_id = $1 AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at > now();
+
+-- name: SoftDeleteWorkspace :exec
+UPDATE workspaces SET deleted_at = now(), updated_at = now() WHERE id = $1;

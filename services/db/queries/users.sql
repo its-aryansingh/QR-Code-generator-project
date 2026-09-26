@@ -69,3 +69,39 @@ WHERE token_hash = $1 AND expires_at > now() AND used_at IS NULL;
 UPDATE email_tokens
 SET used_at = now()
 WHERE id = $1;
+
+-- name: GetSessionByID :one
+SELECT * FROM sessions WHERE id = $1;
+
+-- name: TouchSession :exec
+UPDATE sessions SET last_used_at = now() WHERE id = $1;
+
+-- name: RevokeUserSessions :exec
+UPDATE sessions SET revoked_at = now() WHERE user_id = $1 AND revoked_at IS NULL;
+
+-- name: ListUserSessions :many
+SELECT * FROM sessions
+WHERE user_id = $1 AND revoked_at IS NULL AND replaced_by IS NULL AND expires_at > now()
+ORDER BY last_used_at DESC;
+
+-- name: RevokeUserSession :execrows
+UPDATE sessions SET revoked_at = now() WHERE id = $1 AND user_id = $2 AND revoked_at IS NULL;
+
+-- name: SetUserPassword :exec
+UPDATE users SET password_hash = $2, updated_at = now() WHERE id = $1;
+
+-- name: MarkEmailVerified :exec
+UPDATE users SET email_verified_at = COALESCE(email_verified_at, now()), updated_at = now() WHERE id = $1;
+
+-- name: SetLastLogin :exec
+UPDATE users SET last_login_at = now() WHERE id = $1;
+
+-- name: GetValidEmailToken :one
+SELECT * FROM email_tokens
+WHERE token_hash = $1 AND purpose = $2 AND used_at IS NULL AND expires_at > now();
+
+-- name: ConsumeEmailToken :execrows
+UPDATE email_tokens SET used_at = now() WHERE id = $1 AND used_at IS NULL;
+
+-- name: InvalidateEmailTokens :exec
+UPDATE email_tokens SET used_at = now() WHERE user_id = $1 AND purpose = $2 AND used_at IS NULL;

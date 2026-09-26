@@ -16,3 +16,6 @@ WHERE workspace_id = $1 AND key = $2;
 -- name: DeleteExpiredIdempotencyKeys :exec
 DELETE FROM idempotency_keys
 WHERE expires_at <= now();
+
+-- name: DeleteIdempotencyKey :exec
+DELETE FROM idempotency_keys WHERE workspace_id = $1 AND key = $2;

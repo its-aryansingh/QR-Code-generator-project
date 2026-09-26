@@ -13,6 +13,18 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const consumeEmailToken = `-- name: ConsumeEmailToken :execrows
+UPDATE email_tokens SET used_at = now() WHERE id = $1 AND used_at IS NULL
+`
+
+func (q *Queries) ConsumeEmailToken(ctx context.Context, id uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, consumeEmailToken, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const createEmailToken = `-- name: CreateEmailToken :one
 INSERT INTO email_tokens (id, user_id, purpose, token_hash, expires_at)
 VALUES ($1, $2, $3, $4, $5)
@@ -236,6 +248,29 @@ func (q *Queries) GetSessionByHash(ctx context.Context, refreshTokenHash []byte)
 	return i, err
 }
 
+const getSessionByID = `-- name: GetSessionByID :one
+SELECT id, user_id, family_id, refresh_token_hash, user_agent, ip_prefix, created_at, last_used_at, expires_at, revoked_at, replaced_by FROM sessions WHERE id = $1
+`
+
+func (q *Queries) GetSessionByID(ctx context.Context, id uuid.UUID) (Session, error) {
+	row := q.db.QueryRow(ctx, getSessionByID, id)
+	var i Session
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.FamilyID,
+		&i.RefreshTokenHash,
+		&i.UserAgent,
+		&i.IpPrefix,
+		&i.CreatedAt,
+		&i.LastUsedAt,
+		&i.ExpiresAt,
+		&i.RevokedAt,
+		&i.ReplacedBy,
+	)
+	return i, err
+}
+
 const getUserByEmail = `-- name: GetUserByEmail :one
 SELECT id, email, email_verified_at, password_hash, name, avatar_url, locale, timezone, is_staff, last_login_at, created_at, updated_at, deleted_at FROM users
 WHERE email = $1 AND deleted_at IS NULL
@@ -288,6 +323,83 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 	return i, err
 }
 
+const getValidEmailToken = `-- name: GetValidEmailToken :one
+SELECT id, user_id, purpose, token_hash, expires_at, used_at, created_at FROM email_tokens
+WHERE token_hash = $1 AND purpose = $2 AND used_at IS NULL AND expires_at > now()
+`
+
+type GetValidEmailTokenParams struct {
+	TokenHash []byte `json:"token_hash"`
+	Purpose   string `json:"purpose"`
+}
+
+func (q *Queries) GetValidEmailToken(ctx context.Context, arg GetValidEmailTokenParams) (EmailToken, error) {
+	row := q.db.QueryRow(ctx, getValidEmailToken, arg.TokenHash, arg.Purpose)
+	var i EmailToken
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Purpose,
+		&i.TokenHash,
+		&i.ExpiresAt,
+		&i.UsedAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const invalidateEmailTokens = `-- name: InvalidateEmailTokens :exec
+UPDATE email_tokens SET used_at = now() WHERE user_id = $1 AND purpose = $2 AND used_at IS NULL
+`
+
+type InvalidateEmailTokensParams struct {
+	UserID  uuid.UUID `json:"user_id"`
+	Purpose string    `json:"purpose"`
+}
+
+func (q *Queries) InvalidateEmailTokens(ctx context.Context, arg InvalidateEmailTokensParams) error {
+	_, err := q.db.Exec(ctx, invalidateEmailTokens, arg.UserID, arg.Purpose)
+	return err
+}
+
+const listUserSessions = `-- name: ListUserSessions :many
+SELECT id, user_id, family_id, refresh_token_hash, user_agent, ip_prefix, created_at, last_used_at, expires_at, revoked_at, replaced_by FROM sessions
+WHERE user_id = $1 AND revoked_at IS NULL AND replaced_by IS NULL AND expires_at > now()
+ORDER BY last_used_at DESC
+`
+
+func (q *Queries) ListUserSessions(ctx context.Context, userID uuid.UUID) ([]Session, error) {
+	rows, err := q.db.Query(ctx, listUserSessions, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Session{}
+	for rows.Next() {
+		var i Session
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.FamilyID,
+			&i.RefreshTokenHash,
+			&i.UserAgent,
+			&i.IpPrefix,
+			&i.CreatedAt,
+			&i.LastUsedAt,
+			&i.ExpiresAt,
+			&i.RevokedAt,
+			&i.ReplacedBy,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const markEmailTokenUsed = `-- name: MarkEmailTokenUsed :exec
 UPDATE email_tokens
 SET used_at = now()
@@ -296,6 +408,15 @@ WHERE id = $1
 
 func (q *Queries) MarkEmailTokenUsed(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.Exec(ctx, markEmailTokenUsed, id)
+	return err
+}
+
+const markEmailVerified = `-- name: MarkEmailVerified :exec
+UPDATE users SET email_verified_at = COALESCE(email_verified_at, now()), updated_at = now() WHERE id = $1
+`
+
+func (q *Queries) MarkEmailVerified(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, markEmailVerified, id)
 	return err
 }
 
@@ -318,6 +439,32 @@ WHERE family_id = $1 AND revoked_at IS NULL
 
 func (q *Queries) RevokeSessionFamily(ctx context.Context, familyID uuid.UUID) error {
 	_, err := q.db.Exec(ctx, revokeSessionFamily, familyID)
+	return err
+}
+
+const revokeUserSession = `-- name: RevokeUserSession :execrows
+UPDATE sessions SET revoked_at = now() WHERE id = $1 AND user_id = $2 AND revoked_at IS NULL
+`
+
+type RevokeUserSessionParams struct {
+	ID     uuid.UUID `json:"id"`
+	UserID uuid.UUID `json:"user_id"`
+}
+
+func (q *Queries) RevokeUserSession(ctx context.Context, arg RevokeUserSessionParams) (int64, error) {
+	result, err := q.db.Exec(ctx, revokeUserSession, arg.ID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const revokeUserSessions = `-- name: RevokeUserSessions :exec
+UPDATE sessions SET revoked_at = now() WHERE user_id = $1 AND revoked_at IS NULL
+`
+
+func (q *Queries) RevokeUserSessions(ctx context.Context, userID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, revokeUserSessions, userID)
 	return err
 }
 
@@ -351,6 +498,38 @@ func (q *Queries) RotateSession(ctx context.Context, arg RotateSessionParams) (S
 		&i.ReplacedBy,
 	)
 	return i, err
+}
+
+const setLastLogin = `-- name: SetLastLogin :exec
+UPDATE users SET last_login_at = now() WHERE id = $1
+`
+
+func (q *Queries) SetLastLogin(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, setLastLogin, id)
+	return err
+}
+
+const setUserPassword = `-- name: SetUserPassword :exec
+UPDATE users SET password_hash = $2, updated_at = now() WHERE id = $1
+`
+
+type SetUserPasswordParams struct {
+	ID           uuid.UUID `json:"id"`
+	PasswordHash *string   `json:"password_hash"`
+}
+
+func (q *Queries) SetUserPassword(ctx context.Context, arg SetUserPasswordParams) error {
+	_, err := q.db.Exec(ctx, setUserPassword, arg.ID, arg.PasswordHash)
+	return err
+}
+
+const touchSession = `-- name: TouchSession :exec
+UPDATE sessions SET last_used_at = now() WHERE id = $1
+`
+
+func (q *Queries) TouchSession(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, touchSession, id)
+	return err
 }
 
 const updateUser = `-- name: UpdateUser :one

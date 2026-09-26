@@ -49,12 +49,25 @@ type Claims struct {
 	SessionID string `json:"sid"`
 }
 
-// Principal represents the authenticated user context.
+// Principal represents the authenticated caller: a user session, an API key, or a staff
+// member acting under a customer-granted support session.
 type Principal struct {
 	UserID    uuid.UUID
 	SessionID uuid.UUID
 	IsCookie  bool
+
+	// API key principals (UserID is the key creator, or uuid.Nil)
+	APIKeyID       uuid.UUID
+	KeyWorkspaceID uuid.UUID
+	Scopes         []string
+	Environment    string // live | test
+
+	// Staff support sessions
+	StaffGrantID uuid.UUID
 }
+
+// IsAPIKey reports whether the principal authenticated with an API key.
+func (p *Principal) IsAPIKey() bool { return p != nil && p.APIKeyID != uuid.Nil }
 
 type principalContextKey struct{}
 
@@ -62,9 +75,11 @@ func WithPrincipal(ctx context.Context, p *Principal) context.Context {
 	return context.WithValue(ctx, principalContextKey{}, p)
 }
 
+// GetPrincipal returns the authenticated caller. A nil principal (cleared by a guard
+// middleware after revocation) reports ok=false.
 func GetPrincipal(ctx context.Context) (*Principal, bool) {
 	p, ok := ctx.Value(principalContextKey{}).(*Principal)
-	return p, ok
+	return p, ok && p != nil
 }
 
 // TokenManager handles Ed25519 JWT access tokens.

@@ -69,6 +69,38 @@ func (q *Queries) DeleteDomain(ctx context.Context, arg DeleteDomainParams) erro
 	return err
 }
 
+const ensurePlatformDomain = `-- name: EnsurePlatformDomain :one
+INSERT INTO domains (id, workspace_id, hostname, status, verification_token, tls_status, verified_at)
+VALUES ($1, NULL, $2, 'active', 'platform', 'active', now())
+ON CONFLICT (hostname) DO UPDATE SET hostname = EXCLUDED.hostname
+RETURNING id, workspace_id, hostname, status, verification_token, provider_hostname_id, tls_status, root_redirect_url, not_found_url, last_checked_at, verified_at, created_at
+`
+
+type EnsurePlatformDomainParams struct {
+	ID       uuid.UUID `json:"id"`
+	Hostname string    `json:"hostname"`
+}
+
+func (q *Queries) EnsurePlatformDomain(ctx context.Context, arg EnsurePlatformDomainParams) (Domain, error) {
+	row := q.db.QueryRow(ctx, ensurePlatformDomain, arg.ID, arg.Hostname)
+	var i Domain
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.Hostname,
+		&i.Status,
+		&i.VerificationToken,
+		&i.ProviderHostnameID,
+		&i.TlsStatus,
+		&i.RootRedirectUrl,
+		&i.NotFoundUrl,
+		&i.LastCheckedAt,
+		&i.VerifiedAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getDomainByHostname = `-- name: GetDomainByHostname :one
 SELECT id, workspace_id, hostname, status, verification_token, provider_hostname_id, tls_status, root_redirect_url, not_found_url, last_checked_at, verified_at, created_at FROM domains
 WHERE hostname = $1

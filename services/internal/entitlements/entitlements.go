@@ -252,3 +252,12 @@ func CheckFeature(planName string, feature string) error {
 	}
 	return ErrUpgradeRequired(feature, RequiredPlan(feature))
 }
+
+// AllFeatures lists every gated feature, cheapest tier first.
+var AllFeatures = []string{
+	FeatureScheduling, FeatureExpiry, FeatureScanLimit, FeatureUTMAppend, FeatureHostedPages,
+	FeatureTemplates, FeatureCSVExport, FeatureRemoveBranding,
+	FeatureRules, FeatureCampaigns, FeatureAPI, FeatureWebhooks, FeatureRawScanLog,
+	FeatureLockedTemplates, FeatureAuditLog, FeatureGS1, FeatureRoles,
+	FeatureSSO, FeatureSCIM, FeatureSLA, FeatureDedicatedDomain,
+}

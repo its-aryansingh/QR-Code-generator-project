@@ -29,3 +29,9 @@ RETURNING *;
 -- name: DeleteDomain :exec
 DELETE FROM domains
 WHERE id = $1 AND workspace_id = $2;
+
+-- name: EnsurePlatformDomain :one
+INSERT INTO domains (id, workspace_id, hostname, status, verification_token, tls_status, verified_at)
+VALUES ($1, NULL, $2, 'active', 'platform', 'active', now())
+ON CONFLICT (hostname) DO UPDATE SET hostname = EXCLUDED.hostname
+RETURNING *;

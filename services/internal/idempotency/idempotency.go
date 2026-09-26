@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -11,7 +14,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+
 	"github.com/its-aryansingh/qrit/services/internal/apierr"
+	"github.com/its-aryansingh/qrit/services/internal/auth"
 	"github.com/its-aryansingh/qrit/services/internal/platform/db/dbgen"
 	"github.com/its-aryansingh/qrit/services/internal/workspace"
 )
@@ -48,112 +54,138 @@ func NewInMemoryStore() *inMemoryStore {
 	return &inMemoryStore{entries: make(map[string]*cachedEntry)}
 }
 
-// Middleware creates a Chi HTTP middleware that enforces Idempotency-Key semantics.
+// Middleware enforces Idempotency-Key semantics for POST/PUT/PATCH inside a workspace.
+//
+//   - Keys are 8–128 characters and scoped to (workspace, principal): one caller can never
+//     replay another caller's response.
+//   - A reused key with a different method, path or body is rejected with 422.
+//   - Responses with status >= 500 or 429 are not stored, so the client can retry.
+//   - Expired keys are treated as absent.
 func Middleware(q *dbgen.Queries) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Idempotency applies to non-safe methods (POST, PUT, PATCH)
 			switch r.Method {
-			case http.MethodGet, http.MethodHead, http.MethodOptions, http.MethodDelete:
+			case http.MethodPost, http.MethodPut, http.MethodPatch:
+			default:
 				next.ServeHTTP(w, r)
 				return
 			}
-
-			key := strings.TrimSpace(r.Header.Get(HeaderIdempotencyKey))
-			if key == "" {
+			raw := strings.TrimSpace(r.Header.Get(HeaderIdempotencyKey))
+			if raw == "" {
 				next.ServeHTTP(w, r)
 				return
 			}
-
-			if len(key) > 128 {
-				apierr.Render(w, apierr.BadRequest("invalid_idempotency_key", "Idempotency-Key header must not exceed 128 characters"))
+			if len(raw) < 8 || len(raw) > 128 {
+				apierr.Render(w, apierr.BadRequest("invalid_idempotency_key", "Idempotency-Key must be 8–128 characters"))
 				return
 			}
-
 			ws, ok := workspace.GetWorkspace(r.Context())
 			if !ok {
-				// No workspace tenant context, proceed without idempotency
 				next.ServeHTTP(w, r)
 				return
 			}
+			principal := "anonymous"
+			if p, ok := auth.GetPrincipal(r.Context()); ok {
+				principal = p.UserID.String()
+				if p.APIKeyID != uuid.Nil {
+					principal = "key:" + p.APIKeyID.String()
+				}
+			}
+			kh := sha256.Sum256([]byte(principal + "\x00" + raw))
+			key := hex.EncodeToString(kh[:])
 
-			// Read and hash request body
 			var bodyBytes []byte
 			if r.Body != nil {
 				var err error
-				bodyBytes, err = io.ReadAll(r.Body)
+				bodyBytes, err = io.ReadAll(io.LimitReader(r.Body, 1<<20+1))
 				if err != nil {
 					apierr.Render(w, apierr.BadRequest("invalid_body", "failed to read request body"))
 					return
 				}
 				r.Body = io.NopCloser(bytes.NewReader(bodyBytes))
 			}
-
 			h := sha256.Sum256(bodyBytes)
 			reqHash := h[:]
-
 			ctx := r.Context()
-			existing, err := q.GetIdempotencyKey(ctx, dbgen.GetIdempotencyKeyParams{
-				WorkspaceID: ws.ID,
-				Key:         key,
-			})
+			keyParams := dbgen.GetIdempotencyKeyParams{WorkspaceID: ws.ID, Key: key}
 
+			existing, err := q.GetIdempotencyKey(ctx, keyParams)
+			if err == nil && time.Now().After(existing.ExpiresAt) {
+				_ = q.DeleteIdempotencyKey(ctx, dbgen.DeleteIdempotencyKeyParams{WorkspaceID: ws.ID, Key: key})
+				err = pgx.ErrNoRows
+			}
 			if err == nil {
-				// Key exists
-				if existing.StatusCode == nil {
-					// In-flight request
-					apierr.Render(w, apierr.Conflict("request_in_flight", "a request with this idempotency key is currently processing"))
-					return
-				}
-
-				// Check request hash
 				if !bytes.Equal(existing.RequestHash, reqHash) || existing.Method != r.Method || existing.Path != r.URL.Path {
-					apierr.Render(w, apierr.Conflict("idempotency_conflict", "idempotency key reused with different request payload"))
+					apierr.Render(w, apierr.New(http.StatusUnprocessableEntity, "idempotency_key_reused",
+						"Unprocessable Entity", "this Idempotency-Key was already used with a different request"))
 					return
 				}
-
-				// Replay cached response
+				if existing.StatusCode == nil {
+					apierr.Render(w, apierr.Conflict("request_in_flight", "a request with this Idempotency-Key is still processing"))
+					return
+				}
 				w.Header().Set(HeaderReplayed, "true")
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(int(*existing.StatusCode))
+				status := int(*existing.StatusCode)
+				// Bodies are stored as a JSON string so jsonb normalisation cannot reorder keys.
+				var stored string
+				if err := json.Unmarshal(existing.ResponseBody, &stored); err == nil {
+					existing.ResponseBody = []byte(stored)
+				}
+				if status == http.StatusNoContent || len(existing.ResponseBody) == 0 || string(existing.ResponseBody) == "null" {
+					w.WriteHeader(status)
+					return
+				}
+				ct := "application/json"
+				if status >= 400 {
+					ct = "application/problem+json"
+				}
+				w.Header().Set("Content-Type", ct)
+				w.WriteHeader(status)
 				_, _ = w.Write(existing.ResponseBody)
 				return
 			}
-
-			// Insert in-flight record
-			expiresAt := time.Now().UTC().Add(KeyRetentionDuration)
-			_, err = q.CreateIdempotencyKey(ctx, dbgen.CreateIdempotencyKeyParams{
-				WorkspaceID: ws.ID,
-				Key:         key,
-				Method:      r.Method,
-				Path:        r.URL.Path,
-				RequestHash: reqHash,
-				ExpiresAt:   expiresAt,
-			})
-			if err != nil {
-				// Another worker inserted it concurrently
-				apierr.Render(w, apierr.Conflict("request_in_flight", "a request with this idempotency key is currently processing"))
+			if !errors.Is(err, pgx.ErrNoRows) {
+				apierr.Render(w, apierr.Internal("idempotency store unavailable"))
+				return
+			}
+			if _, err := q.CreateIdempotencyKey(ctx, dbgen.CreateIdempotencyKeyParams{
+				WorkspaceID: ws.ID, Key: key, Method: r.Method, Path: r.URL.Path, RequestHash: reqHash,
+				ExpiresAt: time.Now().UTC().Add(KeyRetentionDuration),
+			}); err != nil {
+				apierr.Render(w, apierr.Conflict("request_in_flight", "a request with this Idempotency-Key is still processing"))
 				return
 			}
 
-			// Intercept and record the response
 			rec := httptest.NewRecorder()
+			completed := false
+			defer func() {
+				// A panic or abandoned request must not leave the key stuck "in flight".
+				if !completed {
+					_ = q.DeleteIdempotencyKey(context.WithoutCancel(ctx), dbgen.DeleteIdempotencyKeyParams{WorkspaceID: ws.ID, Key: key})
+				}
+			}()
 			next.ServeHTTP(rec, r)
+			completed = true
 
-			// Copy response headers and write to client
 			for k, v := range rec.Header() {
 				w.Header()[k] = v
 			}
 			w.WriteHeader(rec.Code)
 			_, _ = w.Write(rec.Body.Bytes())
 
-			// Save response in idempotency record
-			statusCode := int32(rec.Code)
-			_ = q.SetIdempotencyResponse(ctx, dbgen.SetIdempotencyResponseParams{
-				WorkspaceID:  ws.ID,
-				Key:          key,
-				StatusCode:   &statusCode,
-				ResponseBody: rec.Body.Bytes(),
+			saveCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+			defer cancel()
+			if rec.Code >= 500 || rec.Code == http.StatusTooManyRequests {
+				_ = q.DeleteIdempotencyKey(saveCtx, dbgen.DeleteIdempotencyKeyParams{WorkspaceID: ws.ID, Key: key})
+				return
+			}
+			body := []byte("null")
+			if b := rec.Body.Bytes(); len(bytes.TrimSpace(b)) > 0 {
+				body, _ = json.Marshal(string(b))
+			}
+			status := int32(rec.Code)
+			_ = q.SetIdempotencyResponse(saveCtx, dbgen.SetIdempotencyResponseParams{
+				WorkspaceID: ws.ID, Key: key, StatusCode: &status, ResponseBody: body,
 			})
 		})
 	}

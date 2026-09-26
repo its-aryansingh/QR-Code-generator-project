@@ -18,9 +18,9 @@ func main() {
 	flag.Parse()
 
 	args := flag.Args()
-	cmd := "up"
+	cmd, rest := "up", []string{}
 	if len(args) > 0 {
-		cmd = args[0]
+		cmd, rest = args[0], args[1:]
 	}
 
 	dbURL := os.Getenv("DATABASE_URL")
@@ -42,7 +42,7 @@ func main() {
 
 	ctx := context.Background()
 	log.Printf("running goose %s on migrations...", cmd)
-	if err := goose.RunContext(ctx, cmd, db, *dir, args[1:]...); err != nil {
+	if err := goose.RunContext(ctx, cmd, db, *dir, rest...); err != nil {
 		log.Fatalf("goose run error: %v", err)
 	}
 	log.Println("migration completed successfully.")

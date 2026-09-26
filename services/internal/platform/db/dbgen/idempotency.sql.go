@@ -61,6 +61,20 @@ func (q *Queries) DeleteExpiredIdempotencyKeys(ctx context.Context) error {
 	return err
 }
 
+const deleteIdempotencyKey = `-- name: DeleteIdempotencyKey :exec
+DELETE FROM idempotency_keys WHERE workspace_id = $1 AND key = $2
+`
+
+type DeleteIdempotencyKeyParams struct {
+	WorkspaceID uuid.UUID `json:"workspace_id"`
+	Key         string    `json:"key"`
+}
+
+func (q *Queries) DeleteIdempotencyKey(ctx context.Context, arg DeleteIdempotencyKeyParams) error {
+	_, err := q.db.Exec(ctx, deleteIdempotencyKey, arg.WorkspaceID, arg.Key)
+	return err
+}
+
 const getIdempotencyKey = `-- name: GetIdempotencyKey :one
 SELECT workspace_id, key, method, path, request_hash, status_code, response_body, created_at, expires_at FROM idempotency_keys
 WHERE workspace_id = $1 AND key = $2

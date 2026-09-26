@@ -1,6 +1,7 @@
 package apierr
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -21,6 +22,10 @@ type ProblemDetails struct {
 	Detail   string       `json:"detail"`
 	Instance string       `json:"instance,omitempty"`
 	Errors   []FieldError `json:"errors,omitempty"`
+	// RequiredPlan is set on 402 responses so clients can render an upgrade prompt.
+	RequiredPlan string `json:"required_plan,omitempty"`
+	// RetryAfterSeconds is set on 429 responses (also sent as the Retry-After header).
+	RetryAfterSeconds int `json:"retry_after_seconds,omitempty"`
 }
 
 func (p *ProblemDetails) Error() string {
@@ -29,7 +34,7 @@ func (p *ProblemDetails) Error() string {
 
 func New(status int, code, title, detail string) *ProblemDetails {
 	return &ProblemDetails{
-		Type:   fmt.Sprintf("https://docs.example.com/errors/%s", code),
+		Type:   fmt.Sprintf("https://qrit.io/errors/%s", code),
 		Title:  title,
 		Status: status,
 		Code:   code,
@@ -68,10 +73,14 @@ func Internal(detail string) *ProblemDetails {
 }
 
 func Render(w http.ResponseWriter, err error) {
-	if prob, ok := err.(*ProblemDetails); ok {
+	var prob *ProblemDetails
+	if errors.As(err, &prob) {
+		if prob.RetryAfterSeconds > 0 {
+			w.Header().Set("Retry-After", fmt.Sprint(prob.RetryAfterSeconds))
+		}
 		httpx.ProblemJSON(w, prob.Status, prob)
 		return
 	}
-	prob := Internal("An unexpected internal error occurred.")
+	prob = Internal("An unexpected internal error occurred.")
 	httpx.ProblemJSON(w, prob.Status, prob)
 }

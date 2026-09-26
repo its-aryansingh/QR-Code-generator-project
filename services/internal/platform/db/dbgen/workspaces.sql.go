@@ -42,6 +42,51 @@ func (q *Queries) AddWorkspaceMember(ctx context.Context, arg AddWorkspaceMember
 	return err
 }
 
+const countOwnedWorkspaces = `-- name: CountOwnedWorkspaces :one
+SELECT count(*)::int FROM workspaces WHERE owner_id = $1 AND deleted_at IS NULL
+`
+
+func (q *Queries) CountOwnedWorkspaces(ctx context.Context, ownerID uuid.UUID) (int32, error) {
+	row := q.db.QueryRow(ctx, countOwnedWorkspaces, ownerID)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const countOwners = `-- name: CountOwners :one
+SELECT count(*)::int FROM workspace_members WHERE workspace_id = $1 AND role = 'owner'
+`
+
+func (q *Queries) CountOwners(ctx context.Context, workspaceID uuid.UUID) (int32, error) {
+	row := q.db.QueryRow(ctx, countOwners, workspaceID)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const countPendingInvites = `-- name: CountPendingInvites :one
+SELECT count(*)::int FROM invites
+WHERE workspace_id = $1 AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at > now()
+`
+
+func (q *Queries) CountPendingInvites(ctx context.Context, workspaceID uuid.UUID) (int32, error) {
+	row := q.db.QueryRow(ctx, countPendingInvites, workspaceID)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const countWorkspaceMembers = `-- name: CountWorkspaceMembers :one
+SELECT count(*)::int FROM workspace_members WHERE workspace_id = $1
+`
+
+func (q *Queries) CountWorkspaceMembers(ctx context.Context, workspaceID uuid.UUID) (int32, error) {
+	row := q.db.QueryRow(ctx, countWorkspaceMembers, workspaceID)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const createInvite = `-- name: CreateInvite :one
 INSERT INTO invites (id, workspace_id, email, role, token_hash, invited_by, expires_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -153,6 +198,74 @@ func (q *Queries) GetInviteByHash(ctx context.Context, tokenHash []byte) (Invite
 	return i, err
 }
 
+const getInviteByHashAny = `-- name: GetInviteByHashAny :one
+SELECT i.id, i.workspace_id, i.email, i.role, i.token_hash, i.invited_by, i.expires_at, i.accepted_at, i.revoked_at, i.created_at, w.name AS workspace_name, w.slug AS workspace_slug
+FROM invites i JOIN workspaces w ON w.id = i.workspace_id
+WHERE i.token_hash = $1
+`
+
+type GetInviteByHashAnyRow struct {
+	ID            uuid.UUID          `json:"id"`
+	WorkspaceID   uuid.UUID          `json:"workspace_id"`
+	Email         string             `json:"email"`
+	Role          string             `json:"role"`
+	TokenHash     []byte             `json:"token_hash"`
+	InvitedBy     uuid.UUID          `json:"invited_by"`
+	ExpiresAt     time.Time          `json:"expires_at"`
+	AcceptedAt    pgtype.Timestamptz `json:"accepted_at"`
+	RevokedAt     pgtype.Timestamptz `json:"revoked_at"`
+	CreatedAt     time.Time          `json:"created_at"`
+	WorkspaceName string             `json:"workspace_name"`
+	WorkspaceSlug string             `json:"workspace_slug"`
+}
+
+func (q *Queries) GetInviteByHashAny(ctx context.Context, tokenHash []byte) (GetInviteByHashAnyRow, error) {
+	row := q.db.QueryRow(ctx, getInviteByHashAny, tokenHash)
+	var i GetInviteByHashAnyRow
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.Email,
+		&i.Role,
+		&i.TokenHash,
+		&i.InvitedBy,
+		&i.ExpiresAt,
+		&i.AcceptedAt,
+		&i.RevokedAt,
+		&i.CreatedAt,
+		&i.WorkspaceName,
+		&i.WorkspaceSlug,
+	)
+	return i, err
+}
+
+const getInviteScoped = `-- name: GetInviteScoped :one
+SELECT id, workspace_id, email, role, token_hash, invited_by, expires_at, accepted_at, revoked_at, created_at FROM invites WHERE id = $1 AND workspace_id = $2
+`
+
+type GetInviteScopedParams struct {
+	ID          uuid.UUID `json:"id"`
+	WorkspaceID uuid.UUID `json:"workspace_id"`
+}
+
+func (q *Queries) GetInviteScoped(ctx context.Context, arg GetInviteScopedParams) (Invite, error) {
+	row := q.db.QueryRow(ctx, getInviteScoped, arg.ID, arg.WorkspaceID)
+	var i Invite
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.Email,
+		&i.Role,
+		&i.TokenHash,
+		&i.InvitedBy,
+		&i.ExpiresAt,
+		&i.AcceptedAt,
+		&i.RevokedAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getWorkspaceByID = `-- name: GetWorkspaceByID :one
 SELECT id, name, slug, owner_id, plan_id, timezone, default_domain_id, brand, settings, created_at, updated_at, deleted_at FROM workspaces
 WHERE id = $1 AND deleted_at IS NULL
@@ -223,6 +336,43 @@ func (q *Queries) GetWorkspaceMember(ctx context.Context, arg GetWorkspaceMember
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const listInvites = `-- name: ListInvites :many
+SELECT id, workspace_id, email, role, token_hash, invited_by, expires_at, accepted_at, revoked_at, created_at FROM invites
+WHERE workspace_id = $1 AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at > now()
+ORDER BY created_at DESC
+`
+
+func (q *Queries) ListInvites(ctx context.Context, workspaceID uuid.UUID) ([]Invite, error) {
+	rows, err := q.db.Query(ctx, listInvites, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Invite{}
+	for rows.Next() {
+		var i Invite
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.Email,
+			&i.Role,
+			&i.TokenHash,
+			&i.InvitedBy,
+			&i.ExpiresAt,
+			&i.AcceptedAt,
+			&i.RevokedAt,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listWorkspaceMembers = `-- name: ListWorkspaceMembers :many
@@ -360,6 +510,26 @@ func (q *Queries) RevokeInvite(ctx context.Context, arg RevokeInviteParams) erro
 	return err
 }
 
+const slugExists = `-- name: SlugExists :one
+SELECT EXISTS (SELECT 1 FROM workspaces WHERE slug = $1)::bool
+`
+
+func (q *Queries) SlugExists(ctx context.Context, slug string) (bool, error) {
+	row := q.db.QueryRow(ctx, slugExists, slug)
+	var column_1 bool
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const softDeleteWorkspace = `-- name: SoftDeleteWorkspace :exec
+UPDATE workspaces SET deleted_at = now(), updated_at = now() WHERE id = $1
+`
+
+func (q *Queries) SoftDeleteWorkspace(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, softDeleteWorkspace, id)
+	return err
+}
+
 const transferWorkspaceOwnership = `-- name: TransferWorkspaceOwnership :exec
 UPDATE workspaces
 SET owner_id = $2, updated_at = now()
@@ -391,4 +561,39 @@ type UpdateWorkspaceMemberRoleParams struct {
 func (q *Queries) UpdateWorkspaceMemberRole(ctx context.Context, arg UpdateWorkspaceMemberRoleParams) error {
 	_, err := q.db.Exec(ctx, updateWorkspaceMemberRole, arg.WorkspaceID, arg.UserID, arg.Role)
 	return err
+}
+
+const updateWorkspaceSettings = `-- name: UpdateWorkspaceSettings :one
+UPDATE workspaces SET
+    name = COALESCE($1, name),
+    timezone = COALESCE($2, timezone),
+    updated_at = now()
+WHERE id = $3 AND deleted_at IS NULL
+RETURNING id, name, slug, owner_id, plan_id, timezone, default_domain_id, brand, settings, created_at, updated_at, deleted_at
+`
+
+type UpdateWorkspaceSettingsParams struct {
+	Name     *string   `json:"name"`
+	Timezone *string   `json:"timezone"`
+	ID       uuid.UUID `json:"id"`
+}
+
+func (q *Queries) UpdateWorkspaceSettings(ctx context.Context, arg UpdateWorkspaceSettingsParams) (Workspace, error) {
+	row := q.db.QueryRow(ctx, updateWorkspaceSettings, arg.Name, arg.Timezone, arg.ID)
+	var i Workspace
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Slug,
+		&i.OwnerID,
+		&i.PlanID,
+		&i.Timezone,
+		&i.DefaultDomainID,
+		&i.Brand,
+		&i.Settings,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
 }

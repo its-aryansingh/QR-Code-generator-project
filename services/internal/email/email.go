@@ -143,3 +143,15 @@ func (c *ConsoleSender) SendInvite(ctx context.Context, to, inviterName, workspa
 	slog.Info("email.invite", "to", to, "workspace", workspaceName, "link", link)
 	return nil
 }
+
+// Last returns the most recent email sent to the address (tests).
+func (m *MemorySender) Last(to string) (SentEmail, bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for i := len(m.Emails) - 1; i >= 0; i-- {
+		if strings.EqualFold(m.Emails[i].To, to) {
+			return m.Emails[i], true
+		}
+	}
+	return SentEmail{}, false
+}

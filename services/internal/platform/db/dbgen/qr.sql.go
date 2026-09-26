@@ -26,6 +26,22 @@ func (q *Queries) CountActiveDynamicQRCodes(ctx context.Context, workspaceID uui
 	return column_1, err
 }
 
+const countQRCodesInFolder = `-- name: CountQRCodesInFolder :one
+SELECT count(*)::int FROM qr_codes WHERE workspace_id = $1 AND folder_id = $2 AND deleted_at IS NULL
+`
+
+type CountQRCodesInFolderParams struct {
+	WorkspaceID uuid.UUID   `json:"workspace_id"`
+	FolderID    pgtype.UUID `json:"folder_id"`
+}
+
+func (q *Queries) CountQRCodesInFolder(ctx context.Context, arg CountQRCodesInFolderParams) (int32, error) {
+	row := q.db.QueryRow(ctx, countQRCodesInFolder, arg.WorkspaceID, arg.FolderID)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const createQRCode = `-- name: CreateQRCode :one
 INSERT INTO qr_codes (
     id, workspace_id, domain_id, short_code, mode, content_type,
@@ -64,6 +80,111 @@ func (q *Queries) CreateQRCode(ctx context.Context, arg CreateQRCodeParams) (QrC
 		arg.DesignHash,
 		arg.StaticPayload,
 		arg.StaticContent,
+	)
+	var i QrCode
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.CreatedBy,
+		&i.Mode,
+		&i.ContentType,
+		&i.Name,
+		&i.DomainID,
+		&i.ShortCode,
+		&i.LegacyShortCode,
+		&i.Gs1Gtin,
+		&i.StaticPayload,
+		&i.StaticContent,
+		&i.CurrentVersionID,
+		&i.Design,
+		&i.DesignHash,
+		&i.TemplateID,
+		&i.FolderID,
+		&i.CampaignID,
+		&i.Status,
+		&i.IsReadOnly,
+		&i.StartsAt,
+		&i.ExpiresAt,
+		&i.ScanLimit,
+		&i.PasswordHash,
+		&i.FallbackUrl,
+		&i.SafetyStatus,
+		&i.TotalScans,
+		&i.UniqueScans,
+		&i.LastScannedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ArchivedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
+const createQRCodeFull = `-- name: CreateQRCodeFull :one
+INSERT INTO qr_codes (
+    id, workspace_id, created_by, mode, content_type, name, domain_id, short_code, gs1_gtin,
+    static_payload, static_content, design, design_hash, template_id, folder_id, campaign_id,
+    status, starts_at, expires_at, scan_limit, password_hash, fallback_url, safety_status
+) VALUES (
+    $1, $2, $3, $4, $5, $6,
+    $7, $8, $9, $10, $11,
+    $12, $13, $14, $15, $16,
+    $17, $18, $19, $20, $21,
+    $22, $23
+) RETURNING id, workspace_id, created_by, mode, content_type, name, domain_id, short_code, legacy_short_code, gs1_gtin, static_payload, static_content, current_version_id, design, design_hash, template_id, folder_id, campaign_id, status, is_read_only, starts_at, expires_at, scan_limit, password_hash, fallback_url, safety_status, total_scans, unique_scans, last_scanned_at, created_at, updated_at, archived_at, deleted_at
+`
+
+type CreateQRCodeFullParams struct {
+	ID            uuid.UUID          `json:"id"`
+	WorkspaceID   uuid.UUID          `json:"workspace_id"`
+	CreatedBy     pgtype.UUID        `json:"created_by"`
+	Mode          string             `json:"mode"`
+	ContentType   string             `json:"content_type"`
+	Name          string             `json:"name"`
+	DomainID      pgtype.UUID        `json:"domain_id"`
+	ShortCode     *string            `json:"short_code"`
+	Gs1Gtin       *string            `json:"gs1_gtin"`
+	StaticPayload *string            `json:"static_payload"`
+	StaticContent []byte             `json:"static_content"`
+	Design        json.RawMessage    `json:"design"`
+	DesignHash    []byte             `json:"design_hash"`
+	TemplateID    pgtype.UUID        `json:"template_id"`
+	FolderID      pgtype.UUID        `json:"folder_id"`
+	CampaignID    pgtype.UUID        `json:"campaign_id"`
+	Status        string             `json:"status"`
+	StartsAt      pgtype.Timestamptz `json:"starts_at"`
+	ExpiresAt     pgtype.Timestamptz `json:"expires_at"`
+	ScanLimit     *int64             `json:"scan_limit"`
+	PasswordHash  *string            `json:"password_hash"`
+	FallbackUrl   *string            `json:"fallback_url"`
+	SafetyStatus  string             `json:"safety_status"`
+}
+
+func (q *Queries) CreateQRCodeFull(ctx context.Context, arg CreateQRCodeFullParams) (QrCode, error) {
+	row := q.db.QueryRow(ctx, createQRCodeFull,
+		arg.ID,
+		arg.WorkspaceID,
+		arg.CreatedBy,
+		arg.Mode,
+		arg.ContentType,
+		arg.Name,
+		arg.DomainID,
+		arg.ShortCode,
+		arg.Gs1Gtin,
+		arg.StaticPayload,
+		arg.StaticContent,
+		arg.Design,
+		arg.DesignHash,
+		arg.TemplateID,
+		arg.FolderID,
+		arg.CampaignID,
+		arg.Status,
+		arg.StartsAt,
+		arg.ExpiresAt,
+		arg.ScanLimit,
+		arg.PasswordHash,
+		arg.FallbackUrl,
+		arg.SafetyStatus,
 	)
 	var i QrCode
 	err := row.Scan(
@@ -160,6 +281,124 @@ func (q *Queries) CreateQRVersion(ctx context.Context, arg CreateQRVersionParams
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const createQRVersionFull = `-- name: CreateQRVersionFull :one
+INSERT INTO qr_versions (
+    id, qr_code_id, version_no, destination_kind, destination_url, hosted_page,
+    rules, utm, effective_at, safety_status, restored_from, change_note, created_by, created_by_key
+) VALUES (
+    $1, $2, $3, $4, $5,
+    $6, $7, $8, $9, $10,
+    $11, $12, $13, $14
+) RETURNING id, qr_code_id, version_no, destination_kind, destination_url, hosted_page, rules, utm, effective_at, safety_status, restored_from, change_note, created_by, created_by_key, created_at
+`
+
+type CreateQRVersionFullParams struct {
+	ID              uuid.UUID       `json:"id"`
+	QrCodeID        uuid.UUID       `json:"qr_code_id"`
+	VersionNo       int32           `json:"version_no"`
+	DestinationKind string          `json:"destination_kind"`
+	DestinationUrl  *string         `json:"destination_url"`
+	HostedPage      []byte          `json:"hosted_page"`
+	Rules           json.RawMessage `json:"rules"`
+	Utm             json.RawMessage `json:"utm"`
+	EffectiveAt     time.Time       `json:"effective_at"`
+	SafetyStatus    string          `json:"safety_status"`
+	RestoredFrom    pgtype.UUID     `json:"restored_from"`
+	ChangeNote      *string         `json:"change_note"`
+	CreatedBy       pgtype.UUID     `json:"created_by"`
+	CreatedByKey    pgtype.UUID     `json:"created_by_key"`
+}
+
+func (q *Queries) CreateQRVersionFull(ctx context.Context, arg CreateQRVersionFullParams) (QrVersion, error) {
+	row := q.db.QueryRow(ctx, createQRVersionFull,
+		arg.ID,
+		arg.QrCodeID,
+		arg.VersionNo,
+		arg.DestinationKind,
+		arg.DestinationUrl,
+		arg.HostedPage,
+		arg.Rules,
+		arg.Utm,
+		arg.EffectiveAt,
+		arg.SafetyStatus,
+		arg.RestoredFrom,
+		arg.ChangeNote,
+		arg.CreatedBy,
+		arg.CreatedByKey,
+	)
+	var i QrVersion
+	err := row.Scan(
+		&i.ID,
+		&i.QrCodeID,
+		&i.VersionNo,
+		&i.DestinationKind,
+		&i.DestinationUrl,
+		&i.HostedPage,
+		&i.Rules,
+		&i.Utm,
+		&i.EffectiveAt,
+		&i.SafetyStatus,
+		&i.RestoredFrom,
+		&i.ChangeNote,
+		&i.CreatedBy,
+		&i.CreatedByKey,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const currentEffectiveVersion = `-- name: CurrentEffectiveVersion :one
+SELECT id, qr_code_id, version_no, destination_kind, destination_url, hosted_page, rules, utm, effective_at, safety_status, restored_from, change_note, created_by, created_by_key, created_at FROM qr_versions
+WHERE qr_code_id = $1 AND effective_at <= now()
+ORDER BY effective_at DESC, version_no DESC
+LIMIT 1
+`
+
+func (q *Queries) CurrentEffectiveVersion(ctx context.Context, qrCodeID uuid.UUID) (QrVersion, error) {
+	row := q.db.QueryRow(ctx, currentEffectiveVersion, qrCodeID)
+	var i QrVersion
+	err := row.Scan(
+		&i.ID,
+		&i.QrCodeID,
+		&i.VersionNo,
+		&i.DestinationKind,
+		&i.DestinationUrl,
+		&i.HostedPage,
+		&i.Rules,
+		&i.Utm,
+		&i.EffectiveAt,
+		&i.SafetyStatus,
+		&i.RestoredFrom,
+		&i.ChangeNote,
+		&i.CreatedBy,
+		&i.CreatedByKey,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const deleteScheduledVersion = `-- name: DeleteScheduledVersion :execrows
+DELETE FROM qr_versions v
+USING qr_codes q
+WHERE v.id = $1 AND v.qr_code_id = $2
+  AND q.id = v.qr_code_id AND q.workspace_id = $3
+  AND v.effective_at > now()
+`
+
+type DeleteScheduledVersionParams struct {
+	VersionID   uuid.UUID `json:"version_id"`
+	QrCodeID    uuid.UUID `json:"qr_code_id"`
+	WorkspaceID uuid.UUID `json:"workspace_id"`
+}
+
+func (q *Queries) DeleteScheduledVersion(ctx context.Context, arg DeleteScheduledVersionParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteScheduledVersion, arg.VersionID, arg.QrCodeID, arg.WorkspaceID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const getLatestQRVersion = `-- name: GetLatestQRVersion :one
@@ -294,6 +533,93 @@ func (q *Queries) GetQRCodeByDomainAndCode(ctx context.Context, arg GetQRCodeByD
 	return i, err
 }
 
+const getQRCodeForUpdate = `-- name: GetQRCodeForUpdate :one
+SELECT id, workspace_id, created_by, mode, content_type, name, domain_id, short_code, legacy_short_code, gs1_gtin, static_payload, static_content, current_version_id, design, design_hash, template_id, folder_id, campaign_id, status, is_read_only, starts_at, expires_at, scan_limit, password_hash, fallback_url, safety_status, total_scans, unique_scans, last_scanned_at, created_at, updated_at, archived_at, deleted_at FROM qr_codes
+WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL
+FOR UPDATE
+`
+
+type GetQRCodeForUpdateParams struct {
+	ID          uuid.UUID `json:"id"`
+	WorkspaceID uuid.UUID `json:"workspace_id"`
+}
+
+func (q *Queries) GetQRCodeForUpdate(ctx context.Context, arg GetQRCodeForUpdateParams) (QrCode, error) {
+	row := q.db.QueryRow(ctx, getQRCodeForUpdate, arg.ID, arg.WorkspaceID)
+	var i QrCode
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.CreatedBy,
+		&i.Mode,
+		&i.ContentType,
+		&i.Name,
+		&i.DomainID,
+		&i.ShortCode,
+		&i.LegacyShortCode,
+		&i.Gs1Gtin,
+		&i.StaticPayload,
+		&i.StaticContent,
+		&i.CurrentVersionID,
+		&i.Design,
+		&i.DesignHash,
+		&i.TemplateID,
+		&i.FolderID,
+		&i.CampaignID,
+		&i.Status,
+		&i.IsReadOnly,
+		&i.StartsAt,
+		&i.ExpiresAt,
+		&i.ScanLimit,
+		&i.PasswordHash,
+		&i.FallbackUrl,
+		&i.SafetyStatus,
+		&i.TotalScans,
+		&i.UniqueScans,
+		&i.LastScannedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ArchivedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
+const getQRVersionScoped = `-- name: GetQRVersionScoped :one
+SELECT v.id, v.qr_code_id, v.version_no, v.destination_kind, v.destination_url, v.hosted_page, v.rules, v.utm, v.effective_at, v.safety_status, v.restored_from, v.change_note, v.created_by, v.created_by_key, v.created_at FROM qr_versions v
+JOIN qr_codes q ON q.id = v.qr_code_id
+WHERE v.id = $1 AND v.qr_code_id = $2 AND q.workspace_id = $3
+`
+
+type GetQRVersionScopedParams struct {
+	VersionID   uuid.UUID `json:"version_id"`
+	QrCodeID    uuid.UUID `json:"qr_code_id"`
+	WorkspaceID uuid.UUID `json:"workspace_id"`
+}
+
+func (q *Queries) GetQRVersionScoped(ctx context.Context, arg GetQRVersionScopedParams) (QrVersion, error) {
+	row := q.db.QueryRow(ctx, getQRVersionScoped, arg.VersionID, arg.QrCodeID, arg.WorkspaceID)
+	var i QrVersion
+	err := row.Scan(
+		&i.ID,
+		&i.QrCodeID,
+		&i.VersionNo,
+		&i.DestinationKind,
+		&i.DestinationUrl,
+		&i.HostedPage,
+		&i.Rules,
+		&i.Utm,
+		&i.EffectiveAt,
+		&i.SafetyStatus,
+		&i.RestoredFrom,
+		&i.ChangeNote,
+		&i.CreatedBy,
+		&i.CreatedByKey,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getResolvedLink = `-- name: GetResolvedLink :one
 SELECT q.id AS qr_code_id,
        q.workspace_id,
@@ -381,6 +707,44 @@ func (q *Queries) GetResolvedLink(ctx context.Context, arg GetResolvedLinkParams
 		&i.NextChangeAt,
 	)
 	return i, err
+}
+
+const listDomainsUsable = `-- name: ListDomainsUsable :many
+SELECT id, workspace_id, hostname, status, verification_token, provider_hostname_id, tls_status, root_redirect_url, not_found_url, last_checked_at, verified_at, created_at FROM domains WHERE (workspace_id IS NULL OR workspace_id = $1) AND status = 'active'
+`
+
+// Domains a workspace may issue codes on: the platform domain plus its own active domains.
+func (q *Queries) ListDomainsUsable(ctx context.Context, workspaceID pgtype.UUID) ([]Domain, error) {
+	rows, err := q.db.Query(ctx, listDomainsUsable, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Domain{}
+	for rows.Next() {
+		var i Domain
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.Hostname,
+			&i.Status,
+			&i.VerificationToken,
+			&i.ProviderHostnameID,
+			&i.TlsStatus,
+			&i.RootRedirectUrl,
+			&i.NotFoundUrl,
+			&i.LastCheckedAt,
+			&i.VerifiedAt,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listQRCodes = `-- name: ListQRCodes :many
@@ -501,6 +865,137 @@ func (q *Queries) ListQRCodes(ctx context.Context, arg ListQRCodesParams) ([]Lis
 	return items, nil
 }
 
+const listQRCodesPage = `-- name: ListQRCodesPage :many
+SELECT q.id, q.workspace_id, q.created_by, q.mode, q.content_type, q.name, q.domain_id, q.short_code, q.legacy_short_code, q.gs1_gtin, q.static_payload, q.static_content, q.current_version_id, q.design, q.design_hash, q.template_id, q.folder_id, q.campaign_id, q.status, q.is_read_only, q.starts_at, q.expires_at, q.scan_limit, q.password_hash, q.fallback_url, q.safety_status, q.total_scans, q.unique_scans, q.last_scanned_at, q.created_at, q.updated_at, q.archived_at, q.deleted_at, v.destination_url, v.destination_kind
+FROM qr_codes q
+LEFT JOIN qr_versions v ON v.id = q.current_version_id
+WHERE q.workspace_id = $1
+  AND q.deleted_at IS NULL
+  AND ($2::text IS NULL OR q.name ILIKE '%' || $2 || '%' OR q.short_code ILIKE '%' || $2 || '%')
+  AND ($3::text IS NULL OR q.status = $3)
+  AND ($4::text IS NULL OR q.mode = $4)
+  AND ($5::uuid[] IS NULL OR q.folder_id = ANY($5::uuid[]))
+  AND ($6::timestamptz IS NULL
+       OR (q.created_at, q.id) < ($6::timestamptz, $7::uuid))
+ORDER BY q.created_at DESC, q.id DESC
+LIMIT $8
+`
+
+type ListQRCodesPageParams struct {
+	WorkspaceID     uuid.UUID          `json:"workspace_id"`
+	Search          *string            `json:"search"`
+	Status          *string            `json:"status"`
+	Mode            *string            `json:"mode"`
+	FolderIds       []uuid.UUID        `json:"folder_ids"`
+	CursorCreatedAt pgtype.Timestamptz `json:"cursor_created_at"`
+	CursorID        pgtype.UUID        `json:"cursor_id"`
+	RowLimit        int32              `json:"row_limit"`
+}
+
+type ListQRCodesPageRow struct {
+	ID               uuid.UUID          `json:"id"`
+	WorkspaceID      uuid.UUID          `json:"workspace_id"`
+	CreatedBy        pgtype.UUID        `json:"created_by"`
+	Mode             string             `json:"mode"`
+	ContentType      string             `json:"content_type"`
+	Name             string             `json:"name"`
+	DomainID         pgtype.UUID        `json:"domain_id"`
+	ShortCode        *string            `json:"short_code"`
+	LegacyShortCode  *string            `json:"legacy_short_code"`
+	Gs1Gtin          *string            `json:"gs1_gtin"`
+	StaticPayload    *string            `json:"static_payload"`
+	StaticContent    []byte             `json:"static_content"`
+	CurrentVersionID pgtype.UUID        `json:"current_version_id"`
+	Design           json.RawMessage    `json:"design"`
+	DesignHash       []byte             `json:"design_hash"`
+	TemplateID       pgtype.UUID        `json:"template_id"`
+	FolderID         pgtype.UUID        `json:"folder_id"`
+	CampaignID       pgtype.UUID        `json:"campaign_id"`
+	Status           string             `json:"status"`
+	IsReadOnly       bool               `json:"is_read_only"`
+	StartsAt         pgtype.Timestamptz `json:"starts_at"`
+	ExpiresAt        pgtype.Timestamptz `json:"expires_at"`
+	ScanLimit        *int64             `json:"scan_limit"`
+	PasswordHash     *string            `json:"password_hash"`
+	FallbackUrl      *string            `json:"fallback_url"`
+	SafetyStatus     string             `json:"safety_status"`
+	TotalScans       int64              `json:"total_scans"`
+	UniqueScans      int64              `json:"unique_scans"`
+	LastScannedAt    pgtype.Timestamptz `json:"last_scanned_at"`
+	CreatedAt        time.Time          `json:"created_at"`
+	UpdatedAt        time.Time          `json:"updated_at"`
+	ArchivedAt       pgtype.Timestamptz `json:"archived_at"`
+	DeletedAt        pgtype.Timestamptz `json:"deleted_at"`
+	DestinationUrl   *string            `json:"destination_url"`
+	DestinationKind  *string            `json:"destination_kind"`
+}
+
+// Cursor pagination on (created_at, id) descending. Folder filter supports folder-scoped access.
+func (q *Queries) ListQRCodesPage(ctx context.Context, arg ListQRCodesPageParams) ([]ListQRCodesPageRow, error) {
+	rows, err := q.db.Query(ctx, listQRCodesPage,
+		arg.WorkspaceID,
+		arg.Search,
+		arg.Status,
+		arg.Mode,
+		arg.FolderIds,
+		arg.CursorCreatedAt,
+		arg.CursorID,
+		arg.RowLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListQRCodesPageRow{}
+	for rows.Next() {
+		var i ListQRCodesPageRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.CreatedBy,
+			&i.Mode,
+			&i.ContentType,
+			&i.Name,
+			&i.DomainID,
+			&i.ShortCode,
+			&i.LegacyShortCode,
+			&i.Gs1Gtin,
+			&i.StaticPayload,
+			&i.StaticContent,
+			&i.CurrentVersionID,
+			&i.Design,
+			&i.DesignHash,
+			&i.TemplateID,
+			&i.FolderID,
+			&i.CampaignID,
+			&i.Status,
+			&i.IsReadOnly,
+			&i.StartsAt,
+			&i.ExpiresAt,
+			&i.ScanLimit,
+			&i.PasswordHash,
+			&i.FallbackUrl,
+			&i.SafetyStatus,
+			&i.TotalScans,
+			&i.UniqueScans,
+			&i.LastScannedAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.ArchivedAt,
+			&i.DeletedAt,
+			&i.DestinationUrl,
+			&i.DestinationKind,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listQRVersions = `-- name: ListQRVersions :many
 SELECT id, qr_code_id, version_no, destination_kind, destination_url, hosted_page, rules, utm, effective_at, safety_status, restored_from, change_note, created_by, created_by_key, created_at FROM qr_versions
 WHERE qr_code_id = $1
@@ -543,6 +1038,312 @@ func (q *Queries) ListQRVersions(ctx context.Context, qrCodeID uuid.UUID) ([]QrV
 	return items, nil
 }
 
+const listQRVersionsScoped = `-- name: ListQRVersionsScoped :many
+SELECT v.id, v.qr_code_id, v.version_no, v.destination_kind, v.destination_url, v.hosted_page, v.rules, v.utm, v.effective_at, v.safety_status, v.restored_from, v.change_note, v.created_by, v.created_by_key, v.created_at FROM qr_versions v
+JOIN qr_codes q ON q.id = v.qr_code_id
+WHERE v.qr_code_id = $1 AND q.workspace_id = $2
+ORDER BY v.version_no DESC
+`
+
+type ListQRVersionsScopedParams struct {
+	QrCodeID    uuid.UUID `json:"qr_code_id"`
+	WorkspaceID uuid.UUID `json:"workspace_id"`
+}
+
+func (q *Queries) ListQRVersionsScoped(ctx context.Context, arg ListQRVersionsScopedParams) ([]QrVersion, error) {
+	rows, err := q.db.Query(ctx, listQRVersionsScoped, arg.QrCodeID, arg.WorkspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []QrVersion{}
+	for rows.Next() {
+		var i QrVersion
+		if err := rows.Scan(
+			&i.ID,
+			&i.QrCodeID,
+			&i.VersionNo,
+			&i.DestinationKind,
+			&i.DestinationUrl,
+			&i.HostedPage,
+			&i.Rules,
+			&i.Utm,
+			&i.EffectiveAt,
+			&i.SafetyStatus,
+			&i.RestoredFrom,
+			&i.ChangeNote,
+			&i.CreatedBy,
+			&i.CreatedByKey,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const maxQRVersionNo = `-- name: MaxQRVersionNo :one
+SELECT COALESCE(max(version_no), 0)::int FROM qr_versions WHERE qr_code_id = $1
+`
+
+func (q *Queries) MaxQRVersionNo(ctx context.Context, qrCodeID uuid.UUID) (int32, error) {
+	row := q.db.QueryRow(ctx, maxQRVersionNo, qrCodeID)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const nextScheduledVersion = `-- name: NextScheduledVersion :one
+SELECT id, qr_code_id, version_no, destination_kind, destination_url, hosted_page, rules, utm, effective_at, safety_status, restored_from, change_note, created_by, created_by_key, created_at FROM qr_versions
+WHERE qr_code_id = $1 AND effective_at > now()
+ORDER BY effective_at, version_no
+LIMIT 1
+`
+
+func (q *Queries) NextScheduledVersion(ctx context.Context, qrCodeID uuid.UUID) (QrVersion, error) {
+	row := q.db.QueryRow(ctx, nextScheduledVersion, qrCodeID)
+	var i QrVersion
+	err := row.Scan(
+		&i.ID,
+		&i.QrCodeID,
+		&i.VersionNo,
+		&i.DestinationKind,
+		&i.DestinationUrl,
+		&i.HostedPage,
+		&i.Rules,
+		&i.Utm,
+		&i.EffectiveAt,
+		&i.SafetyStatus,
+		&i.RestoredFrom,
+		&i.ChangeNote,
+		&i.CreatedBy,
+		&i.CreatedByKey,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const restoreQRCode = `-- name: RestoreQRCode :one
+UPDATE qr_codes SET deleted_at = NULL, updated_at = now()
+WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NOT NULL AND deleted_at > now() - interval '30 days'
+RETURNING id, workspace_id, created_by, mode, content_type, name, domain_id, short_code, legacy_short_code, gs1_gtin, static_payload, static_content, current_version_id, design, design_hash, template_id, folder_id, campaign_id, status, is_read_only, starts_at, expires_at, scan_limit, password_hash, fallback_url, safety_status, total_scans, unique_scans, last_scanned_at, created_at, updated_at, archived_at, deleted_at
+`
+
+type RestoreQRCodeParams struct {
+	ID          uuid.UUID `json:"id"`
+	WorkspaceID uuid.UUID `json:"workspace_id"`
+}
+
+func (q *Queries) RestoreQRCode(ctx context.Context, arg RestoreQRCodeParams) (QrCode, error) {
+	row := q.db.QueryRow(ctx, restoreQRCode, arg.ID, arg.WorkspaceID)
+	var i QrCode
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.CreatedBy,
+		&i.Mode,
+		&i.ContentType,
+		&i.Name,
+		&i.DomainID,
+		&i.ShortCode,
+		&i.LegacyShortCode,
+		&i.Gs1Gtin,
+		&i.StaticPayload,
+		&i.StaticContent,
+		&i.CurrentVersionID,
+		&i.Design,
+		&i.DesignHash,
+		&i.TemplateID,
+		&i.FolderID,
+		&i.CampaignID,
+		&i.Status,
+		&i.IsReadOnly,
+		&i.StartsAt,
+		&i.ExpiresAt,
+		&i.ScanLimit,
+		&i.PasswordHash,
+		&i.FallbackUrl,
+		&i.SafetyStatus,
+		&i.TotalScans,
+		&i.UniqueScans,
+		&i.LastScannedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ArchivedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
+const scheduledVersionsDue = `-- name: ScheduledVersionsDue :many
+SELECT v.id AS version_id, q.id AS qr_code_id, q.workspace_id, q.domain_id, q.short_code
+FROM qr_versions v
+JOIN qr_codes q ON q.id = v.qr_code_id
+WHERE v.effective_at <= now() AND v.effective_at > now() - interval '2 days'
+  AND q.current_version_id IS DISTINCT FROM v.id
+  AND v.id = (SELECT v3.id FROM qr_versions v3 WHERE v3.qr_code_id = q.id AND v3.effective_at <= now()
+              ORDER BY v3.effective_at DESC, v3.version_no DESC LIMIT 1)
+LIMIT 500
+`
+
+type ScheduledVersionsDueRow struct {
+	VersionID   uuid.UUID   `json:"version_id"`
+	QrCodeID    uuid.UUID   `json:"qr_code_id"`
+	WorkspaceID uuid.UUID   `json:"workspace_id"`
+	DomainID    pgtype.UUID `json:"domain_id"`
+	ShortCode   *string     `json:"short_code"`
+}
+
+// Versions whose effective_at has passed but are not yet the denormalised current pointer.
+func (q *Queries) ScheduledVersionsDue(ctx context.Context) ([]ScheduledVersionsDueRow, error) {
+	rows, err := q.db.Query(ctx, scheduledVersionsDue)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ScheduledVersionsDueRow{}
+	for rows.Next() {
+		var i ScheduledVersionsDueRow
+		if err := rows.Scan(
+			&i.VersionID,
+			&i.QrCodeID,
+			&i.WorkspaceID,
+			&i.DomainID,
+			&i.ShortCode,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const setQRCodeCurrentVersion = `-- name: SetQRCodeCurrentVersion :exec
+UPDATE qr_codes SET current_version_id = $1, updated_at = now()
+WHERE id = $2 AND workspace_id = $3
+`
+
+type SetQRCodeCurrentVersionParams struct {
+	VersionID   pgtype.UUID `json:"version_id"`
+	ID          uuid.UUID   `json:"id"`
+	WorkspaceID uuid.UUID   `json:"workspace_id"`
+}
+
+func (q *Queries) SetQRCodeCurrentVersion(ctx context.Context, arg SetQRCodeCurrentVersionParams) error {
+	_, err := q.db.Exec(ctx, setQRCodeCurrentVersion, arg.VersionID, arg.ID, arg.WorkspaceID)
+	return err
+}
+
+const setQRCodeSafety = `-- name: SetQRCodeSafety :exec
+UPDATE qr_codes SET safety_status = $1, updated_at = now()
+WHERE id = $2
+`
+
+type SetQRCodeSafetyParams struct {
+	SafetyStatus string    `json:"safety_status"`
+	ID           uuid.UUID `json:"id"`
+}
+
+func (q *Queries) SetQRCodeSafety(ctx context.Context, arg SetQRCodeSafetyParams) error {
+	_, err := q.db.Exec(ctx, setQRCodeSafety, arg.SafetyStatus, arg.ID)
+	return err
+}
+
+const setQRCodeStatus = `-- name: SetQRCodeStatus :one
+UPDATE qr_codes SET
+    status = $1,
+    archived_at = CASE WHEN $1 = 'archived' THEN now() ELSE NULL END,
+    updated_at = now()
+WHERE id = $2 AND workspace_id = $3 AND deleted_at IS NULL
+RETURNING id, workspace_id, created_by, mode, content_type, name, domain_id, short_code, legacy_short_code, gs1_gtin, static_payload, static_content, current_version_id, design, design_hash, template_id, folder_id, campaign_id, status, is_read_only, starts_at, expires_at, scan_limit, password_hash, fallback_url, safety_status, total_scans, unique_scans, last_scanned_at, created_at, updated_at, archived_at, deleted_at
+`
+
+type SetQRCodeStatusParams struct {
+	Status      string    `json:"status"`
+	ID          uuid.UUID `json:"id"`
+	WorkspaceID uuid.UUID `json:"workspace_id"`
+}
+
+func (q *Queries) SetQRCodeStatus(ctx context.Context, arg SetQRCodeStatusParams) (QrCode, error) {
+	row := q.db.QueryRow(ctx, setQRCodeStatus, arg.Status, arg.ID, arg.WorkspaceID)
+	var i QrCode
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.CreatedBy,
+		&i.Mode,
+		&i.ContentType,
+		&i.Name,
+		&i.DomainID,
+		&i.ShortCode,
+		&i.LegacyShortCode,
+		&i.Gs1Gtin,
+		&i.StaticPayload,
+		&i.StaticContent,
+		&i.CurrentVersionID,
+		&i.Design,
+		&i.DesignHash,
+		&i.TemplateID,
+		&i.FolderID,
+		&i.CampaignID,
+		&i.Status,
+		&i.IsReadOnly,
+		&i.StartsAt,
+		&i.ExpiresAt,
+		&i.ScanLimit,
+		&i.PasswordHash,
+		&i.FallbackUrl,
+		&i.SafetyStatus,
+		&i.TotalScans,
+		&i.UniqueScans,
+		&i.LastScannedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ArchivedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
+const setQRVersionSafety = `-- name: SetQRVersionSafety :exec
+UPDATE qr_versions SET safety_status = $1 WHERE id = $2
+`
+
+type SetQRVersionSafetyParams struct {
+	SafetyStatus string    `json:"safety_status"`
+	ID           uuid.UUID `json:"id"`
+}
+
+func (q *Queries) SetQRVersionSafety(ctx context.Context, arg SetQRVersionSafetyParams) error {
+	_, err := q.db.Exec(ctx, setQRVersionSafety, arg.SafetyStatus, arg.ID)
+	return err
+}
+
+const shortCodeTaken = `-- name: ShortCodeTaken :one
+SELECT (EXISTS (SELECT 1 FROM qr_codes q WHERE q.domain_id = $1 AND q.short_code = $2)
+     OR EXISTS (SELECT 1 FROM short_code_tombstones t WHERE t.domain_id = $1 AND t.short_code = $2))::bool
+`
+
+type ShortCodeTakenParams struct {
+	DomainID  pgtype.UUID `json:"domain_id"`
+	ShortCode *string     `json:"short_code"`
+}
+
+// A short code is burned forever: live rows, soft-deleted rows and purge tombstones all count.
+func (q *Queries) ShortCodeTaken(ctx context.Context, arg ShortCodeTakenParams) (bool, error) {
+	row := q.db.QueryRow(ctx, shortCodeTaken, arg.DomainID, arg.ShortCode)
+	var column_1 bool
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const softDeleteQRCode = `-- name: SoftDeleteQRCode :exec
 UPDATE qr_codes
 SET deleted_at = now()
@@ -557,6 +1358,58 @@ type SoftDeleteQRCodeParams struct {
 func (q *Queries) SoftDeleteQRCode(ctx context.Context, arg SoftDeleteQRCodeParams) error {
 	_, err := q.db.Exec(ctx, softDeleteQRCode, arg.ID, arg.WorkspaceID)
 	return err
+}
+
+const softDeleteQRCodeScoped = `-- name: SoftDeleteQRCodeScoped :one
+UPDATE qr_codes SET deleted_at = now(), updated_at = now()
+WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL
+RETURNING id, workspace_id, created_by, mode, content_type, name, domain_id, short_code, legacy_short_code, gs1_gtin, static_payload, static_content, current_version_id, design, design_hash, template_id, folder_id, campaign_id, status, is_read_only, starts_at, expires_at, scan_limit, password_hash, fallback_url, safety_status, total_scans, unique_scans, last_scanned_at, created_at, updated_at, archived_at, deleted_at
+`
+
+type SoftDeleteQRCodeScopedParams struct {
+	ID          uuid.UUID `json:"id"`
+	WorkspaceID uuid.UUID `json:"workspace_id"`
+}
+
+func (q *Queries) SoftDeleteQRCodeScoped(ctx context.Context, arg SoftDeleteQRCodeScopedParams) (QrCode, error) {
+	row := q.db.QueryRow(ctx, softDeleteQRCodeScoped, arg.ID, arg.WorkspaceID)
+	var i QrCode
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.CreatedBy,
+		&i.Mode,
+		&i.ContentType,
+		&i.Name,
+		&i.DomainID,
+		&i.ShortCode,
+		&i.LegacyShortCode,
+		&i.Gs1Gtin,
+		&i.StaticPayload,
+		&i.StaticContent,
+		&i.CurrentVersionID,
+		&i.Design,
+		&i.DesignHash,
+		&i.TemplateID,
+		&i.FolderID,
+		&i.CampaignID,
+		&i.Status,
+		&i.IsReadOnly,
+		&i.StartsAt,
+		&i.ExpiresAt,
+		&i.ScanLimit,
+		&i.PasswordHash,
+		&i.FallbackUrl,
+		&i.SafetyStatus,
+		&i.TotalScans,
+		&i.UniqueScans,
+		&i.LastScannedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ArchivedAt,
+		&i.DeletedAt,
+	)
+	return i, err
 }
 
 const updateQRCode = `-- name: UpdateQRCode :one
@@ -591,6 +1444,107 @@ func (q *Queries) UpdateQRCode(ctx context.Context, arg UpdateQRCodeParams) (QrC
 		arg.Status,
 		arg.FolderID,
 		arg.CurrentVersionID,
+		arg.ID,
+		arg.WorkspaceID,
+	)
+	var i QrCode
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.CreatedBy,
+		&i.Mode,
+		&i.ContentType,
+		&i.Name,
+		&i.DomainID,
+		&i.ShortCode,
+		&i.LegacyShortCode,
+		&i.Gs1Gtin,
+		&i.StaticPayload,
+		&i.StaticContent,
+		&i.CurrentVersionID,
+		&i.Design,
+		&i.DesignHash,
+		&i.TemplateID,
+		&i.FolderID,
+		&i.CampaignID,
+		&i.Status,
+		&i.IsReadOnly,
+		&i.StartsAt,
+		&i.ExpiresAt,
+		&i.ScanLimit,
+		&i.PasswordHash,
+		&i.FallbackUrl,
+		&i.SafetyStatus,
+		&i.TotalScans,
+		&i.UniqueScans,
+		&i.LastScannedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ArchivedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
+const updateQRCodeSettings = `-- name: UpdateQRCodeSettings :one
+UPDATE qr_codes SET
+    name          = COALESCE($1, name),
+    design        = COALESCE($2, design),
+    design_hash   = COALESCE($3, design_hash),
+    folder_id     = CASE WHEN $4::bool     THEN $5     ELSE folder_id END,
+    campaign_id   = CASE WHEN $6::bool   THEN $7   ELSE campaign_id END,
+    starts_at     = CASE WHEN $8::bool  THEN $9     ELSE starts_at END,
+    expires_at    = CASE WHEN $10::bool THEN $11    ELSE expires_at END,
+    scan_limit    = CASE WHEN $12::bool THEN $13    ELSE scan_limit END,
+    fallback_url  = CASE WHEN $14::bool   THEN $15  ELSE fallback_url END,
+    password_hash = CASE WHEN $16::bool   THEN $17 ELSE password_hash END,
+    updated_at    = now()
+WHERE id = $18 AND workspace_id = $19 AND deleted_at IS NULL
+RETURNING id, workspace_id, created_by, mode, content_type, name, domain_id, short_code, legacy_short_code, gs1_gtin, static_payload, static_content, current_version_id, design, design_hash, template_id, folder_id, campaign_id, status, is_read_only, starts_at, expires_at, scan_limit, password_hash, fallback_url, safety_status, total_scans, unique_scans, last_scanned_at, created_at, updated_at, archived_at, deleted_at
+`
+
+type UpdateQRCodeSettingsParams struct {
+	Name         *string            `json:"name"`
+	Design       []byte             `json:"design"`
+	DesignHash   []byte             `json:"design_hash"`
+	SetFolder    bool               `json:"set_folder"`
+	FolderID     pgtype.UUID        `json:"folder_id"`
+	SetCampaign  bool               `json:"set_campaign"`
+	CampaignID   pgtype.UUID        `json:"campaign_id"`
+	SetStartsAt  bool               `json:"set_starts_at"`
+	StartsAt     pgtype.Timestamptz `json:"starts_at"`
+	SetExpiresAt bool               `json:"set_expires_at"`
+	ExpiresAt    pgtype.Timestamptz `json:"expires_at"`
+	SetScanLimit bool               `json:"set_scan_limit"`
+	ScanLimit    *int64             `json:"scan_limit"`
+	SetFallback  bool               `json:"set_fallback"`
+	FallbackUrl  *string            `json:"fallback_url"`
+	SetPassword  bool               `json:"set_password"`
+	PasswordHash *string            `json:"password_hash"`
+	ID           uuid.UUID          `json:"id"`
+	WorkspaceID  uuid.UUID          `json:"workspace_id"`
+}
+
+// Explicit set_* flags allow clearing nullable fields.
+func (q *Queries) UpdateQRCodeSettings(ctx context.Context, arg UpdateQRCodeSettingsParams) (QrCode, error) {
+	row := q.db.QueryRow(ctx, updateQRCodeSettings,
+		arg.Name,
+		arg.Design,
+		arg.DesignHash,
+		arg.SetFolder,
+		arg.FolderID,
+		arg.SetCampaign,
+		arg.CampaignID,
+		arg.SetStartsAt,
+		arg.StartsAt,
+		arg.SetExpiresAt,
+		arg.ExpiresAt,
+		arg.SetScanLimit,
+		arg.ScanLimit,
+		arg.SetFallback,
+		arg.FallbackUrl,
+		arg.SetPassword,
+		arg.PasswordHash,
 		arg.ID,
 		arg.WorkspaceID,
 	)
