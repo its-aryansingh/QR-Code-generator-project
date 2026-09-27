@@ -36,9 +36,9 @@ func TestValidate(t *testing.T) {
 		{"ABCDEF0", false},
 		{"TOO_SHORT", true},
 		{"WAY_TOO_LONG_FOR_CODE", true},
-		{"7K9M2XU", true}, // 'U' is excluded from Crockford Base32
-		{"ADMIN01", true}, // Denylisted / reserved
-		{"FUCK999", true}, // Denylisted
+		{"7K9M2XU", true},      // 'U' is excluded from Crockford Base32
+		{"ADMIN01", true},      // Denylisted / reserved
+		{"FUCK999", true},      // Denylisted
 		{"  7k9m2x1  ", false}, // Normalised
 	}
 

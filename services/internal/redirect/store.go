@@ -40,12 +40,12 @@ func FetchLink(pool *pgxpool.Pool) resolve.FetchFunc {
 		ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 		defer cancel()
 		var (
-			l                            resolve.ResolvedLink
-			campaign, verID              *uuid.UUID
-			startsAt, expiresAt, nextAt  *time.Time
-			verNo                        *int32
-			kind, destURL                *string
-			rules, utm, hostedPage       []byte
+			l                           resolve.ResolvedLink
+			campaign, verID             *uuid.UUID
+			startsAt, expiresAt, nextAt *time.Time
+			verNo                       *int32
+			kind, destURL               *string
+			rules, utm, hostedPage      []byte
 		)
 		err := pool.QueryRow(ctx, resolvedLinkSQL, domainID, code).Scan(
 			&l.QRCodeID, &l.WorkspaceID, &campaign, &l.Status, &l.Safety, &startsAt, &expiresAt,

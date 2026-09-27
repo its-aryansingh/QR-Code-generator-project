@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	ErrSSRFBlocked     = errors.New("webhook destination IP is forbidden (private or loopback address)")
+	ErrSSRFBlocked      = errors.New("webhook destination IP is forbidden (private or loopback address)")
 	ErrInvalidSignature = errors.New("invalid webhook signature")
 )
 

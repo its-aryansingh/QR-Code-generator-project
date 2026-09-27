@@ -10,12 +10,12 @@ import (
 )
 
 type StripeConfig struct {
-	SecretKey      string
-	WebhookSecret  string
-	PriceProMonth  string
-	PriceProYear   string
-	PriceBizMonth  string
-	PriceBizYear   string
+	SecretKey     string
+	WebhookSecret string
+	PriceProMonth string
+	PriceProYear  string
+	PriceBizMonth string
+	PriceBizYear  string
 }
 
 type StripeProvider struct {

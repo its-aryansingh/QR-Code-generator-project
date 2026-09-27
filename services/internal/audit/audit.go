@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/its-aryansingh/qrit/services/internal/platform/db/dbgen"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type ActorType string

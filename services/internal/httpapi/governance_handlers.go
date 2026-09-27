@@ -329,14 +329,14 @@ type groupMemberDTO struct {
 }
 
 type groupDTO struct {
-	ID          uuid.UUID        `json:"id"`
-	DisplayName string           `json:"display_name"`
-	Source      string           `json:"source"` // manual | scim | sso
-	ReadOnly    bool             `json:"read_only"`
-	Members     int              `json:"member_count"`
-	Bindings    int              `json:"binding_count"`
-	CreatedAt   time.Time        `json:"created_at"`
-	UpdatedAt   time.Time        `json:"updated_at"`
+	ID          uuid.UUID         `json:"id"`
+	DisplayName string            `json:"display_name"`
+	Source      string            `json:"source"` // manual | scim | sso
+	ReadOnly    bool              `json:"read_only"`
+	Members     int               `json:"member_count"`
+	Bindings    int               `json:"binding_count"`
+	CreatedAt   time.Time         `json:"created_at"`
+	UpdatedAt   time.Time         `json:"updated_at"`
 	MemberList  *[]groupMemberDTO `json:"members,omitempty"` // detail only
 }
 

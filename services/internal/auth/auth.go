@@ -32,10 +32,10 @@ const (
 )
 
 var (
-	ErrInvalidToken   = errors.New("invalid or expired token")
+	ErrInvalidToken     = errors.New("invalid or expired token")
 	ErrPasswordTooShort = errors.New("password must be at least 10 characters long")
 	ErrPasswordBreached = errors.New("password is too common or easily guessed")
-	ErrCSRFMismatch   = errors.New("csrf token mismatch")
+	ErrCSRFMismatch     = errors.New("csrf token mismatch")
 )
 
 var commonPasswords = map[string]struct{}{
@@ -47,6 +47,8 @@ var commonPasswords = map[string]struct{}{
 type Claims struct {
 	jwt.RegisteredClaims
 	SessionID string `json:"sid"`
+	// StaffGrant is set on tokens minted for a staff support session (customer-granted).
+	StaffGrant string `json:"sg,omitempty"`
 }
 
 // Principal represents the authenticated caller: a user session, an API key, or a staff
@@ -124,6 +126,28 @@ func (tm *TokenManager) CreateAccessToken(userID, sessionID uuid.UUID) (string, 
 		SessionID: sessionID.String(),
 	}
 
+	token := jwt.NewWithClaims(jwt.SigningMethodEdDSA, claims)
+	token.Header["kid"] = tm.keyID
+	return token.SignedString(tm.privateKey)
+}
+
+// CreateStaffAccessToken signs a short-lived token for a staff member acting under a
+// customer's support-access grant. It never outlives ttl (≤ the access token duration).
+func (tm *TokenManager) CreateStaffAccessToken(userID, sessionID, grantID uuid.UUID, ttl time.Duration) (string, error) {
+	if ttl <= 0 || ttl > AccessTokenDuration {
+		ttl = AccessTokenDuration
+	}
+	now := time.Now().UTC()
+	claims := Claims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			Subject:   userID.String(),
+			IssuedAt:  jwt.NewNumericDate(now),
+			ExpiresAt: jwt.NewNumericDate(now.Add(ttl)),
+			Issuer:    "qrit",
+		},
+		SessionID:  sessionID.String(),
+		StaffGrant: grantID.String(),
+	}
 	token := jwt.NewWithClaims(jwt.SigningMethodEdDSA, claims)
 	token.Header["kid"] = tm.keyID
 	return token.SignedString(tm.privateKey)
@@ -269,11 +293,20 @@ func AuthenticateMiddleware(tm *TokenManager) func(http.Handler) http.Handler {
 				return
 			}
 
-			ctx := WithPrincipal(r.Context(), &Principal{
+			p := &Principal{
 				UserID:    userID,
 				SessionID: sessionID,
 				IsCookie:  isCookie,
-			})
+			}
+			if claims.StaffGrant != "" {
+				g, err := uuid.Parse(claims.StaffGrant)
+				if err != nil || isCookie {
+					next.ServeHTTP(w, r) // staff tokens are bearer-only
+					return
+				}
+				p.StaffGrantID = g
+			}
+			ctx := WithPrincipal(r.Context(), p)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

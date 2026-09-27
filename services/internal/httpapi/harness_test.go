@@ -25,7 +25,8 @@ import (
 )
 
 // Integration tests run against a migrated database:
-//   QRIT_TEST_DATABASE_URL=postgres://... QRIT_TEST_REDIS_URL=redis://localhost:6379/15 go test ./internal/httpapi
+//
+//	QRIT_TEST_DATABASE_URL=postgres://... QRIT_TEST_REDIS_URL=redis://localhost:6379/15 go test ./internal/httpapi
 type harness struct {
 	t      *testing.T
 	srv    *Server

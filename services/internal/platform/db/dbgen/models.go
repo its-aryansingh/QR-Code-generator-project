@@ -391,28 +391,36 @@ type Invite struct {
 }
 
 type Invoice struct {
-	ID            uuid.UUID          `json:"id"`
-	OrgID         uuid.UUID          `json:"org_id"`
-	ContractID    pgtype.UUID        `json:"contract_id"`
-	Number        string             `json:"number"`
-	IssueDate     pgtype.Date        `json:"issue_date"`
-	DueDate       pgtype.Date        `json:"due_date"`
-	Currency      string             `json:"currency"`
-	TaxMode       string             `json:"tax_mode"`
-	PlaceOfSupply string             `json:"place_of_supply"`
-	Seller        json.RawMessage    `json:"seller"`
-	Buyer         json.RawMessage    `json:"buyer"`
-	Lines         json.RawMessage    `json:"lines"`
-	SubtotalMinor int64              `json:"subtotal_minor"`
-	CgstMinor     int64              `json:"cgst_minor"`
-	SgstMinor     int64              `json:"sgst_minor"`
-	IgstMinor     int64              `json:"igst_minor"`
-	TotalMinor    int64              `json:"total_minor"`
-	Endorsement   *string            `json:"endorsement"`
-	Status        string             `json:"status"`
-	PdfFileID     pgtype.UUID        `json:"pdf_file_id"`
-	PaidAt        pgtype.Timestamptz `json:"paid_at"`
-	CreatedAt     time.Time          `json:"created_at"`
+	ID             uuid.UUID          `json:"id"`
+	OrgID          uuid.UUID          `json:"org_id"`
+	ContractID     pgtype.UUID        `json:"contract_id"`
+	Number         string             `json:"number"`
+	IssueDate      pgtype.Date        `json:"issue_date"`
+	DueDate        pgtype.Date        `json:"due_date"`
+	Currency       string             `json:"currency"`
+	TaxMode        string             `json:"tax_mode"`
+	PlaceOfSupply  string             `json:"place_of_supply"`
+	Seller         json.RawMessage    `json:"seller"`
+	Buyer          json.RawMessage    `json:"buyer"`
+	Lines          json.RawMessage    `json:"lines"`
+	SubtotalMinor  int64              `json:"subtotal_minor"`
+	CgstMinor      int64              `json:"cgst_minor"`
+	SgstMinor      int64              `json:"sgst_minor"`
+	IgstMinor      int64              `json:"igst_minor"`
+	TotalMinor     int64              `json:"total_minor"`
+	Endorsement    *string            `json:"endorsement"`
+	Status         string             `json:"status"`
+	PdfFileID      pgtype.UUID        `json:"pdf_file_id"`
+	PaidAt         pgtype.Timestamptz `json:"paid_at"`
+	CreatedAt      time.Time          `json:"created_at"`
+	PeriodStart    pgtype.Date        `json:"period_start"`
+	PeriodEnd      pgtype.Date        `json:"period_end"`
+	PaymentLinkID  *string            `json:"payment_link_id"`
+	PaymentLinkUrl *string            `json:"payment_link_url"`
+	RemindersSent  int32              `json:"reminders_sent"`
+	LastReminderAt pgtype.Timestamptz `json:"last_reminder_at"`
+	VoidReason     *string            `json:"void_reason"`
+	PaidReference  *string            `json:"paid_reference"`
 }
 
 type InvoiceSequence struct {
@@ -532,22 +540,23 @@ type OrgSecurityPolicy struct {
 }
 
 type Organization struct {
-	ID             uuid.UUID          `json:"id"`
-	Name           string             `json:"name"`
-	Slug           string             `json:"slug"`
-	Kind           string             `json:"kind"`
-	ParentOrgID    pgtype.UUID        `json:"parent_org_id"`
-	PlanID         string             `json:"plan_id"`
-	DataRegion     string             `json:"data_region"`
-	LegalName      *string            `json:"legal_name"`
-	BillingEmail   *string            `json:"billing_email"`
-	Gstin          *string            `json:"gstin"`
-	TaxCountry     string             `json:"tax_country"`
-	BillingAddress json.RawMessage    `json:"billing_address"`
-	Settings       json.RawMessage    `json:"settings"`
-	CreatedAt      time.Time          `json:"created_at"`
-	UpdatedAt      time.Time          `json:"updated_at"`
-	DeletedAt      pgtype.Timestamptz `json:"deleted_at"`
+	ID               uuid.UUID          `json:"id"`
+	Name             string             `json:"name"`
+	Slug             string             `json:"slug"`
+	Kind             string             `json:"kind"`
+	ParentOrgID      pgtype.UUID        `json:"parent_org_id"`
+	PlanID           string             `json:"plan_id"`
+	DataRegion       string             `json:"data_region"`
+	LegalName        *string            `json:"legal_name"`
+	BillingEmail     *string            `json:"billing_email"`
+	Gstin            *string            `json:"gstin"`
+	TaxCountry       string             `json:"tax_country"`
+	BillingAddress   json.RawMessage    `json:"billing_address"`
+	Settings         json.RawMessage    `json:"settings"`
+	CreatedAt        time.Time          `json:"created_at"`
+	UpdatedAt        time.Time          `json:"updated_at"`
+	DeletedAt        pgtype.Timestamptz `json:"deleted_at"`
+	BillingHoldSince pgtype.Timestamptz `json:"billing_hold_since"`
 }
 
 type Pixel struct {
@@ -994,6 +1003,17 @@ type SupportAccessGrant struct {
 	ExpiresAt time.Time          `json:"expires_at"`
 	RevokedAt pgtype.Timestamptz `json:"revoked_at"`
 	CreatedAt time.Time          `json:"created_at"`
+}
+
+type SupportSession struct {
+	ID          uuid.UUID          `json:"id"`
+	GrantID     uuid.UUID          `json:"grant_id"`
+	OrgID       uuid.UUID          `json:"org_id"`
+	StaffUserID uuid.UUID          `json:"staff_user_id"`
+	Reason      string             `json:"reason"`
+	StartedAt   time.Time          `json:"started_at"`
+	ExpiresAt   time.Time          `json:"expires_at"`
+	EndedAt     pgtype.Timestamptz `json:"ended_at"`
 }
 
 type Tag struct {

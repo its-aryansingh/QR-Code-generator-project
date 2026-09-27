@@ -190,7 +190,7 @@ func TestRoutingEngineTableCases(t *testing.T) {
 					},
 				},
 			},
-			facts:      RequestFacts{},
+			facts: RequestFacts{},
 			// 07:30 UTC = 13:00 IST
 			now:        time.Date(2026, 9, 26, 7, 30, 0, 0, time.UTC),
 			loc:        istLoc,
@@ -210,7 +210,7 @@ func TestRoutingEngineTableCases(t *testing.T) {
 					},
 				},
 			},
-			facts:      RequestFacts{},
+			facts: RequestFacts{},
 			// 2026-09-26 is a Saturday (ISO 6)
 			now:        time.Date(2026, 9, 26, 12, 0, 0, 0, time.UTC),
 			wantURL:    "https://example.com/weekend",
@@ -229,7 +229,7 @@ func TestRoutingEngineTableCases(t *testing.T) {
 					},
 				},
 			},
-			facts:      RequestFacts{},
+			facts: RequestFacts{},
 			// 2026-09-26 is a Saturday
 			now:        time.Date(2026, 9, 26, 12, 0, 0, 0, time.UTC),
 			wantURL:    "https://example.com/default",

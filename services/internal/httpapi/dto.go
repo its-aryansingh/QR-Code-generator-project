@@ -35,17 +35,17 @@ func toUserDTO(u dbgen.User) userDTO {
 }
 
 type workspaceDTO struct {
-	ID        uuid.UUID `json:"id"`
-	Name      string    `json:"name"`
-	Slug      string    `json:"slug"`
-	OwnerID   uuid.UUID `json:"owner_id"`
-	PlanID    string    `json:"plan_id"`
-	Timezone  string    `json:"timezone"`
-	Role      string    `json:"role,omitempty"`
+	ID        uuid.UUID  `json:"id"`
+	Name      string     `json:"name"`
+	Slug      string     `json:"slug"`
+	OwnerID   uuid.UUID  `json:"owner_id"`
+	PlanID    string     `json:"plan_id"`
+	Timezone  string     `json:"timezone"`
+	Role      string     `json:"role,omitempty"`
 	OrgID     *uuid.UUID `json:"org_id,omitempty"`
 	IsSandbox bool       `json:"is_sandbox"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
 }
 
 func toWorkspaceDTO(w dbgen.Workspace, role string) workspaceDTO {
@@ -103,40 +103,40 @@ func toVersionDTO(v dbgen.QrVersion, currentID *uuid.UUID, now time.Time) versio
 }
 
 type qrDTO struct {
-	ID             uuid.UUID       `json:"id"`
-	WorkspaceID    uuid.UUID       `json:"workspace_id"`
-	Mode           string          `json:"mode"`
-	ContentType    string          `json:"content_type"`
-	Name           string          `json:"name"`
-	Status         string          `json:"status"`
-	SafetyStatus   string          `json:"safety_status"`
-	IsReadOnly     bool            `json:"is_read_only"`
-	ShortCode      *string         `json:"short_code"`
-	ShortURL       *string         `json:"short_url"`
-	EncodedPayload string          `json:"encoded_payload"`
-	StaticPayload  *string         `json:"static_payload"`
-	StaticContent  json.RawMessage `json:"static_content,omitempty"`
-	Design         json.RawMessage `json:"design"`
-	DesignHash     string          `json:"design_hash"`
-	FolderID       *uuid.UUID      `json:"folder_id"`
-	CampaignID     *uuid.UUID      `json:"campaign_id"`
-	TemplateID     *uuid.UUID      `json:"template_id"`
-	StartsAt       *time.Time      `json:"starts_at"`
-	ExpiresAt      *time.Time      `json:"expires_at"`
-	ScanLimit      *int64          `json:"scan_limit"`
-	HasPassword    bool            `json:"has_password"`
-	FallbackURL    *string         `json:"fallback_url"`
-	TotalScans     int64           `json:"total_scans"`
-	UniqueScans    int64           `json:"unique_scans"`
-	LastScannedAt  *time.Time      `json:"last_scanned_at"`
-	CurrentVersion *versionDTO     `json:"current_version,omitempty"`
-	ScheduledVersion *versionDTO   `json:"scheduled_version,omitempty"`
-	DestinationURL *string         `json:"destination_url,omitempty"`
-	Tags           []tagRef        `json:"tags,omitempty"`
-	CreatedAt      time.Time       `json:"created_at"`
-	UpdatedAt      time.Time       `json:"updated_at"`
-	ArchivedAt     *time.Time      `json:"archived_at"`
-	DeletedAt      *time.Time      `json:"deleted_at,omitempty"`
+	ID               uuid.UUID       `json:"id"`
+	WorkspaceID      uuid.UUID       `json:"workspace_id"`
+	Mode             string          `json:"mode"`
+	ContentType      string          `json:"content_type"`
+	Name             string          `json:"name"`
+	Status           string          `json:"status"`
+	SafetyStatus     string          `json:"safety_status"`
+	IsReadOnly       bool            `json:"is_read_only"`
+	ShortCode        *string         `json:"short_code"`
+	ShortURL         *string         `json:"short_url"`
+	EncodedPayload   string          `json:"encoded_payload"`
+	StaticPayload    *string         `json:"static_payload"`
+	StaticContent    json.RawMessage `json:"static_content,omitempty"`
+	Design           json.RawMessage `json:"design"`
+	DesignHash       string          `json:"design_hash"`
+	FolderID         *uuid.UUID      `json:"folder_id"`
+	CampaignID       *uuid.UUID      `json:"campaign_id"`
+	TemplateID       *uuid.UUID      `json:"template_id"`
+	StartsAt         *time.Time      `json:"starts_at"`
+	ExpiresAt        *time.Time      `json:"expires_at"`
+	ScanLimit        *int64          `json:"scan_limit"`
+	HasPassword      bool            `json:"has_password"`
+	FallbackURL      *string         `json:"fallback_url"`
+	TotalScans       int64           `json:"total_scans"`
+	UniqueScans      int64           `json:"unique_scans"`
+	LastScannedAt    *time.Time      `json:"last_scanned_at"`
+	CurrentVersion   *versionDTO     `json:"current_version,omitempty"`
+	ScheduledVersion *versionDTO     `json:"scheduled_version,omitempty"`
+	DestinationURL   *string         `json:"destination_url,omitempty"`
+	Tags             []tagRef        `json:"tags,omitempty"`
+	CreatedAt        time.Time       `json:"created_at"`
+	UpdatedAt        time.Time       `json:"updated_at"`
+	ArchivedAt       *time.Time      `json:"archived_at"`
+	DeletedAt        *time.Time      `json:"deleted_at,omitempty"`
 }
 
 func (s *Server) toQRDTO(ctx context.Context, q dbgen.QrCode) qrDTO {

@@ -23,19 +23,19 @@ const (
 type ContentType string
 
 const (
-	ContentTypeURL       ContentType = "url"
-	ContentTypeText      ContentType = "text"
-	ContentTypeEmail     ContentType = "email"
-	ContentTypePhone     ContentType = "phone"
-	ContentTypeSMS       ContentType = "sms"
-	ContentTypeWhatsApp  ContentType = "whatsapp"
-	ContentTypeWiFi      ContentType = "wifi"
-	ContentTypeVCard     ContentType = "vcard"
-	ContentTypeEvent     ContentType = "event"
-	ContentTypeUPI       ContentType = "upi"
-	ContentTypeLocation  ContentType = "location"
-	ContentTypeAppStore  ContentType = "app_store"
-	ContentTypeGS1       ContentType = "gs1"
+	ContentTypeURL      ContentType = "url"
+	ContentTypeText     ContentType = "text"
+	ContentTypeEmail    ContentType = "email"
+	ContentTypePhone    ContentType = "phone"
+	ContentTypeSMS      ContentType = "sms"
+	ContentTypeWhatsApp ContentType = "whatsapp"
+	ContentTypeWiFi     ContentType = "wifi"
+	ContentTypeVCard    ContentType = "vcard"
+	ContentTypeEvent    ContentType = "event"
+	ContentTypeUPI      ContentType = "upi"
+	ContentTypeLocation ContentType = "location"
+	ContentTypeAppStore ContentType = "app_store"
+	ContentTypeGS1      ContentType = "gs1"
 )
 
 type Status string
@@ -64,14 +64,14 @@ var (
 
 // DesignV1 matches the canonical v1 design schema.
 type DesignV1 struct {
-	V          int               `json:"v"`
-	ECC        string            `json:"ecc"`
-	QuietZone  int               `json:"quiet_zone"`
-	Modules    ModulesConfig     `json:"modules"`
-	Finder     FinderConfig      `json:"finder"`
-	Background BackgroundConfig  `json:"background"`
-	Logo       *LogoConfig       `json:"logo,omitempty"`
-	Frame      *FrameConfig      `json:"frame,omitempty"`
+	V          int              `json:"v"`
+	ECC        string           `json:"ecc"`
+	QuietZone  int              `json:"quiet_zone"`
+	Modules    ModulesConfig    `json:"modules"`
+	Finder     FinderConfig     `json:"finder"`
+	Background BackgroundConfig `json:"background"`
+	Logo       *LogoConfig      `json:"logo,omitempty"`
+	Frame      *FrameConfig     `json:"frame,omitempty"`
 }
 
 type ModulesConfig struct {
@@ -234,21 +234,21 @@ func EffectiveECC(d *DesignV1) string {
 
 // QRCode represents a QR code record.
 type QRCode struct {
-	ID               uuid.UUID        `json:"id"`
-	WorkspaceID      uuid.UUID        `json:"workspace_id"`
-	DomainID         uuid.UUID        `json:"domain_id"`
-	ShortCode        string           `json:"short_code"`
-	Mode             Mode             `json:"mode"`
-	ContentType      ContentType      `json:"content_type"`
-	Name             string           `json:"name"`
-	Status           Status           `json:"status"`
-	SafetyStatus     SafetyStatus     `json:"safety_status"`
-	Design           json.RawMessage  `json:"design"`
-	DesignHash       string           `json:"design_hash"`
-	CurrentVersionID *uuid.UUID       `json:"current_version_id,omitempty"`
-	StaticPayload    *string          `json:"static_payload,omitempty"`
-	StaticContent    json.RawMessage  `json:"static_content,omitempty"`
-	TotalScans       int64            `json:"total_scans"`
-	CreatedAt        time.Time        `json:"created_at"`
-	UpdatedAt        time.Time        `json:"updated_at"`
+	ID               uuid.UUID       `json:"id"`
+	WorkspaceID      uuid.UUID       `json:"workspace_id"`
+	DomainID         uuid.UUID       `json:"domain_id"`
+	ShortCode        string          `json:"short_code"`
+	Mode             Mode            `json:"mode"`
+	ContentType      ContentType     `json:"content_type"`
+	Name             string          `json:"name"`
+	Status           Status          `json:"status"`
+	SafetyStatus     SafetyStatus    `json:"safety_status"`
+	Design           json.RawMessage `json:"design"`
+	DesignHash       string          `json:"design_hash"`
+	CurrentVersionID *uuid.UUID      `json:"current_version_id,omitempty"`
+	StaticPayload    *string         `json:"static_payload,omitempty"`
+	StaticContent    json.RawMessage `json:"static_content,omitempty"`
+	TotalScans       int64           `json:"total_scans"`
+	CreatedAt        time.Time       `json:"created_at"`
+	UpdatedAt        time.Time       `json:"updated_at"`
 }

@@ -487,7 +487,7 @@ func TestDomainsAndOIDC(t *testing.T) {
 	frankSSO.must(200, "GET", "/v1/workspaces/"+aws, nil)
 	dave2.must(200, "GET", "/v1/workspaces/"+aws, nil)
 	alice.must(200, "GET", "/v1/workspaces/"+aws, nil) // break-glass owner with verified MFA
-	frank.must(200, "GET", "/v1/workspaces", nil)       // his own organisation is unaffected
+	frank.must(200, "GET", "/v1/workspaces", nil)      // his own organisation is unaffected
 
 	var logins int
 	_ = h.pool.QueryRow(ctx, `SELECT count(*) FROM audit_logs WHERE org_id = $1 AND action IN ('auth.sso.login','auth.sso.user_provisioned')`, orgID).Scan(&logins)

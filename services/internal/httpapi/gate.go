@@ -19,7 +19,24 @@ import (
 type identityGate struct{ s *Server }
 
 func (g identityGate) Check(r *http.Request, p *auth.Principal, ws dbgen.Workspace) error {
-	return g.s.checkOrgAccess(r, p, ws.OrgID)
+	if err := g.s.checkOrgAccess(r, p, ws.OrgID); err != nil {
+		return err
+	}
+	// Billing hold: an invoice unpaid 30 days past due freezes dashboard and API edits for
+	// the organisation. Reads keep working and codes never stop redirecting.
+	switch r.Method {
+	case http.MethodGet, http.MethodHead, http.MethodOptions:
+		return nil
+	}
+	if p != nil && p.StaffGrantID != uuid.Nil {
+		return nil
+	}
+	if pol, err := g.s.access.Policy(r.Context(), ws.OrgID); err == nil && pol.BillingHold {
+		pd := paymentRequired("billing_hold", "editing is paused because an invoice is more than 30 days overdue; your codes keep working. Pay the invoice to resume")
+		pd.Instance = "/v1/orgs/" + ws.OrgID.String() + "/invoices"
+		return pd
+	}
+	return nil
 }
 
 // checkOrgAccess is shared by workspace and organisation routes.

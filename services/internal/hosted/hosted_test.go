@@ -16,11 +16,11 @@ func okURL(_, raw string) (string, error) {
 
 func TestParseAndRender(t *testing.T) {
 	cases := map[string]string{
-		"vcard":  `{"kind":"vcard","theme":{"accent":"#112233"},"vcard":{"first_name":"Asha","last_name":"Rao","org":"Acme; Ltd","phones":[{"type":"cell","value":"+911234567890"}],"website":"https://acme.example","address":{"city":"Pune","country":"IN"}}}`,
-		"links":  `{"kind":"links_page","links_page":{"title":"Asha","links":[{"label":"Blog","url":"https://blog.example"}]}}`,
-		"file":   `{"kind":"file","file":{"title":"Menu","file_url":"https://cdn.example/menu.pdf","file_type":"pdf"}}`,
-		"event":  `{"kind":"event","event":{"title":"Launch","starts_at":"2026-10-01T10:00:00Z","ends_at":"2026-10-01T12:00:00Z","timezone":"Asia/Kolkata","location":"Noida"}}`,
-		"menu":   `{"kind":"menu","menu":{"title":"Cafe","currency":"₹","sections":[{"name":"Coffee","items":[{"name":"Latte","price":"180","veg":true}]}]}}`,
+		"vcard": `{"kind":"vcard","theme":{"accent":"#112233"},"vcard":{"first_name":"Asha","last_name":"Rao","org":"Acme; Ltd","phones":[{"type":"cell","value":"+911234567890"}],"website":"https://acme.example","address":{"city":"Pune","country":"IN"}}}`,
+		"links": `{"kind":"links_page","links_page":{"title":"Asha","links":[{"label":"Blog","url":"https://blog.example"}]}}`,
+		"file":  `{"kind":"file","file":{"title":"Menu","file_url":"https://cdn.example/menu.pdf","file_type":"pdf"}}`,
+		"event": `{"kind":"event","event":{"title":"Launch","starts_at":"2026-10-01T10:00:00Z","ends_at":"2026-10-01T12:00:00Z","timezone":"Asia/Kolkata","location":"Noida"}}`,
+		"menu":  `{"kind":"menu","menu":{"title":"Cafe","currency":"₹","sections":[{"name":"Coffee","items":[{"name":"Latte","price":"180","veg":true}]}]}}`,
 	}
 	for name, raw := range cases {
 		p, err := Parse([]byte(raw), okURL)

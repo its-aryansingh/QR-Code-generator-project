@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	ErrInvalidDomain = errors.New("invalid domain name")
+	ErrInvalidDomain  = errors.New("invalid domain name")
 	ErrReservedDomain = errors.New("domain is reserved by the platform")
 )
 

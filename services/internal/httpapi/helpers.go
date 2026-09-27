@@ -58,12 +58,12 @@ type IdentityHooks interface {
 
 type noIdentity struct{}
 
-func (noIdentity) PasswordPolicy(context.Context, string, string) error      { return nil }
-func (noIdentity) LoginAllowed(context.Context, dbgen.User, string) error    { return nil }
-func (noIdentity) MFAPending(context.Context, uuid.UUID) bool                { return false }
+func (noIdentity) PasswordPolicy(context.Context, string, string) error               { return nil }
+func (noIdentity) LoginAllowed(context.Context, dbgen.User, string) error             { return nil }
+func (noIdentity) MFAPending(context.Context, uuid.UUID) bool                         { return false }
 func (noIdentity) SessionRotated(context.Context, pgx.Tx, uuid.UUID, uuid.UUID) error { return nil }
-func (noIdentity) MeExtras(context.Context, dbgen.User) map[string]any       { return nil }
-func (noIdentity) VerifySecondFactor(context.Context, uuid.UUID, string) error { return nil }
+func (noIdentity) MeExtras(context.Context, dbgen.User) map[string]any                { return nil }
+func (noIdentity) VerifySecondFactor(context.Context, uuid.UUID, string) error        { return nil }
 func (noIdentity) SessionCreated(context.Context, dbgen.Session, string, *uuid.UUID) error {
 	return nil
 }

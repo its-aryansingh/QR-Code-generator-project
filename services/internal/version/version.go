@@ -18,7 +18,7 @@ const (
 )
 
 var (
-	ErrMissingDestinationURL = errors.New("destination_url is required when destination_kind is url")
+	ErrMissingDestinationURL  = errors.New("destination_url is required when destination_kind is url")
 	ErrInvalidDestinationKind = errors.New("destination_kind must be 'url' or 'hosted_page'")
 )
 

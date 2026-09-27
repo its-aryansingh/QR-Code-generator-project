@@ -78,7 +78,7 @@ func (s *Service) Totals(ctx context.Context, f Filter) (Totals, error) {
 
 type Summary struct {
 	Totals
-	Previous Totals             `json:"previous"`
+	Previous Totals              `json:"previous"`
 	Deltas   map[string]*float64 `json:"deltas"`
 }
 

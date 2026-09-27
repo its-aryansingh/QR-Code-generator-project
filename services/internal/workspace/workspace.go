@@ -21,9 +21,9 @@ const (
 var (
 	slugRegex = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
 
-	ErrInvalidSlug   = errors.New("slug must be 3-48 characters, lowercase alphanumeric with optional single hyphens")
-	ErrReservedSlug  = errors.New("this workspace slug is reserved")
-	ErrInvalidRole   = errors.New("invalid role for member invite")
+	ErrInvalidSlug       = errors.New("slug must be 3-48 characters, lowercase alphanumeric with optional single hyphens")
+	ErrReservedSlug      = errors.New("this workspace slug is reserved")
+	ErrInvalidRole       = errors.New("invalid role for member invite")
 	ErrCannotInviteOwner = errors.New("cannot invite member as owner")
 )
 

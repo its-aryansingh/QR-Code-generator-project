@@ -17,14 +17,14 @@ func TestValidateSlug(t *testing.T) {
 		{"my-team", false},
 		{"team123", false},
 		{"qrit-design", false},
-		{"ab", true},                     // too short (< 3)
+		{"ab", true}, // too short (< 3)
 		{"this-slug-is-way-too-long-and-exceeds-the-maximum-allowed-length-for-workspace-slugs", true},
 		{"-leading-hyphen", true},
 		{"trailing-hyphen-", true},
 		{"double--hyphen", true},
-		{"admin", true},                  // reserved
-		{"api", true},                    // reserved
-		{"settings", true},               // reserved
+		{"admin", true},    // reserved
+		{"api", true},      // reserved
+		{"settings", true}, // reserved
 	}
 
 	for _, tt := range tests {

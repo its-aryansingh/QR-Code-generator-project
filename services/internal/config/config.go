@@ -69,6 +69,18 @@ type Config struct {
 	SellerLUTRef      string `env:"SELLER_LUT_REF"`
 	SellerUPIVPA      string `env:"SELLER_UPI_VPA"`
 	WorkerConcurrency int    `env:"WORKER_CONCURRENCY" envDefault:"8"`
+
+	// Razorpay payment links for INR invoices (optional; bank transfer/UPI otherwise).
+	RazorpayKeyID         string `env:"RAZORPAY_KEY_ID"`
+	RazorpayKeySecret     string `env:"RAZORPAY_KEY_SECRET"`
+	RazorpayWebhookSecret string `env:"RAZORPAY_WEBHOOK_SECRET"`
+	// Staff console access is limited to these networks when set (CIDRs or IPs).
+	StaffIPAllowlist []string `env:"STAFF_IP_ALLOWLIST" envSeparator:","`
+}
+
+// Seller returns the supplier block printed on invoices.
+func (c *Config) SellerInfo() (legalName, gstin, address, stateCode, sac, lutRef, upiVPA string) {
+	return c.SellerLegalName, c.SellerGSTIN, c.SellerAddress, c.SellerStateCode, c.SellerSAC, c.SellerLUTRef, c.SellerUPIVPA
 }
 
 func Load() (*Config, error) {

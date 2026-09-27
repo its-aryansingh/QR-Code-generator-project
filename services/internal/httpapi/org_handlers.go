@@ -68,6 +68,20 @@ func (s *Server) orgContext(next http.Handler) http.Handler {
 			fail(w, apierr.NotFound("organization not found"))
 			return
 		}
+		if p.StaffGrantID != uuid.Nil {
+			// Staff support session: organisation basics only; data access comes from the
+			// workspace grants of the same support grant.
+			var ok bool
+			_ = s.pool.QueryRow(r.Context(), `SELECT EXISTS (SELECT 1 FROM support_access_grants WHERE id = $1 AND org_id = $2
+				AND revoked_at IS NULL AND expires_at > now())`, p.StaffGrantID, o.ID).Scan(&ok)
+			if !ok || r.Method != http.MethodGet {
+				fail(w, apierr.NotFound("organization not found"))
+				return
+			}
+			ctx := context.WithValue(r.Context(), orgCtxKey{}, orgContextValue{org: o, role: "support", perms: []authz.Permission{}})
+			next.ServeHTTP(w, r.WithContext(ctx))
+			return
+		}
 		role, perms, err := s.access.OrgPermissions(r.Context(), o.ID, p.UserID)
 		if err != nil {
 			fail(w, apierr.Internal("failed to resolve organisation access"))

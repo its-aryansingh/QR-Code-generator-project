@@ -21,10 +21,10 @@ import (
 
 // Effective is what an organisation (or a workspace in it) may use.
 type Effective struct {
-	Plan       entitlements.Plan  `json:"plan"`
+	Plan       entitlements.Plan   `json:"plan"`
 	Limits     entitlements.Limits `json:"limits"`
-	Features   []string           `json:"features"`
-	ContractID *uuid.UUID         `json:"contract_id,omitempty"`
+	Features   []string            `json:"features"`
+	ContractID *uuid.UUID          `json:"contract_id,omitempty"`
 	features   map[string]bool
 }
 

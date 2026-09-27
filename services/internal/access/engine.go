@@ -259,21 +259,23 @@ func (e *Engine) OrgPermissions(ctx context.Context, orgID, userID uuid.UUID) (s
 
 // Policy is an organisation's security policy.
 type Policy struct {
-	OrgID                uuid.UUID        `json:"org_id"`
-	EnforceSSO           bool             `json:"enforce_sso"`
-	BreakGlassUserIDs    []uuid.UUID      `json:"sso_break_glass_user_ids"`
-	RequireMFA           bool             `json:"require_mfa"`
-	AllowedMFAKinds      []string         `json:"allowed_mfa_kinds"`
-	SessionIdleMinutes   int              `json:"session_idle_minutes"`
-	SessionMaxHours      int              `json:"session_max_hours"`
-	DashboardIPAllowlist []netip.Prefix   `json:"dashboard_ip_allowlist"`
-	APIIPAllowlist       []netip.Prefix   `json:"api_ip_allowlist"`
-	PasswordMinLength    int              `json:"password_min_length"`
-	InviteEmailDomains   []string         `json:"invite_email_domains"`
-	APIKeyMaxDays        int              `json:"api_key_max_days"`
-	ExportPermission     string           `json:"export_permission"`
-	UpdatedBy            *uuid.UUID       `json:"updated_by"`
-	UpdatedAt            time.Time        `json:"updated_at"`
+	OrgID                uuid.UUID      `json:"org_id"`
+	EnforceSSO           bool           `json:"enforce_sso"`
+	BreakGlassUserIDs    []uuid.UUID    `json:"sso_break_glass_user_ids"`
+	RequireMFA           bool           `json:"require_mfa"`
+	AllowedMFAKinds      []string       `json:"allowed_mfa_kinds"`
+	SessionIdleMinutes   int            `json:"session_idle_minutes"`
+	SessionMaxHours      int            `json:"session_max_hours"`
+	DashboardIPAllowlist []netip.Prefix `json:"dashboard_ip_allowlist"`
+	APIIPAllowlist       []netip.Prefix `json:"api_ip_allowlist"`
+	PasswordMinLength    int            `json:"password_min_length"`
+	InviteEmailDomains   []string       `json:"invite_email_domains"`
+	APIKeyMaxDays        int            `json:"api_key_max_days"`
+	ExportPermission     string         `json:"export_permission"`
+	UpdatedBy            *uuid.UUID     `json:"updated_by"`
+	UpdatedAt            time.Time      `json:"updated_at"`
+	// BillingHold freezes dashboard edits (unpaid invoice > 30 days overdue); redirects never stop.
+	BillingHold bool `json:"-"`
 }
 
 // Policy loads (and caches) an organisation's security policy.
@@ -301,11 +303,15 @@ func LoadPolicy(ctx context.Context, db interface {
 		FROM org_security_policies WHERE org_id = $1`, orgID).Scan(&p.EnforceSSO, &p.BreakGlassUserIDs, &p.RequireMFA,
 		&p.AllowedMFAKinds, &p.SessionIdleMinutes, &p.SessionMaxHours, &p.DashboardIPAllowlist, &p.APIIPAllowlist,
 		&p.PasswordMinLength, &domains, &p.APIKeyMaxDays, &p.ExportPermission, &p.UpdatedBy, &p.UpdatedAt)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return p, nil
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return p, err
 	}
 	p.InviteEmailDomains = domains
-	return p, err
+	if err := db.QueryRow(ctx, `SELECT billing_hold_since IS NOT NULL FROM organizations WHERE id = $1`, orgID).Scan(&p.BillingHold); err != nil &&
+		!errors.Is(err, pgx.ErrNoRows) {
+		return p, err
+	}
+	return p, nil
 }
 
 // IPAllowed reports whether ip is inside the list (an empty list allows everything).

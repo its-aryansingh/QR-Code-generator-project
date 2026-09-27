@@ -9,16 +9,16 @@ import (
 )
 
 var (
-	ErrInvalidPlan     = errors.New("invalid plan code")
+	ErrInvalidPlan      = errors.New("invalid plan code")
 	ErrCustomerNotFound = errors.New("billing customer not found")
 )
 
 type SubscriptionEvent struct {
-	WorkspaceID     string
-	CustomerID      string
-	SubscriptionID  string
-	Plan            string // "free", "pro", "business", "enterprise"
-	Status          string // "active", "canceled", "past_due"
+	WorkspaceID      string
+	CustomerID       string
+	SubscriptionID   string
+	Plan             string // "free", "pro", "business", "enterprise"
+	Status           string // "active", "canceled", "past_due"
 	CurrentPeriodEnd time.Time
 }
 

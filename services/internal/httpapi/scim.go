@@ -142,7 +142,7 @@ func (s *Server) scimResourceTypes(w http.ResponseWriter, r *http.Request) {
 			map[string]any{"schemas": []string{"urn:ietf:params:scim:schemas:core:2.0:ResourceType"}, "id": "User", "name": "User",
 				"endpoint": "/Users", "schema": scimUserSchema,
 				"schemaExtensions": []any{map[string]any{"schema": scimEntSchema, "required": false}},
-				"meta": map[string]any{"resourceType": "ResourceType", "location": s.scimBase() + "/ResourceTypes/User"}},
+				"meta":             map[string]any{"resourceType": "ResourceType", "location": s.scimBase() + "/ResourceTypes/User"}},
 			map[string]any{"schemas": []string{"urn:ietf:params:scim:schemas:core:2.0:ResourceType"}, "id": "Group", "name": "Group",
 				"endpoint": "/Groups", "schema": scimGroupSchema,
 				"meta": map[string]any{"resourceType": "ResourceType", "location": s.scimBase() + "/ResourceTypes/Group"}},
