@@ -1,0 +1,18 @@
+export const countryCodes = [
+    { code: "+1", country: "US", name: "United States" },
+    { code: "+44", country: "GB", name: "United Kingdom" },
+    { code: "+91", country: "IN", name: "India" },
+    { code: "+81", country: "JP", name: "Japan" },
+    { code: "+86", country: "CN", name: "China" },
+    { code: "+49", country: "DE", name: "Germany" },
+    { code: "+33", country: "FR", name: "France" },
+    { code: "+61", country: "AU", name: "Australia" },
+    { code: "+7", country: "RU", name: "Russia" },
+    { code: "+55", country: "BR", name: "Brazil" },
+    { code: "+971", country: "AE", name: "UAE" },
+    { code: "+966", country: "SA", name: "Saudi Arabia" },
+    { code: "+65", country: "SG", name: "Singapore" },
+    { code: "+34", country: "ES", name: "Spain" },
+    { code: "+39", country: "IT", name: "Italy" },
+    { code: "+1", country: "CA", name: "Canada" },
+];
