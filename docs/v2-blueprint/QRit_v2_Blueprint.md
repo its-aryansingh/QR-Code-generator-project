@@ -2681,12 +2681,12 @@ Begin Phase 1 now. First file: `docs/manifest/phase-1.txt`.
 | R7 | Timezone/DST edge cases in schedules and analytics | Medium | Medium | All storage in UTC; 15-minute rollups; IANA zones only; DST tests for America/New_York and Europe/London alongside IST |
 | R8 | Stream loss window (≤ 50 ms of buffered events on hard crash) | Low | Low | Graceful shutdown drains the buffer; loss only on `SIGKILL`/host failure; `scan_events_dropped_total` alerting |
 | R9 | Custom-domain TLS provisioning failures | Medium | Medium | Clear DNS instructions + live verification UI; retries for 72 h; certificate-expiry alerts |
-| R10 | Solo-developer bus factor and scope creep | High | High | Phase gates with acceptance criteria; hosted page types limited to 4 at launch; enterprise features (SSO/SCIM) deferred until a paying customer asks |
+| R10 | Solo-developer bus factor and scope creep | High | High | Phase gates with acceptance criteria; hosted page types limited to 4 at launch; enterprise features follow the Enterprise Plan's phase gates (Enterprise Core first) |
 
 ## 13.2 Open questions (decisions I need from you)
 
 1. **Is v1 live with real users or printed codes?** If yes, Phase 5 includes `cmd/migrate-v1` and the v1 host must keep serving `/r/{code}` forever. If v1 was only a college/demo deployment, drop the migration work and the `legacy_short_code` handling (saves about 3 days).
-2. **Go for the whole backend, or keep Django for the control plane?** (§12 has both options; the blueprint assumes Go.)
+2. ~~Go for the whole backend, or keep Django for the control plane?~~ **Answered 26 Sep 2026: Go (v2 blueprint).** Enterprise features are specified in `QRit_v2_Enterprise_Plan.md`.
 3. **Legal entity and payments:** will you bill as an Indian entity? Stripe has restricted new Indian business signups in the past, so verify current availability before relying on it; Razorpay is the safe default for INR and UPI Autopay. For international customers, consider a merchant-of-record (e.g. Paddle or Lemon Squeezy) to avoid handling global sales tax/VAT yourself. The `billing.Provider` interface supports adding one.
 4. **Brand and domains:** is "QRit" final? Check trademark conflicts and buy a **short** domain for links (≤ 8 characters before the TLD keeps the QR at version 2–3). Buy the free-tier short domain at the same time.
 5. **Pricing:** the proposed tiers are Free / Pro ~$9–12 (₹499) / Business ~$39–49 (₹2,999) / Enterprise custom, with gates as in §5.7. Confirm, or tell me your target customer (restaurants vs agencies vs retail brands). That choice changes which features to gate.
