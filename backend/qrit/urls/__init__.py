@@ -1,0 +1,1 @@
+"""URL configurations for QRit."""

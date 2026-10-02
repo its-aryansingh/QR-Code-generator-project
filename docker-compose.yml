@@ -51,27 +51,27 @@ services:
 
   api:
     build:
-      context: ./services
+      context: ./backend
       dockerfile: Dockerfile
-      args:
-        CMD: api
     container_name: qrit-api
+    command: gunicorn qrit.asgi:application -k uvicorn_worker.UvicornWorker -c gunicorn.conf.py
     ports:
       - "8080:8080"
     environment:
       APP_ENV: local
-      LOG_LEVEL: debug
-      HTTP_ADDR: ":8080"
-      DATABASE_URL: postgres://qrit:qrit_dev_password@postgres:5432/qrit?sslmode=disable
+      DJANGO_SETTINGS_MODULE: qrit.settings.api
+      PORT: "8080"
+      DATABASE_URL: postgresql://qrit:qrit_dev_password@postgres:5432/qrit
       REDIS_URL: redis://redis:6379/0
       APP_BASE_URL: http://localhost:3000
       API_PUBLIC_URL: http://localhost:8080
-      PLATFORM_SHORT_DOMAIN: localhost:8090
-      RENDER_URL: http://render:8081
-      COOKIE_SECURE: "false"
-      JWT_ED25519_PRIVATE_KEY: MC4CAQAwBQYDK2VwBCIEIHsV70EaTfZ+kS1xM6g6eM+VpD7kP8E3jK1qR9sT2uX/
-      JWT_KEY_ID: dev-key-1
+      SHORT_DOMAIN: localhost:8090
+      DJANGO_SECRET_KEY: local-dev-secret-key-at-least-50-characters-long-safe-to-commit
       APP_ENCRYPTION_KEY: ZGV2ZWxvcG1lbnQtZW5jcnlwdGlvbi1rZXktMzJieXRlcw==
+      SCAN_SALT_SECRET: local-dev-scan-salt-secret-32-bytes-minimum
+      EDGE_SHARED_SECRET: local-dev-edge-shared-secret-32-chars-min
+      SERIAL_MAC_KEY: local-dev-serial-mac-key-32-bytes-minimum
+      VERIFY_TOKEN_KEY: local-dev-verify-token-key-32-bytes-min
     depends_on:
       postgres:
         condition: service_healthy
@@ -80,53 +80,79 @@ services:
 
   redirect:
     build:
-      context: ./services
+      context: ./backend
       dockerfile: Dockerfile
-      args:
-        CMD: redirect
     container_name: qrit-redirect
+    command: granian --interface asginl --host :: --port 8090 qrit.asgi:application
     ports:
       - "8090:8090"
     environment:
       APP_ENV: local
-      LOG_LEVEL: debug
-      HTTP_ADDR: ":8090"
-      DATABASE_URL: postgres://qrit:qrit_dev_password@postgres:5432/qrit?sslmode=disable
+      DJANGO_SETTINGS_MODULE: qrit.settings.redirect
+      PORT: "8090"
+      DATABASE_URL: postgresql://qrit:qrit_dev_password@postgres:5432/qrit
       REDIS_URL: redis://redis:6379/0
       APP_BASE_URL: http://localhost:3000
-      WEB_INTERNAL_URL: http://web:3000
+      SHORT_DOMAIN: localhost:8090
+      DJANGO_SECRET_KEY: local-dev-secret-key-at-least-50-characters-long-safe-to-commit
+      APP_ENCRYPTION_KEY: ZGV2ZWxvcG1lbnQtZW5jcnlwdGlvbi1rZXktMzJieXRlcw==
+      SCAN_SALT_SECRET: local-dev-scan-salt-secret-32-bytes-minimum
+      EDGE_SHARED_SECRET: local-dev-edge-shared-secret-32-chars-min
+      SERIAL_MAC_KEY: local-dev-serial-mac-key-32-bytes-minimum
+      VERIFY_TOKEN_KEY: local-dev-verify-token-key-32-bytes-min
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
 
-  render:
+  worker:
     build:
-      context: ./apps/render
+      context: ./backend
       dockerfile: Dockerfile
-    container_name: qrit-render
-    ports:
-      - "8081:8081"
+    container_name: qrit-worker
+    command: sh -c "python manage.py wait_for_migrations && python manage.py procrastinate worker"
     environment:
-      PORT: "8081"
-      RENDER_SHARED_SECRET: dev-render-secret
-
-  web:
-    build:
-      context: ./apps/web
-      dockerfile: Dockerfile
-    container_name: qrit-web
-    ports:
-      - "3000:3000"
-    environment:
-      PORT: "3000"
-      NEXT_PUBLIC_APP_URL: http://localhost:3000
-      NEXT_PUBLIC_SHORT_DOMAIN: localhost:8090
-      API_INTERNAL_URL: http://api:8080
+      APP_ENV: local
+      DJANGO_SETTINGS_MODULE: qrit.settings.worker
+      DATABASE_URL: postgresql://qrit:qrit_dev_password@postgres:5432/qrit
+      DATABASE_UNPOOLED_URL: postgresql://qrit:qrit_dev_password@postgres:5432/qrit
+      REDIS_URL: redis://redis:6379/0
+      DJANGO_SECRET_KEY: local-dev-secret-key-at-least-50-characters-long-safe-to-commit
+      APP_ENCRYPTION_KEY: ZGV2ZWxvcG1lbnQtZW5jcnlwdGlvbi1rZXktMzJieXRlcw==
+      SCAN_SALT_SECRET: local-dev-scan-salt-secret-32-bytes-minimum
+      EDGE_SHARED_SECRET: local-dev-edge-shared-secret-32-chars-min
+      SERIAL_MAC_KEY: local-dev-serial-mac-key-32-bytes-minimum
+      VERIFY_TOKEN_KEY: local-dev-verify-token-key-32-bytes-min
     depends_on:
-      - api
-      - redirect
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  ingest:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: qrit-ingest
+    command: sh -c "python manage.py wait_for_migrations && python -c 'import time; time.sleep(999999)'"
+    environment:
+      APP_ENV: local
+      DJANGO_SETTINGS_MODULE: qrit.settings.worker
+      DATABASE_URL: postgresql://qrit:qrit_dev_password@postgres:5432/qrit
+      DATABASE_UNPOOLED_URL: postgresql://qrit:qrit_dev_password@postgres:5432/qrit
+      REDIS_URL: redis://redis:6379/0
+      DJANGO_SECRET_KEY: local-dev-secret-key-at-least-50-characters-long-safe-to-commit
+      APP_ENCRYPTION_KEY: ZGV2ZWxvcG1lbnQtZW5jcnlwdGlvbi1rZXktMzJieXRlcw==
+      SCAN_SALT_SECRET: local-dev-scan-salt-secret-32-bytes-minimum
+      EDGE_SHARED_SECRET: local-dev-edge-shared-secret-32-chars-min
+      SERIAL_MAC_KEY: local-dev-serial-mac-key-32-bytes-minimum
+      VERIFY_TOKEN_KEY: local-dev-verify-token-key-32-bytes-min
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
 volumes:
   postgres_data:

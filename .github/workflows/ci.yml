@@ -1,0 +1,106 @@
+name: CI
+
+on:
+  push:
+    branches: [v3, main]
+  pull_request:
+    branches: [v3, main]
+
+jobs:
+  check:
+    name: Backend Standard Gate
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: qrit
+          POSTGRES_USER: qrit_app
+          POSTGRES_PASSWORD: qrit_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      - name: Check uv lock
+        run: cd backend && uv lock --check
+
+      - name: Install dependencies
+        run: cd backend && uv sync --locked
+
+      - name: Ruff check and format
+        run: cd backend && uv run ruff check . && uv run ruff format --check .
+
+      - name: Mypy type check
+        run: cd backend && uv run mypy
+
+      - name: Check migrations
+        run: cd backend && uv run python manage.py makemigrations --check --dry-run
+
+      - name: Pytest
+        env:
+          DATABASE_URL: postgresql://qrit_app:qrit_test_password@localhost:5432/qrit
+          REDIS_URL: redis://localhost:6379/0
+        run: cd backend && uv run pytest -n auto
+
+      - name: Deploy check
+        env:
+          DJANGO_SETTINGS_MODULE: qrit.settings.api
+          APP_ENV: production
+          DJANGO_SECRET_KEY: production-secret-key-at-least-50-characters-long-safe-and-random
+          APP_ENCRYPTION_KEY: ZGV2ZWxvcG1lbnQtZW5jcnlwdGlvbi1rZXktMzJieXRlcw==
+          JWT_ED25519_PRIVATE_KEY: MC4CAQAwBQYDK2VwBCIEIHsV70EaTfZ+kS1xM6g6eM+VpD7kP8E3jK1qR9sT2uX/
+          SCAN_SALT_SECRET: production-scan-salt-secret-32-bytes-minimum
+          EDGE_SHARED_SECRET: production-edge-shared-secret-32-chars-min
+          SERIAL_MAC_KEY: production-serial-mac-key-32-bytes-min
+          VERIFY_TOKEN_KEY: production-verify-token-key-32-bytes-min
+        run: cd backend && uv run python manage.py check --deploy --fail-level WARNING
+
+  docker-build:
+    name: Docker Build & Vulnerability Scan
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          tags: qrit-backend:ci
+          load: true
+
+      - name: Scan image with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: qrit-backend:ci
+          format: table
+          exit-code: 0
+          severity: CRITICAL,HIGH
