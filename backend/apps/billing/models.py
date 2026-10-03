@@ -153,7 +153,12 @@ class Contract(models.Model):
         ],
     )
     created_by = models.ForeignKey(
-        "accounts.User", on_delete=models.PROTECT, related_name="created_contracts"
+        "accounts.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_column="created_by",
+        related_name="created_contracts",
     )
     created_at = models.DateTimeField(default=tz_now)
 

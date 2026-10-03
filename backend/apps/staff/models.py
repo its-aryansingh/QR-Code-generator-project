@@ -20,7 +20,10 @@ class SupportAccessGrant(models.Model):
         "orgs.Organization", on_delete=models.CASCADE, related_name="support_grants"
     )
     granted_by = models.ForeignKey(
-        "accounts.User", on_delete=models.PROTECT, related_name="granted_support_access"
+        "accounts.User",
+        on_delete=models.PROTECT,
+        db_column="granted_by",
+        related_name="granted_support_access",
     )
     scope = models.TextField(
         default="read",

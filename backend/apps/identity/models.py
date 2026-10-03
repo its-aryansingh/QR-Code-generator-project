@@ -67,6 +67,7 @@ class SSOConnection(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
+        db_column="created_by",
         related_name="+",
     )
     created_at = models.DateTimeField(default=tz_now)
@@ -183,6 +184,7 @@ class SCIMDirectory(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
+        db_column="created_by",
         related_name="+",
     )
     created_at = models.DateTimeField(default=tz_now)

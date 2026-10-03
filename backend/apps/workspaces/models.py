@@ -199,6 +199,7 @@ class WorkspacePolicy(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
+        db_column="updated_by",
         related_name="+",
     )
     updated_at = models.DateTimeField(default=tz_now)

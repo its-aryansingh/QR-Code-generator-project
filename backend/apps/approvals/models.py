@@ -42,7 +42,10 @@ class ApprovalRequest(models.Model):
     )
     reasons = ArrayField(models.TextField())
     requested_by = models.ForeignKey(
-        "accounts.User", on_delete=models.PROTECT, related_name="submitted_approval_requests"
+        "accounts.User",
+        on_delete=models.PROTECT,
+        db_column="requested_by",
+        related_name="submitted_approval_requests",
     )
     required_approvals = models.IntegerField()
     status = models.TextField(
