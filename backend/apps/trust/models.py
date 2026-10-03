@@ -17,7 +17,7 @@ class AbuseReport(models.Model):
         "qr.QRCode",
         null=True,
         blank=True,
-        on_delete=models.DB_SET_NULL,
+        on_delete=models.SET_NULL,
         db_column="qr_code_id",
         related_name="abuse_reports",
     )

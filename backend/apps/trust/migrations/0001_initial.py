@@ -45,7 +45,7 @@ class Migration(migrations.Migration):
                         blank=True,
                         db_column="qr_code_id",
                         null=True,
-                        on_delete=django.db.models.deletion.DB_SET_NULL,
+                        on_delete=django.db.models.deletion.SET_NULL,
                         related_name="abuse_reports",
                         to="qr.qrcode",
                     ),

@@ -18,7 +18,7 @@ class Migration(migrations.Migration):
             name="workspace",
             field=models.OneToOneField(
                 db_column="workspace_id",
-                on_delete=django.db.models.deletion.DB_CASCADE,
+                on_delete=django.db.models.deletion.CASCADE,
                 related_name="subscription",
                 to="workspaces.workspace",
             ),

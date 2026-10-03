@@ -45,7 +45,7 @@ class Migration(migrations.Migration):
                         blank=True,
                         db_column="default_domain_id",
                         null=True,
-                        on_delete=django.db.models.deletion.DB_SET_NULL,
+                        on_delete=django.db.models.deletion.SET_NULL,
                         related_name="default_for_workspaces",
                         to="qr.domain",
                     ),
@@ -96,7 +96,7 @@ class Migration(migrations.Migration):
                     "workspace",
                     models.ForeignKey(
                         db_column="workspace_id",
-                        on_delete=django.db.models.deletion.DB_CASCADE,
+                        on_delete=django.db.models.deletion.CASCADE,
                         related_name="invites",
                         to="workspaces.workspace",
                     ),
@@ -126,7 +126,7 @@ class Migration(migrations.Migration):
                     "user",
                     models.ForeignKey(
                         db_column="user_id",
-                        on_delete=django.db.models.deletion.DB_CASCADE,
+                        on_delete=django.db.models.deletion.CASCADE,
                         related_name="workspace_memberships",
                         to=settings.AUTH_USER_MODEL,
                     ),
@@ -135,7 +135,7 @@ class Migration(migrations.Migration):
                     "workspace",
                     models.ForeignKey(
                         db_column="workspace_id",
-                        on_delete=django.db.models.deletion.DB_CASCADE,
+                        on_delete=django.db.models.deletion.CASCADE,
                         related_name="members",
                         to="workspaces.workspace",
                     ),

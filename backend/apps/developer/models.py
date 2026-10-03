@@ -1,14 +1,16 @@
-"""Developer platform models (API keys and bulk jobs).
+"""Developer platform models (API keys, usage, and bulk jobs).
 
-Plan §6.2 & §7.21:
+Plan §6.2, §6.3, §6.4 & §7.21:
 - api_keys
+- api_usage_daily
 - jobs
 """
 
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
-from django.utils import timezone
+from django.utils.timezone import now as tz_now
 
+from apps.core.fields import CIDRField
 from apps.core.ids import uuid7
 
 
@@ -20,7 +22,7 @@ class ApiKey(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid7, editable=False)
     workspace = models.ForeignKey(
         "workspaces.Workspace",
-        on_delete=models.DB_CASCADE,
+        on_delete=models.CASCADE,
         db_column="workspace_id",
         related_name="api_keys",
     )
@@ -32,14 +34,33 @@ class ApiKey(models.Model):
         "accounts.User",
         null=True,
         blank=True,
-        on_delete=models.DB_SET_NULL,
+        on_delete=models.SET_NULL,
         db_column="created_by",
         related_name="created_api_keys",
     )
     last_used_at = models.DateTimeField(null=True, blank=True)
     expires_at = models.DateTimeField(null=True, blank=True)
     revoked_at = models.DateTimeField(null=True, blank=True)
-    created_at = models.DateTimeField(default=timezone.now)
+    created_at = models.DateTimeField(default=tz_now)
+    # Enterprise additions:
+    environment = models.TextField(
+        default="live",
+        choices=[
+            ("live", "Live"),
+            ("test", "Test"),
+        ],
+    )
+    ip_allowlist = ArrayField(CIDRField(), default=list)
+    # Plan §6.4 deltas:
+    legacy_bcrypt_hash = models.TextField(null=True, blank=True)
+    legacy_kind = models.TextField(
+        null=True,
+        blank=True,
+        choices=[
+            ("v1_user", "v1 User"),
+            ("v1_workspace", "v1 Workspace"),
+        ],
+    )
 
     class Meta:
         db_table = "api_keys"
@@ -50,16 +71,42 @@ class ApiKey(models.Model):
                 name="api_keys_ws_idx",
             ),
         ]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(environment__in=["live", "test"]),
+                name="api_keys_environment_check",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(legacy_kind__isnull=True)
+                | models.Q(legacy_kind__in=["v1_user", "v1_workspace"]),
+                name="api_keys_legacy_kind_check",
+            ),
+        ]
 
     def __str__(self) -> str:
         return f"{self.name} ({self.prefix})"
+
+
+class ApiUsageDaily(models.Model):
+    pk = models.CompositePrimaryKey("api_key_id", "day")
+    api_key_id = models.UUIDField()
+    day = models.DateField()
+    requests = models.IntegerField(default=0)
+    errors = models.IntegerField(default=0)
+    throttled = models.IntegerField(default=0)
+
+    class Meta:
+        db_table = "api_usage_daily"
+
+    def __str__(self) -> str:
+        return f"Usage for key {self.api_key_id} on {self.day}"
 
 
 class Job(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid7, editable=False)
     workspace = models.ForeignKey(
         "workspaces.Workspace",
-        on_delete=models.DB_CASCADE,
+        on_delete=models.CASCADE,
         db_column="workspace_id",
         related_name="jobs",
     )
@@ -90,11 +137,11 @@ class Job(models.Model):
         "accounts.User",
         null=True,
         blank=True,
-        on_delete=models.DB_SET_NULL,
+        on_delete=models.SET_NULL,
         db_column="created_by",
         related_name="created_jobs",
     )
-    created_at = models.DateTimeField(default=timezone.now)
+    created_at = models.DateTimeField(default=tz_now)
     started_at = models.DateTimeField(null=True, blank=True)
     finished_at = models.DateTimeField(null=True, blank=True)
 
@@ -106,7 +153,22 @@ class Job(models.Model):
         constraints = [
             models.CheckConstraint(
                 condition=models.Q(
-                    kind__in=["bulk_create", "export_scans", "export_qr_codes", "bulk_download"]
+                    kind__in=[
+                        "bulk_create",
+                        "bulk_update",
+                        "bulk_download",
+                        "export_scans",
+                        "export_qr_codes",
+                        "print_sheet",
+                        "serial_generate",
+                        "serial_export",
+                        "gs1_import",
+                        "warehouse_export",
+                        "audit_export",
+                        "dsar_export",
+                        "lead_export",
+                        "report_run",
+                    ]
                 ),
                 name="jobs_kind_check",
             ),

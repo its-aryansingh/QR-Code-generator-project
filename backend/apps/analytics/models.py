@@ -48,6 +48,8 @@ class ScanEvent(models.Model):
     utm_source = models.TextField(null=True, blank=True)
     utm_medium = models.TextField(null=True, blank=True)
     utm_campaign = models.TextField(null=True, blank=True)
+    serial = models.TextField(null=True, blank=True)
+    source = models.TextField(default="live")
 
     class Meta:
         managed = False

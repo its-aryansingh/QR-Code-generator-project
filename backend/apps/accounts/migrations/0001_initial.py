@@ -74,7 +74,7 @@ class Migration(migrations.Migration):
                     "user",
                     models.ForeignKey(
                         db_column="user_id",
-                        on_delete=django.db.models.deletion.DB_CASCADE,
+                        on_delete=django.db.models.deletion.CASCADE,
                         related_name="email_tokens",
                         to=settings.AUTH_USER_MODEL,
                     ),
@@ -114,7 +114,7 @@ class Migration(migrations.Migration):
                     "user",
                     models.ForeignKey(
                         db_column="user_id",
-                        on_delete=django.db.models.deletion.DB_CASCADE,
+                        on_delete=django.db.models.deletion.CASCADE,
                         related_name="oauth_accounts",
                         to=settings.AUTH_USER_MODEL,
                     ),
@@ -163,7 +163,7 @@ class Migration(migrations.Migration):
                         blank=True,
                         db_column="replaced_by",
                         null=True,
-                        on_delete=django.db.models.deletion.DB_SET_NULL,
+                        on_delete=django.db.models.deletion.SET_NULL,
                         related_name="replaces",
                         to="accounts.session",
                     ),
@@ -172,7 +172,7 @@ class Migration(migrations.Migration):
                     "user",
                     models.ForeignKey(
                         db_column="user_id",
-                        on_delete=django.db.models.deletion.DB_CASCADE,
+                        on_delete=django.db.models.deletion.CASCADE,
                         related_name="sessions",
                         to=settings.AUTH_USER_MODEL,
                     ),

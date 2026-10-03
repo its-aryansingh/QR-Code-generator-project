@@ -77,7 +77,7 @@ class Migration(migrations.Migration):
                         blank=True,
                         db_column="created_by",
                         null=True,
-                        on_delete=django.db.models.deletion.DB_SET_NULL,
+                        on_delete=django.db.models.deletion.SET_NULL,
                         related_name="created_api_keys",
                         to=settings.AUTH_USER_MODEL,
                     ),

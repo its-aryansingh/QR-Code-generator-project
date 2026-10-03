@@ -21,7 +21,7 @@ class Migration(migrations.Migration):
             name="workspace",
             field=models.ForeignKey(
                 db_column="workspace_id",
-                on_delete=django.db.models.deletion.DB_CASCADE,
+                on_delete=django.db.models.deletion.CASCADE,
                 related_name="api_keys",
                 to="workspaces.workspace",
             ),
@@ -33,7 +33,7 @@ class Migration(migrations.Migration):
                 blank=True,
                 db_column="created_by",
                 null=True,
-                on_delete=django.db.models.deletion.DB_SET_NULL,
+                on_delete=django.db.models.deletion.SET_NULL,
                 related_name="created_jobs",
                 to=settings.AUTH_USER_MODEL,
             ),
@@ -67,7 +67,7 @@ class Migration(migrations.Migration):
             name="workspace",
             field=models.ForeignKey(
                 db_column="workspace_id",
-                on_delete=django.db.models.deletion.DB_CASCADE,
+                on_delete=django.db.models.deletion.CASCADE,
                 related_name="jobs",
                 to="workspaces.workspace",
             ),

@@ -26,7 +26,7 @@ class Domain(models.Model):
         "workspaces.Workspace",
         null=True,
         blank=True,
-        on_delete=models.DB_CASCADE,
+        on_delete=models.CASCADE,
         db_column="workspace_id",
         related_name="domains",
     )
@@ -67,7 +67,7 @@ class Folder(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid7, editable=False)
     workspace = models.ForeignKey(
         "workspaces.Workspace",
-        on_delete=models.DB_CASCADE,
+        on_delete=models.CASCADE,
         db_column="workspace_id",
         related_name="folders",
     )
@@ -75,7 +75,7 @@ class Folder(models.Model):
         "self",
         null=True,
         blank=True,
-        on_delete=models.DB_CASCADE,
+        on_delete=models.CASCADE,
         db_column="parent_id",
         related_name="children",
     )
@@ -102,7 +102,7 @@ class Tag(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid7, editable=False)
     workspace = models.ForeignKey(
         "workspaces.Workspace",
-        on_delete=models.DB_CASCADE,
+        on_delete=models.CASCADE,
         db_column="workspace_id",
         related_name="tags",
     )
@@ -126,7 +126,7 @@ class Campaign(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid7, editable=False)
     workspace = models.ForeignKey(
         "workspaces.Workspace",
-        on_delete=models.DB_CASCADE,
+        on_delete=models.CASCADE,
         db_column="workspace_id",
         related_name="campaigns",
     )
@@ -140,7 +140,7 @@ class Campaign(models.Model):
         "accounts.User",
         null=True,
         blank=True,
-        on_delete=models.DB_SET_NULL,
+        on_delete=models.SET_NULL,
         db_column="created_by",
         related_name="created_campaigns",
     )
@@ -171,7 +171,7 @@ class Template(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid7, editable=False)
     workspace = models.ForeignKey(
         "workspaces.Workspace",
-        on_delete=models.DB_CASCADE,
+        on_delete=models.CASCADE,
         db_column="workspace_id",
         related_name="templates",
     )
@@ -183,7 +183,7 @@ class Template(models.Model):
         "accounts.User",
         null=True,
         blank=True,
-        on_delete=models.DB_SET_NULL,
+        on_delete=models.SET_NULL,
         db_column="created_by",
         related_name="created_templates",
     )
@@ -208,7 +208,7 @@ class File(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid7, editable=False)
     workspace = models.ForeignKey(
         "workspaces.Workspace",
-        on_delete=models.DB_CASCADE,
+        on_delete=models.CASCADE,
         db_column="workspace_id",
         related_name="files",
     )
@@ -221,7 +221,7 @@ class File(models.Model):
         "accounts.User",
         null=True,
         blank=True,
-        on_delete=models.DB_SET_NULL,
+        on_delete=models.SET_NULL,
         db_column="created_by",
         related_name="uploaded_files",
     )
@@ -254,7 +254,7 @@ class QRCode(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid7, editable=False)
     workspace = models.ForeignKey(
         "workspaces.Workspace",
-        on_delete=models.DB_CASCADE,
+        on_delete=models.CASCADE,
         db_column="workspace_id",
         related_name="qr_codes",
     )
@@ -262,7 +262,7 @@ class QRCode(models.Model):
         "accounts.User",
         null=True,
         blank=True,
-        on_delete=models.DB_SET_NULL,
+        on_delete=models.SET_NULL,
         db_column="created_by",
         related_name="created_qr_codes",
     )
@@ -279,6 +279,9 @@ class QRCode(models.Model):
     )
     short_code = models.TextField(null=True, blank=True)
     legacy_short_code = models.TextField(null=True, blank=True)
+    legacy_host = CIText(null=True, blank=True)
+    v1_printed_payload = models.TextField(null=True, blank=True)
+    needs_reprint = models.BooleanField(default=False)
     gs1_gtin = FixedCharField(max_length=14, null=True, blank=True)
     static_payload = models.TextField(null=True, blank=True)
     static_content = models.JSONField(null=True, blank=True)
@@ -296,7 +299,7 @@ class QRCode(models.Model):
         Template,
         null=True,
         blank=True,
-        on_delete=models.DB_SET_NULL,
+        on_delete=models.SET_NULL,
         db_column="template_id",
         related_name="qr_codes",
     )
@@ -304,7 +307,7 @@ class QRCode(models.Model):
         Folder,
         null=True,
         blank=True,
-        on_delete=models.DB_SET_NULL,
+        on_delete=models.SET_NULL,
         db_column="folder_id",
         related_name="qr_codes",
     )
@@ -312,7 +315,7 @@ class QRCode(models.Model):
         Campaign,
         null=True,
         blank=True,
-        on_delete=models.DB_SET_NULL,
+        on_delete=models.SET_NULL,
         db_column="campaign_id",
         related_name="qr_codes",
     )
@@ -350,6 +353,11 @@ class QRCode(models.Model):
                 condition=models.Q(deleted_at__isnull=True),
                 name="qr_codes_ws_campaign_idx",
             ),
+            models.Index(
+                fields=["legacy_host", "legacy_short_code"],
+                condition=models.Q(legacy_short_code__isnull=False),
+                name="qr_codes_legacy_host_idx",
+            ),
         ]
         constraints = [
             models.CheckConstraint(
@@ -374,6 +382,8 @@ class QRCode(models.Model):
                         "file",
                         "app_store",
                         "gs1",
+                        "form",
+                        "serial_batch",
                     ]
                 ),
                 name="qr_codes_content_type_check",
@@ -404,7 +414,16 @@ class QRCode(models.Model):
             ),
             models.CheckConstraint(
                 condition=models.Q(mode="dynamic")
-                | ~models.Q(content_type__in=["links_page", "file", "app_store", "gs1"]),
+                | ~models.Q(
+                    content_type__in=[
+                        "links_page",
+                        "file",
+                        "app_store",
+                        "gs1",
+                        "form",
+                        "serial_batch",
+                    ]
+                ),
                 name="qr_static_types",
             ),
             models.CheckConstraint(
@@ -455,13 +474,13 @@ class QRCodeTag(models.Model):
     pk = models.CompositePrimaryKey("qr_code", "tag")
     qr_code = models.ForeignKey(
         QRCode,
-        on_delete=models.DB_CASCADE,
+        on_delete=models.CASCADE,
         db_column="qr_code_id",
         related_name="code_tags",
     )
     tag = models.ForeignKey(
         Tag,
-        on_delete=models.DB_CASCADE,
+        on_delete=models.CASCADE,
         db_column="tag_id",
         related_name="tagged_codes",
     )
@@ -480,7 +499,7 @@ class QRVersion(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid7, editable=False)
     qr_code = models.ForeignKey(
         QRCode,
-        on_delete=models.DB_CASCADE,
+        on_delete=models.CASCADE,
         db_column="qr_code_id",
         related_name="versions",
     )
@@ -505,18 +524,46 @@ class QRVersion(models.Model):
         "accounts.User",
         null=True,
         blank=True,
-        on_delete=models.DB_SET_NULL,
+        on_delete=models.SET_NULL,
         db_column="created_by",
         related_name="created_versions",
     )
     created_by_key = models.UUIDField(null=True, blank=True)
     created_at = models.DateTimeField(default=timezone.now)
+    approval_status = models.TextField(
+        default="not_required",
+        choices=[
+            ("not_required", "Not Required"),
+            ("pending", "Pending"),
+            ("approved", "Approved"),
+            ("rejected", "Rejected"),
+            ("cancelled", "Cancelled"),
+        ],
+    )
+    approval_request = models.ForeignKey(
+        "approvals.ApprovalRequest",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        db_column="approval_request_id",
+        related_name="versions",
+    )
 
     class Meta:
         db_table = "qr_versions"
         indexes = [
             models.Index(
                 fields=["qr_code", "effective_at", "version_no"], name="qr_versions_effective_idx"
+            ),
+            models.Index(
+                fields=["qr_code"],
+                name="qr_versions_pending_idx",
+                condition=models.Q(approval_status="pending"),
+            ),
+            models.Index(
+                fields=["approval_request"],
+                name="qr_versions_approval_req_idx",
+                condition=models.Q(approval_request__isnull=False),
             ),
         ]
         constraints = [
@@ -536,6 +583,18 @@ class QRVersion(models.Model):
                 name="qr_versions_safety_status_check",
             ),
             models.CheckConstraint(
+                condition=models.Q(
+                    approval_status__in=[
+                        "not_required",
+                        "pending",
+                        "approved",
+                        "rejected",
+                        "cancelled",
+                    ]
+                ),
+                name="qr_versions_approval_status_check",
+            ),
+            models.CheckConstraint(
                 condition=(
                     models.Q(
                         destination_kind="url",
@@ -545,6 +604,11 @@ class QRVersion(models.Model):
                     | models.Q(destination_kind="hosted_page", hosted_page__isnull=False)
                 ),
                 name="qr_version_destination",
+            ),
+            models.CheckConstraint(
+                condition=~models.Q(approval_status__in=["pending", "approved", "rejected"])
+                | models.Q(approval_request__isnull=False),
+                name="qr_version_pending_has_request",
             ),
         ]
 

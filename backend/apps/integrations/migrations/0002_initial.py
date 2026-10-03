@@ -18,7 +18,7 @@ class Migration(migrations.Migration):
             name="workspace",
             field=models.ForeignKey(
                 db_column="workspace_id",
-                on_delete=django.db.models.deletion.DB_CASCADE,
+                on_delete=django.db.models.deletion.CASCADE,
                 related_name="webhooks",
                 to="workspaces.workspace",
             ),
@@ -28,7 +28,7 @@ class Migration(migrations.Migration):
             name="webhook",
             field=models.ForeignKey(
                 db_column="webhook_id",
-                on_delete=django.db.models.deletion.DB_CASCADE,
+                on_delete=django.db.models.deletion.CASCADE,
                 related_name="deliveries",
                 to="integrations.webhook",
             ),

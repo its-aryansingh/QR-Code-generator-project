@@ -1,16 +1,20 @@
-"""Account, user, and session models.
+"""Account, user, session, and MFA models.
 
 Plan §6.3 & §7.2:
 - users (AUTH_USER_MODEL)
 - oauth_accounts
 - sessions
 - email_tokens
+- user_mfa_factors
+- user_recovery_codes
 """
 
 from typing import Any, ClassVar
 
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
+from django.contrib.postgres.fields import ArrayField
 from django.db import models
+from django.db.models import Q
 from django.utils.timezone import now as tz_now
 
 from apps.core.fields import CIText
@@ -68,21 +72,21 @@ class User(AbstractBaseUser):
 class OAuthAccount(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid7, editable=False)
     user = models.ForeignKey(
-        User, on_delete=models.DB_CASCADE, db_column="user_id", related_name="oauth_accounts"
+        User, on_delete=models.CASCADE, db_column="user_id", related_name="oauth_accounts"
     )
     provider = models.TextField()
     provider_user_id = models.TextField()
+    email = CIText(null=True, blank=True)
     created_at = models.DateTimeField(default=tz_now)
 
     class Meta:
         db_table = "oauth_accounts"
         constraints = [
             models.UniqueConstraint(
-                fields=["provider", "provider_user_id"],
-                name="oauth_accounts_provider_provider_user_id_key",
+                fields=["provider", "provider_user_id"], name="oauth_accounts_provider_user_uniq"
             ),
             models.CheckConstraint(
-                condition=models.Q(provider__in=["google"]),
+                condition=models.Q(provider__in=["google", "github", "microsoft"]),
                 name="oauth_accounts_provider_check",
             ),
         ]
@@ -94,7 +98,7 @@ class OAuthAccount(models.Model):
 class Session(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid7, editable=False)
     user = models.ForeignKey(
-        User, on_delete=models.DB_CASCADE, db_column="user_id", related_name="sessions"
+        User, on_delete=models.CASCADE, db_column="user_id", related_name="sessions"
     )
     family_id = models.UUIDField()
     refresh_token_hash = models.BinaryField(unique=True)
@@ -108,13 +112,42 @@ class Session(models.Model):
         "self",
         null=True,
         blank=True,
-        on_delete=models.DB_SET_NULL,
+        on_delete=models.SET_NULL,
         db_column="replaced_by",
         related_name="replaces",
     )
+    # Enterprise identity additions:
+    auth_method = models.TextField(
+        default="password",
+        choices=[
+            ("password", "Password"),
+            ("google", "Google"),
+            ("magic_link", "Magic Link"),
+            ("sso", "SSO"),
+            ("scim", "SCIM"),
+        ],
+    )
+    sso_connection = models.ForeignKey(
+        "identity.SSOConnection",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+    mfa_verified_at = models.DateTimeField(null=True, blank=True)
+    step_up_at = models.DateTimeField(null=True, blank=True)
+    mfa_pending = models.BooleanField(default=False)
 
     class Meta:
         db_table = "sessions"
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(
+                    auth_method__in=["password", "google", "magic_link", "sso", "scim"]
+                ),
+                name="sessions_auth_method_check",
+            ),
+        ]
         indexes = [
             models.Index(
                 fields=["user_id"],
@@ -131,7 +164,7 @@ class Session(models.Model):
 class EmailToken(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid7, editable=False)
     user = models.ForeignKey(
-        User, on_delete=models.DB_CASCADE, db_column="user_id", related_name="email_tokens"
+        User, on_delete=models.CASCADE, db_column="user_id", related_name="email_tokens"
     )
     purpose = models.TextField()
     token_hash = models.BinaryField(unique=True)
@@ -150,3 +183,57 @@ class EmailToken(models.Model):
 
     def __str__(self) -> str:
         return f"email_token:{self.purpose}:{self.id}"
+
+
+class UserMFAFactor(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid7, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="mfa_factors")
+    kind = models.TextField(
+        choices=[
+            ("totp", "TOTP"),
+            ("webauthn", "WebAuthn"),
+        ]
+    )
+    name = models.TextField()
+    totp_secret_ct = models.BinaryField(null=True, blank=True)
+    credential_id = models.BinaryField(unique=True, null=True, blank=True)
+    public_key = models.BinaryField(null=True, blank=True)
+    sign_count = models.BigIntegerField(default=0)
+    aaguid = models.UUIDField(null=True, blank=True)
+    transports = ArrayField(models.TextField(), null=True, blank=True)
+    created_at = models.DateTimeField(default=tz_now)
+    last_used_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "user_mfa_factors"
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(kind__in=["totp", "webauthn"]),
+                name="user_mfa_factors_kind_check",
+            ),
+            models.CheckConstraint(
+                condition=(Q(kind="totp") & Q(totp_secret_ct__isnull=False))
+                | (
+                    Q(kind="webauthn")
+                    & Q(credential_id__isnull=False)
+                    & Q(public_key__isnull=False)
+                ),
+                name="mfa_kind_fields",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.name} ({self.kind}) for {self.user_id}"
+
+
+class UserRecoveryCode(models.Model):
+    pk = models.CompositePrimaryKey("user_id", "code_hash")
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="recovery_codes")
+    code_hash = models.BinaryField()
+    used_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "user_recovery_codes"
+
+    def __str__(self) -> str:
+        return f"Recovery code for {self.user_id}"

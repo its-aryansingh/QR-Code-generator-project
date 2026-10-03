@@ -40,6 +40,8 @@ def create_scan_events(apps: Any, schema_editor: Any) -> None:
                 utm_source       text,
                 utm_medium       text,
                 utm_campaign     text,
+                serial           text,
+                source           text        NOT NULL DEFAULT 'live' CHECK (source IN ('live','v1_import')),
                 PRIMARY KEY (event_id, occurred_at)
             ) PARTITION BY RANGE (occurred_at);
 
@@ -85,6 +87,8 @@ def create_scan_events(apps: Any, schema_editor: Any) -> None:
                 utm_source       text,
                 utm_medium       text,
                 utm_campaign     text,
+                serial           text,
+                source           text        NOT NULL DEFAULT 'live' CHECK (source IN ('live','v1_import')),
                 PRIMARY KEY (event_id, occurred_at)
             );
         """)
