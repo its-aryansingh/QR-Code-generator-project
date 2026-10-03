@@ -83,7 +83,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: qrit-redirect
-    command: granian --interface asginl --host :: --port 8090 qrit.asgi:application
+    command: "granian --interface asginl --host :: --port 8090 qrit.asgi:application"
     ports:
       - "8090:8090"
     environment:
