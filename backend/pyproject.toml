@@ -113,6 +113,7 @@ strict = true
 [[tool.mypy.overrides]]
 module = [
     "apps.*.tests.*",
+    "apps.*.migrations.*",
     "tests.*",
     "qrit.settings.*",
 ]

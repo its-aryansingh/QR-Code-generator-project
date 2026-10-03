@@ -23,11 +23,43 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.postgres",
     "rest_framework",
     "drf_spectacular",
     "corsheaders",
     "procrastinate.contrib.django",
     "apps.core.apps.CoreConfig",
+    "apps.accounts.apps.AccountsConfig",
+    "apps.orgs.apps.OrgsConfig",
+    "apps.workspaces.apps.WorkspacesConfig",
+    "apps.access.apps.AccessConfig",
+    "apps.identity.apps.IdentityConfig",
+    "apps.qr.apps.QrConfig",
+    "apps.render.apps.RenderConfig",
+    "apps.redirect.apps.RedirectConfig",
+    "apps.analytics.apps.AnalyticsConfig",
+    "apps.approvals.apps.ApprovalsConfig",
+    "apps.audit.apps.AuditConfig",
+    "apps.billing.apps.BillingConfig",
+    "apps.integrations.apps.IntegrationsConfig",
+    "apps.alerts.apps.AlertsConfig",
+    "apps.reports.apps.ReportsConfig",
+    "apps.leads.apps.LeadsConfig",
+    "apps.pixels.apps.PixelsConfig",
+    "apps.gs1.apps.Gs1Config",
+    "apps.serials.apps.SerialsConfig",
+    "apps.branding.apps.BrandingConfig",
+    "apps.developer.apps.DeveloperConfig",
+    "apps.trust.apps.TrustConfig",
+    "apps.staff.apps.StaffConfig",
+    "apps.legacy.apps.LegacyConfig",
+]
+
+AUTH_USER_MODEL = "accounts.User"
+
+PASSWORD_HASHERS = [
+    "django.contrib.auth.hashers.Argon2PasswordHasher",
+    "django.contrib.auth.hashers.BCryptPasswordHasher",
 ]
 
 MIDDLEWARE = [
@@ -79,6 +111,7 @@ def _parse_db_url(url: str, min_pool: int = 1, max_pool: int = 4) -> dict[str, A
             "pool": {
                 "min_size": min_pool,
                 "max_size": max_pool,
+                "timeout": 2.0,
             }
         },
     }
