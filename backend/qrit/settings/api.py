@@ -29,4 +29,3 @@ CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^https:\/\/.*\.railway\.app$",
 ]
 CORS_ALLOW_CREDENTIALS = True
-

@@ -21,9 +21,7 @@ class Settings(BaseSettings):
     APP_ENV: Literal["local", "test", "staging", "production"] = "local"
     DJANGO_SETTINGS_MODULE: str = "qrit.settings.api"
     DJANGO_SECRET_KEY: str = "local-insecure-secret-key-change-in-production-min-50-characters-long"
-    ALLOWED_HOSTS: str = (
-        "localhost,127.0.0.1,healthcheck.railway.app,.railway.app,.up.railway.app"
-    )
+    ALLOWED_HOSTS: str = "localhost,127.0.0.1,healthcheck.railway.app,.railway.app,.up.railway.app"
 
     # Databases
     DATABASE_URL: str = "postgresql://qrit_app:qrit_dev_password@localhost:5432/qrit"

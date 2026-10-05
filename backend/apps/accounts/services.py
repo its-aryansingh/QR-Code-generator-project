@@ -33,6 +33,7 @@ from apps.core.ids import uuid7
 from apps.core.ratelimit import allow as check_ratelimit
 from apps.orgs.models import Organization, OrgMember
 from apps.workspaces.models import Workspace, WorkspaceMember
+from qrit.settings.env import env
 
 from .models import EmailToken, OAuthAccount, Session, User
 from .passwords import validate_password_strength
@@ -750,8 +751,8 @@ def github_login(
         email = parts[2] if len(parts) > 2 else f"github_{github_id}@example.com"
         name = parts[3] if len(parts) > 3 else "GitHub User"
     else:
-        client_id = getattr(settings, "GITHUB_CLIENT_ID", "")
-        client_secret = getattr(settings, "GITHUB_CLIENT_SECRET", "")
+        client_id = getattr(settings, "GITHUB_CLIENT_ID", "") or env.GITHUB_CLIENT_ID
+        client_secret = getattr(settings, "GITHUB_CLIENT_SECRET", "") or env.GITHUB_CLIENT_SECRET
         if not client_id or not client_secret:
             raise ApiError(
                 status=500, code="internal_error", detail="GitHub OAuth is not configured"
