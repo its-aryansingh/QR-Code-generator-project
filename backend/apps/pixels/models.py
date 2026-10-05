@@ -52,7 +52,7 @@ class Pixel(models.Model):
 
 
 class QRCodePixel(models.Model):
-    pk = models.CompositePrimaryKey("qr_code_id", "pixel_id")
+    pk = models.CompositePrimaryKey("qr_code", "pixel")
     qr_code = models.ForeignKey("qr.QRCode", on_delete=models.CASCADE, related_name="pixel_links")
     pixel = models.ForeignKey(Pixel, on_delete=models.CASCADE, related_name="code_links")
 

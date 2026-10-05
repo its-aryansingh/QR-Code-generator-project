@@ -111,7 +111,7 @@ class ApprovalRequest(models.Model):
 
 
 class ApprovalDecision(models.Model):
-    pk = models.CompositePrimaryKey("request_id", "approver_id")
+    pk = models.CompositePrimaryKey("request", "approver")
     request = models.ForeignKey(ApprovalRequest, on_delete=models.CASCADE, related_name="decisions")
     approver = models.ForeignKey(
         "accounts.User", on_delete=models.PROTECT, related_name="approval_decisions"

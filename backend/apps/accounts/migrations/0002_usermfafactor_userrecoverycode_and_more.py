@@ -61,12 +61,20 @@ class Migration(migrations.Migration):
                 (
                     "pk",
                     models.CompositePrimaryKey(
-                        "user_id",
+                        "user",
                         "code_hash",
                         blank=True,
                         editable=False,
                         primary_key=True,
                         serialize=False,
+                    ),
+                ),
+                (
+                    "user",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="recovery_codes",
+                        to=settings.AUTH_USER_MODEL,
                     ),
                 ),
                 ("code_hash", models.BinaryField()),
@@ -161,15 +169,6 @@ class Migration(migrations.Migration):
             field=models.ForeignKey(
                 on_delete=django.db.models.deletion.CASCADE,
                 related_name="mfa_factors",
-                to=settings.AUTH_USER_MODEL,
-            ),
-        ),
-        migrations.AddField(
-            model_name="userrecoverycode",
-            name="user",
-            field=models.ForeignKey(
-                on_delete=django.db.models.deletion.CASCADE,
-                related_name="recovery_codes",
                 to=settings.AUTH_USER_MODEL,
             ),
         ),

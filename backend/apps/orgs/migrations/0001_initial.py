@@ -147,8 +147,8 @@ class Migration(migrations.Migration):
                 (
                     "pk",
                     models.CompositePrimaryKey(
-                        "org_id",
-                        "user_id",
+                        "org",
+                        "user",
                         blank=True,
                         editable=False,
                         primary_key=True,

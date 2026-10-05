@@ -20,7 +20,7 @@ class Migration(migrations.Migration):
                 (
                     "pk",
                     models.CompositePrimaryKey(
-                        "org_id",
+                        "org",
                         "key_id",
                         blank=True,
                         editable=False,

@@ -113,8 +113,8 @@ class Migration(migrations.Migration):
                 (
                     "pk",
                     models.CompositePrimaryKey(
-                        "request_id",
-                        "approver_id",
+                        "request",
+                        "approver",
                         blank=True,
                         editable=False,
                         primary_key=True,

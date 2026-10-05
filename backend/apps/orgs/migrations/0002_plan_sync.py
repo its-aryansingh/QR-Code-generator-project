@@ -43,12 +43,14 @@ DROP FUNCTION IF EXISTS org_plan_sync();
 
 def apply_sync(apps: Any, schema_editor: Any) -> None:
     if schema_editor.connection.vendor == "postgresql":
-        schema_editor.execute(PLAN_SYNC_UP)
+        with schema_editor.connection.cursor() as cursor:
+            cursor.execute(PLAN_SYNC_UP)
 
 
 def revert_sync(apps: Any, schema_editor: Any) -> None:
     if schema_editor.connection.vendor == "postgresql":
-        schema_editor.execute(PLAN_SYNC_DOWN)
+        with schema_editor.connection.cursor() as cursor:
+            cursor.execute(PLAN_SYNC_DOWN)
 
 
 class Migration(migrations.Migration):

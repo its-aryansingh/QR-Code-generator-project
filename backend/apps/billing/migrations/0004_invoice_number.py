@@ -29,12 +29,14 @@ DROP FUNCTION IF EXISTS next_invoice_number(date);
 
 def apply_fn(apps: Any, schema_editor: Any) -> None:
     if schema_editor.connection.vendor == "postgresql":
-        schema_editor.execute(NEXT_INVOICE_NUMBER_UP)
+        with schema_editor.connection.cursor() as cursor:
+            cursor.execute(NEXT_INVOICE_NUMBER_UP)
 
 
 def revert_fn(apps: Any, schema_editor: Any) -> None:
     if schema_editor.connection.vendor == "postgresql":
-        schema_editor.execute(NEXT_INVOICE_NUMBER_DOWN)
+        with schema_editor.connection.cursor() as cursor:
+            cursor.execute(NEXT_INVOICE_NUMBER_DOWN)
 
 
 class Migration(migrations.Migration):

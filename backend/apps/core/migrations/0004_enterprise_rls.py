@@ -56,12 +56,14 @@ ENTERPRISE_RLS_DOWN = "\n".join(DOWN_SQL_PARTS)
 
 def apply_enterprise_rls(apps: Any, schema_editor: Any) -> None:
     if schema_editor.connection.vendor == "postgresql":
-        schema_editor.execute(ENTERPRISE_RLS_UP)
+        with schema_editor.connection.cursor() as cursor:
+            cursor.execute(ENTERPRISE_RLS_UP)
 
 
 def revert_enterprise_rls(apps: Any, schema_editor: Any) -> None:
     if schema_editor.connection.vendor == "postgresql":
-        schema_editor.execute(ENTERPRISE_RLS_DOWN)
+        with schema_editor.connection.cursor() as cursor:
+            cursor.execute(ENTERPRISE_RLS_DOWN)
 
 
 class Migration(migrations.Migration):

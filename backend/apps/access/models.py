@@ -172,7 +172,7 @@ class Group(models.Model):
 
 
 class GroupMember(models.Model):
-    pk = models.CompositePrimaryKey("group_id", "user_id")
+    pk = models.CompositePrimaryKey("group", "user")
     group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name="members")
     user = models.ForeignKey(
         "accounts.User", on_delete=models.CASCADE, related_name="group_memberships"

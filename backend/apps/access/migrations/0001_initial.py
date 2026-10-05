@@ -47,26 +47,6 @@ class Migration(migrations.Migration):
             },
         ),
         migrations.CreateModel(
-            name="GroupMember",
-            fields=[
-                (
-                    "pk",
-                    models.CompositePrimaryKey(
-                        "group_id",
-                        "user_id",
-                        blank=True,
-                        editable=False,
-                        primary_key=True,
-                        serialize=False,
-                    ),
-                ),
-                ("added_at", models.DateTimeField(default=django.utils.timezone.now)),
-            ],
-            options={
-                "db_table": "group_members",
-            },
-        ),
-        migrations.CreateModel(
             name="Role",
             fields=[
                 (

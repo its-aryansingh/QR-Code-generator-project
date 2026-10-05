@@ -203,3 +203,25 @@ _DEFAULT_RESOLVER = ClientIPResolver(["cloudflare"])
 def client_ip(request: Any) -> str:
     """Return the resolved client IP for a Django request as a string."""
     return _DEFAULT_RESOLVER.client_ip_string(request)
+
+
+def ip_prefix(request: Any) -> str | None:
+    """Return the masked IP prefix (/24 for IPv4, /48 for IPv6) or None."""
+    ip_s = client_ip(request)
+    if not ip_s:
+        return None
+    res = truncate_ip_to_prefix(ip_s)
+    return res if res else None
+
+
+def ip_key(request: Any) -> str:
+    """Return the rate-limit key for client IP (IPv4 string or IPv6 /64)."""
+    ip_s = client_ip(request)
+    if not ip_s:
+        return "unknown"
+    parsed = parse_ip(ip_s)
+    if parsed is None:
+        return "unknown"
+    if isinstance(parsed, ipaddress.IPv4Address):
+        return str(parsed)
+    return str(ipaddress.IPv6Network(f"{parsed}/64", strict=False))

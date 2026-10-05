@@ -86,8 +86,8 @@ class Migration(migrations.Migration):
                 (
                     "pk",
                     models.CompositePrimaryKey(
-                        "qr_code_id",
-                        "pixel_id",
+                        "qr_code",
+                        "pixel",
                         blank=True,
                         editable=False,
                         primary_key=True,

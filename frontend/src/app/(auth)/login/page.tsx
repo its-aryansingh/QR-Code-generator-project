@@ -12,6 +12,7 @@ import { SocialAuthButtons } from "@/components/auth/social-auth-buttons";
 import { PasswordInput } from "@/components/auth/password-input";
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
+const GITHUB_CLIENT_ID = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID || "";
 
 declare global {
     interface Window {
@@ -103,9 +104,19 @@ function LoginForm() {
     };
 
     const handleGithubClick = () => {
-        toast.error("GitHub sign-in not configured", {
-            description: "GitHub OAuth is coming soon",
-        });
+        if (!GITHUB_CLIENT_ID || GITHUB_CLIENT_ID.includes("YOUR_GITHUB")) {
+            toast.error("GitHub sign-in not configured", {
+                description: "Set NEXT_PUBLIC_GITHUB_CLIENT_ID in your environment variables",
+            });
+            return;
+        }
+        const state = Math.random().toString(36).substring(2) + Date.now().toString(36);
+        sessionStorage.setItem("github_oauth_state", state);
+        const redirectUri = `${window.location.origin}/callback/github`;
+        const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${encodeURIComponent(
+            GITHUB_CLIENT_ID
+        )}&scope=user:email&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(state)}`;
+        window.location.href = githubAuthUrl;
     };
 
     const handleSubmit = async (e: React.FormEvent) => {

@@ -153,16 +153,6 @@ class Migration(migrations.Migration):
             ),
         ),
         migrations.AddField(
-            model_name="qrcodetag",
-            name="qr_code",
-            field=models.ForeignKey(
-                db_column="qr_code_id",
-                on_delete=django.db.models.deletion.CASCADE,
-                related_name="code_tags",
-                to="qr.qrcode",
-            ),
-        ),
-        migrations.AddField(
             model_name="qrversion",
             name="created_by",
             field=models.ForeignKey(
@@ -208,15 +198,35 @@ class Migration(migrations.Migration):
                 to="qr.qrversion",
             ),
         ),
-        migrations.AddField(
-            model_name="shortcodetombstone",
-            name="domain",
-            field=models.ForeignKey(
-                db_column="domain_id",
-                on_delete=django.db.models.deletion.DO_NOTHING,
-                related_name="tombstones",
-                to="qr.domain",
-            ),
+        migrations.CreateModel(
+            name="ShortCodeTombstone",
+            fields=[
+                (
+                    "pk",
+                    models.CompositePrimaryKey(
+                        "domain",
+                        "short_code",
+                        blank=True,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                (
+                    "domain",
+                    models.ForeignKey(
+                        db_column="domain_id",
+                        on_delete=django.db.models.deletion.DO_NOTHING,
+                        related_name="tombstones",
+                        to="qr.domain",
+                    ),
+                ),
+                ("short_code", models.TextField()),
+                ("purged_at", models.DateTimeField(default=django.utils.timezone.now)),
+            ],
+            options={
+                "db_table": "short_code_tombstones",
+            },
         ),
         migrations.AddField(
             model_name="tag",
@@ -228,15 +238,42 @@ class Migration(migrations.Migration):
                 to="workspaces.workspace",
             ),
         ),
-        migrations.AddField(
-            model_name="qrcodetag",
-            name="tag",
-            field=models.ForeignKey(
-                db_column="tag_id",
-                on_delete=django.db.models.deletion.CASCADE,
-                related_name="tagged_codes",
-                to="qr.tag",
-            ),
+        migrations.CreateModel(
+            name="QRCodeTag",
+            fields=[
+                (
+                    "pk",
+                    models.CompositePrimaryKey(
+                        "qr_code",
+                        "tag",
+                        blank=True,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                (
+                    "qr_code",
+                    models.ForeignKey(
+                        db_column="qr_code_id",
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="code_tags",
+                        to="qr.qrcode",
+                    ),
+                ),
+                (
+                    "tag",
+                    models.ForeignKey(
+                        db_column="tag_id",
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="tagged_codes",
+                        to="qr.tag",
+                    ),
+                ),
+            ],
+            options={
+                "db_table": "qr_code_tags",
+            },
         ),
         migrations.AddField(
             model_name="template",

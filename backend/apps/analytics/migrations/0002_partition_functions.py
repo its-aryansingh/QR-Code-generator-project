@@ -96,12 +96,14 @@ DROP FUNCTION IF EXISTS qrit_ensure_scan_partitions(date, date);
 
 def apply_fn(apps: Any, schema_editor: Any) -> None:
     if schema_editor.connection.vendor == "postgresql":
-        schema_editor.execute(PARTITION_FUNCTIONS_UP)
+        with schema_editor.connection.cursor() as cursor:
+            cursor.execute(PARTITION_FUNCTIONS_UP)
 
 
 def revert_fn(apps: Any, schema_editor: Any) -> None:
     if schema_editor.connection.vendor == "postgresql":
-        schema_editor.execute(PARTITION_FUNCTIONS_DOWN)
+        with schema_editor.connection.cursor() as cursor:
+            cursor.execute(PARTITION_FUNCTIONS_DOWN)
 
 
 class Migration(migrations.Migration):

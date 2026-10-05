@@ -37,12 +37,14 @@ DROP FUNCTION IF EXISTS approval_no_self_approval();
 
 def apply_trigger(apps: Any, schema_editor: Any) -> None:
     if schema_editor.connection.vendor == "postgresql":
-        schema_editor.execute(TRIGGER_UP)
+        with schema_editor.connection.cursor() as cursor:
+            cursor.execute(TRIGGER_UP)
 
 
 def revert_trigger(apps: Any, schema_editor: Any) -> None:
     if schema_editor.connection.vendor == "postgresql":
-        schema_editor.execute(TRIGGER_DOWN)
+        with schema_editor.connection.cursor() as cursor:
+            cursor.execute(TRIGGER_DOWN)
 
 
 class Migration(migrations.Migration):

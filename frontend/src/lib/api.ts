@@ -139,6 +139,14 @@ class ApiClient {
         return response.data;
     }
 
+    async githubLogin(code: string, redirectUri?: string): Promise<ApiResponse<TokenPair & { user: User }>> {
+        const response = await this.client.post<ApiResponse<TokenPair & { user: User }>>('/auth/github', {
+            code,
+            redirect_uri: redirectUri,
+        });
+        return response.data;
+    }
+
     async refresh(refreshToken: string): Promise<ApiResponse<TokenPair>> {
         const response = await this.client.post<ApiResponse<TokenPair>>('/auth/refresh', {
             refresh_token: refreshToken,

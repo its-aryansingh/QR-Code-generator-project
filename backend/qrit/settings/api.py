@@ -21,6 +21,12 @@ else:
 CSRF_COOKIE_NAME = "qrit_csrf"
 CSRF_HEADER_NAME = "HTTP_X_CSRF_TOKEN"
 CSRF_COOKIE_HTTPONLY = False  # Readable by frontend client for double-submit
+CSRF_TRUSTED_ORIGINS = env.csrf_trusted_origins_list
 
 CORS_ALLOWED_ORIGINS = env.cors_allowed_origins_list
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https:\/\/.*\.up\.railway\.app$",
+    r"^https:\/\/.*\.railway\.app$",
+]
 CORS_ALLOW_CREDENTIALS = True
+

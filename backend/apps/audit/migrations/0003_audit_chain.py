@@ -96,12 +96,14 @@ DROP FUNCTION IF EXISTS audit_entry_bytes(audit_logs);
 
 def apply_audit_chain(apps: Any, schema_editor: Any) -> None:
     if schema_editor.connection.vendor == "postgresql":
-        schema_editor.execute(AUDIT_CHAIN_UP)
+        with schema_editor.connection.cursor() as cursor:
+            cursor.execute(AUDIT_CHAIN_UP)
 
 
 def revert_audit_chain(apps: Any, schema_editor: Any) -> None:
     if schema_editor.connection.vendor == "postgresql":
-        schema_editor.execute(AUDIT_CHAIN_DOWN)
+        with schema_editor.connection.cursor() as cursor:
+            cursor.execute(AUDIT_CHAIN_DOWN)
 
 
 class Migration(migrations.Migration):

@@ -73,7 +73,7 @@ class FeatureFlag(models.Model):
 
 
 class OrgDataKey(models.Model):
-    pk = models.CompositePrimaryKey("org_id", "key_id")
+    pk = models.CompositePrimaryKey("org", "key_id")
     org = models.ForeignKey("orgs.Organization", on_delete=models.CASCADE, related_name="data_keys")
     key_id = models.IntegerField()
     dek_ct = models.BinaryField()

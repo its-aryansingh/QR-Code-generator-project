@@ -227,7 +227,7 @@ class UserMFAFactor(models.Model):
 
 
 class UserRecoveryCode(models.Model):
-    pk = models.CompositePrimaryKey("user_id", "code_hash")
+    pk = models.CompositePrimaryKey("user", "code_hash")
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="recovery_codes")
     code_hash = models.BinaryField()
     used_at = models.DateTimeField(null=True, blank=True)

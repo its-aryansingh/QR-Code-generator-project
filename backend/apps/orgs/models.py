@@ -104,7 +104,7 @@ class Organization(models.Model):
 
 
 class OrgMember(models.Model):
-    pk = models.CompositePrimaryKey("org_id", "user_id")
+    pk = models.CompositePrimaryKey("org", "user")
     org = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="members")
     user = models.ForeignKey(
         "accounts.User", on_delete=models.CASCADE, related_name="org_memberships"

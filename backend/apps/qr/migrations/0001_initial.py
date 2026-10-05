@@ -135,25 +135,6 @@ class Migration(migrations.Migration):
             },
         ),
         migrations.CreateModel(
-            name="QRCodeTag",
-            fields=[
-                (
-                    "pk",
-                    models.CompositePrimaryKey(
-                        "qr_code",
-                        "tag",
-                        blank=True,
-                        editable=False,
-                        primary_key=True,
-                        serialize=False,
-                    ),
-                ),
-            ],
-            options={
-                "db_table": "qr_code_tags",
-            },
-        ),
-        migrations.CreateModel(
             name="QRVersion",
             fields=[
                 (
@@ -182,27 +163,6 @@ class Migration(migrations.Migration):
             ],
             options={
                 "db_table": "qr_versions",
-            },
-        ),
-        migrations.CreateModel(
-            name="ShortCodeTombstone",
-            fields=[
-                (
-                    "pk",
-                    models.CompositePrimaryKey(
-                        "domain",
-                        "short_code",
-                        blank=True,
-                        editable=False,
-                        primary_key=True,
-                        serialize=False,
-                    ),
-                ),
-                ("short_code", models.TextField()),
-                ("purged_at", models.DateTimeField(default=django.utils.timezone.now)),
-            ],
-            options={
-                "db_table": "short_code_tombstones",
             },
         ),
         migrations.CreateModel(

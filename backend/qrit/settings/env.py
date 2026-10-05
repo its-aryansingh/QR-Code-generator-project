@@ -21,7 +21,9 @@ class Settings(BaseSettings):
     APP_ENV: Literal["local", "test", "staging", "production"] = "local"
     DJANGO_SETTINGS_MODULE: str = "qrit.settings.api"
     DJANGO_SECRET_KEY: str = "local-insecure-secret-key-change-in-production-min-50-characters-long"
-    ALLOWED_HOSTS: str = "localhost,127.0.0.1,healthcheck.railway.app"
+    ALLOWED_HOSTS: str = (
+        "localhost,127.0.0.1,healthcheck.railway.app,.railway.app,.up.railway.app"
+    )
 
     # Databases
     DATABASE_URL: str = "postgresql://qrit_app:qrit_dev_password@localhost:5432/qrit"
@@ -77,6 +79,9 @@ class Settings(BaseSettings):
     RESEND_API_KEY: str = ""
     EMAIL_FROM: str = "QRit <notifications@qrit.link>"
     GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
+    GITHUB_CLIENT_ID: str = ""
+    GITHUB_CLIENT_SECRET: str = ""
     WEB_RISK_API_KEY: str = ""
     DOH_URL: str = "https://cloudflare-dns.com/dns-query"
     CF_API_TOKEN: str = ""
@@ -124,7 +129,22 @@ class Settings(BaseSettings):
 
     @property
     def cors_allowed_origins_list(self) -> list[str]:
-        return [o.strip() for o in self.CORS_ALLOWED_ORIGINS.split(",") if o.strip()]
+        origins = [o.strip() for o in self.CORS_ALLOWED_ORIGINS.split(",") if o.strip()]
+        if self.APP_BASE_URL and self.APP_BASE_URL not in origins:
+            origins.append(self.APP_BASE_URL)
+        return origins
+
+    @property
+    def csrf_trusted_origins_list(self) -> list[str]:
+        origins = set(self.cors_allowed_origins_list)
+        if self.APP_BASE_URL:
+            origins.add(self.APP_BASE_URL)
+        if self.API_PUBLIC_URL:
+            origins.add(self.API_PUBLIC_URL)
+        # Trust Railway subdomains in Railway deployments
+        origins.add("https://*.up.railway.app")
+        origins.add("https://*.railway.app")
+        return sorted(origins)
 
     @property
     def legacy_hosts_list(self) -> list[str]:

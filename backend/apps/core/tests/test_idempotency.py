@@ -70,7 +70,7 @@ def test_idempotency_replay_and_conflict() -> None:
         content_type="application/json",
         HTTP_IDEMPOTENCY_KEY="my-idempotency-key-12345",
     )
-    setattr(req1, "workspace_id", ws_id)
+    req1.workspace_id = ws_id
     resp1 = middleware(req1)
 
     assert resp1.status_code == 201
@@ -86,7 +86,7 @@ def test_idempotency_replay_and_conflict() -> None:
         content_type="application/json",
         HTTP_IDEMPOTENCY_KEY="my-idempotency-key-12345",
     )
-    setattr(req2, "workspace_id", ws_id)
+    req2.workspace_id = ws_id
     resp2 = middleware(req2)
 
     assert resp2.status_code == 201
@@ -102,7 +102,7 @@ def test_idempotency_replay_and_conflict() -> None:
         content_type="application/json",
         HTTP_IDEMPOTENCY_KEY="my-idempotency-key-12345",
     )
-    setattr(req3, "workspace_id", ws_id)
+    req3.workspace_id = ws_id
     resp3 = middleware(req3)
 
     assert resp3.status_code == 422

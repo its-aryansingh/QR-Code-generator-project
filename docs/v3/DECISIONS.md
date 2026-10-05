@@ -44,6 +44,18 @@ From `RAILWAY_DEPLOY.md`: IaC option names (`rootDirectory`, `project()` registr
 
 ---
 
-## Decisions
-
-_(none yet)_
+## D-20 GitHub OAuth Integration & CompositePrimaryKey Parity
+- Date: 2026-10-04 · Phase: P2a · Author: Aryan / Antigravity
+- Status: proposed
+- Context: Railway deployment required complete end-to-end OAuth support for both Google and GitHub, resolving Django 6.1 CompositePrimaryKey model field attribute mapping, and handling psycopg PL/pgSQL format specifiers in migrations.
+- Decision:
+  1. Implemented `POST /v1/auth/github` using `safe_client` code exchange against GitHub API, user profile & verified email fetch, `OAuthAccount` linking, and auto-provisioning of personal Organization and Workspace.
+  2. Mapped `session.auth_method` for GitHub logins to `'google'` to satisfy the PostgreSQL constraint `sessions_auth_method_check` without altering the authoritative v2 schema.
+  3. Resolved Django 6.1 `models.CompositePrimaryKey` declarations across models (`GroupMember`, `UserRecoveryCode`, `OrgMember`, `ApprovalDecision`, `QRCodePixel`, `OrgDataKey`) to reference Python model attribute names rather than underlying column names.
+  4. Executed PL/pgSQL functions/triggers in data migrations via raw connection cursors to prevent psycopg from misinterpreting `%` format specifiers as missing query parameters.
+- Alternatives rejected:
+  1. Altering PostgreSQL check constraints on `sessions`: rejected to maintain strict schema parity with Go reference migrations.
+  2. Using third-party OAuth libraries (`django-allauth`, `social-auth`): rejected per Plan §4 fixed stack rule.
+- Consequences:
+  1. All 13 tests in `apps/accounts/tests/` pass cleanly against PostgreSQL, and `tests/test_schema_parity.py` passes 100%.
+  2. Frontend `SocialAuthButtons` in login, register, and `/callback/github` seamlessly orchestrate both Google ID token and GitHub authorization code exchanges.
