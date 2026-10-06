@@ -128,7 +128,7 @@ class TokenManager:
         headers = {"kid": self.key_id}
         token = jwt.encode(
             claims,
-            self._private_key,  # type: ignore[arg-type]
+            self._private_key,
             algorithm="EdDSA",
             headers=headers,
         )
@@ -139,7 +139,7 @@ class TokenManager:
         try:
             claims = jwt.decode(
                 token_str,
-                self._public_key,  # type: ignore[arg-type]
+                self._public_key,
                 algorithms=["EdDSA"],
                 issuer="qrit",
                 options={"require": ["sub", "sid", "exp", "iat"]},

@@ -647,6 +647,7 @@ def google_login(
 
     with transaction.atomic():
         # Check if OAuthAccount already linked
+        user: User | None
         oauth_acc = (
             OAuthAccount.objects.filter(provider="google", provider_user_id=sub)
             .select_related("user")
@@ -829,6 +830,7 @@ def github_login(
     email_clean = email.strip().lower()
 
     with transaction.atomic():
+        user: User | None
         oauth_acc = (
             OAuthAccount.objects.filter(provider="github", provider_user_id=github_id)
             .select_related("user")
