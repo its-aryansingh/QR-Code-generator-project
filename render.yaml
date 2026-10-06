@@ -4,7 +4,7 @@ services:
     env: python
     rootDir: backend
     buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate --noinput
-    startCommand: gunicorn qrapp.wsgi:application --config gunicorn.conf.py --bind 0.0.0.0:$PORT
+    startCommand: gunicorn qrapp.wsgi:application --config gunicorn.conf.py
     healthCheckPath: /health
     envVars:
       - key: PORT
@@ -35,6 +35,12 @@ services:
         sync: false
       - key: GOOGLE_CLIENT_ID
         sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GITHUB_CLIENT_ID
+        sync: false
+      - key: GITHUB_CLIENT_SECRET
+        sync: false
 
   - type: web
     name: qrit-frontend
@@ -44,14 +50,13 @@ services:
     startCommand: npm run start
     healthCheckPath: /api/health
     envVars:
-      - key: NEXT_PUBLIC_API_URL
-        value: "https://qrit-backend.onrender.com/api/v1"
+      # The browser calls /api/v1 on the frontend, which forwards here at runtime.
+      - key: BACKEND_INTERNAL_URL
+        value: "https://qrit-backend.onrender.com"
       - key: NEXT_PUBLIC_API_BASE_URL
         value: "https://qrit-backend.onrender.com"
       - key: NEXT_PUBLIC_APP_URL
         value: "https://qrit-frontend.onrender.com"
-      - key: NEXT_PUBLIC_GOOGLE_CLIENT_ID
-        sync: false
 
 databases:
   - name: qrit-db

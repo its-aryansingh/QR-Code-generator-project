@@ -22,7 +22,8 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8084/api/v1
+      # The browser calls /api/v1 on the frontend; it forwards to the backend.
+      BACKEND_INTERNAL_URL: http://backend:8084
     volumes:
       - ./frontend:/app
       - /app/node_modules

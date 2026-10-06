@@ -48,25 +48,34 @@ This guide covers deploying the QRit QR Code SaaS platform (Django 4.2 REST API 
 | `CORS_ALLOWED_ORIGINS`| **Yes** | Trusted frontend origins for cross-origin API | `https://app.yourdomain.com` |
 | `CSRF_TRUSTED_ORIGINS`| **Yes** | Trusted origins for CSRF checks | `https://app.yourdomain.com` |
 | `SECURE_SSL_REDIRECT` | Optional | Redirect all HTTP traffic to HTTPS | `True` |
-| `EMAIL_BACKEND` | Optional | `console` for dev, `resend` for production | `resend` |
+| `EMAIL_BACKEND` | Optional | `console` for dev, `resend` for production (stored as `QRIT_EMAIL_BACKEND`) | `resend` |
 | `RESEND_API_KEY` | If Resend | Resend API key for transactional emails | `re_...` |
 | `EMAIL_FROM` | If Resend | Verified sender email | `noreply@yourdomain.com` |
-| `GOOGLE_CLIENT_ID` | Optional | Google OAuth Web Client ID | `...apps.googleusercontent.com` |
+| `GOOGLE_CLIENT_ID` | For Google sign-in | Google OAuth **Web application** client ID | `...apps.googleusercontent.com` |
+| `GOOGLE_CLIENT_SECRET` | For Google sign-in | Secret of the same client | `GOCSPX-...` |
+| `GITHUB_CLIENT_ID` | For GitHub sign-in | GitHub **OAuth App** client ID | `Ov23li...` |
+| `GITHUB_CLIENT_SECRET` | For GitHub sign-in | Secret of the same OAuth App | `...` |
+| `OAUTH_CALLBACK_BASE_URL` | Optional | Host the providers redirect back to. Defaults to `APP_BASE_URL` (the frontend proxies `/api/v1`) | `https://app.yourdomain.com` |
 | `STRIPE_SECRET_KEY` | Optional | Stripe Live Secret Key | `sk_live_...` |
 | `STRIPE_WEBHOOK_SECRET`| Optional | Stripe Webhook Signing Secret | `whsec_...` |
 | `LOG_LEVEL` | Optional | Console logging level | `INFO` |
 
-### Frontend (`frontend/.env.local` or platform build envs)
+### Frontend (`frontend/.env.local` or platform variables)
 
-| Variable | Required in Prod? | Description |
-| :--- | :--- | :--- |
-| `NEXT_PUBLIC_API_URL` | **Yes** | Full backend API URL (e.g., `https://api.yourdomain.com/api/v1`) |
-| `NEXT_PUBLIC_API_BASE_URL` | **Yes** | Backend root URL (e.g., `https://api.yourdomain.com`) |
-| `NEXT_PUBLIC_APP_URL` | **Yes** | Frontend public URL (e.g., `https://app.yourdomain.com`) |
-| `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | Optional | Google OAuth Client ID for the Sign-In button |
+| Variable | When read | Required in Prod? | Description |
+| :--- | :--- | :--- | :--- |
+| `BACKEND_INTERNAL_URL` | Runtime | **Yes** | Where the frontend's `/api/v1/*` proxy forwards to, e.g. `http://${{qrit-backend.RAILWAY_PRIVATE_DOMAIN}}:8084` |
+| `NEXT_PUBLIC_API_URL` | Build | **No, leave unset** | Only for serving the API from a different origin. Unset, the browser calls the same-origin proxy |
+| `NEXT_PUBLIC_API_BASE_URL` | Build | Recommended | Public backend URL, used to display short links (`/r/<code>`) |
+| `NEXT_PUBLIC_APP_URL` | Build | Recommended | Frontend public URL |
 
 > [!NOTE]
-> In Next.js, `NEXT_PUBLIC_*` variables are baked into client JavaScript bundles at **build time**. Make sure they are set in your CI/CD or platform build environment *before* `npm run build` runs.
+> The browser never talks to the backend directly. It calls `/api/v1/*` on the
+> frontend, and `src/app/api/v1/[...path]/route.ts` forwards each request to
+> `BACKEND_INTERNAL_URL`, which is read **at runtime**. One image therefore works
+> in every environment, no CORS preflight is involved, and the OAuth state cookie
+> and callback stay on the site the user is on. `NEXT_PUBLIC_*` values are still
+> baked in at **build time**, which is why the API URL is no longer one of them.
 
 ---
 
@@ -112,37 +121,70 @@ The repository includes standard `Procfile` configurations:
 
 ```procfile
 release: cd backend && python manage.py collectstatic --noinput && python manage.py migrate --noinput
-web: cd backend && gunicorn qrapp.wsgi:application --config gunicorn.conf.py --bind 0.0.0.0:$PORT
+web: cd backend && gunicorn qrapp.wsgi:application --config gunicorn.conf.py
 ```
 
 - In DigitalOcean or Heroku, the `release` phase runs migrations and gathers static files before routing traffic to the newly deployed container, ensuring zero-downtime releases.
 
 ### Method D: Railway.app (Monorepo Setup)
 
-In Railway, this monorepo should be deployed as **two separate services** from the same GitHub repository:
+Deploy the monorepo as **two services from the same GitHub repository** plus a
+PostgreSQL database. Both services ship a `railway.json` (Dockerfile build,
+health check, restart policy); the backend's also runs migrations as a
+pre-deploy step.
 
-#### 1. Frontend Service (`qrit-frontend`):
-- Create new Service -> **GitHub Repo** -> select this repository.
-- Go to **Settings** -> **General**:
-  - **Root Directory**: Set to `/frontend` (or `frontend`).
-  *(This is critical! If left as `/`, Railway defaults to the repository root where `npm` and `package.json` do not reside).*
-- Go to **Variables**:
-  - `NEXT_PUBLIC_API_URL`: `https://${{qrit-backend.RAILWAY_PUBLIC_DOMAIN}}/api/v1`
-  - `NEXT_PUBLIC_API_BASE_URL`: `https://${{qrit-backend.RAILWAY_PUBLIC_DOMAIN}}`
-  - `NEXT_PUBLIC_APP_URL`: `https://${{RAILWAY_PUBLIC_DOMAIN}}`
+#### 1. Database
+- **+ New -> Database -> PostgreSQL.**
 
-#### 2. Backend Service (`qrit-backend`):
-- In the same project, click **+ New** -> **GitHub Repo** -> select the same repository.
-- Go to **Settings** -> **General**:
-  - **Root Directory**: Set to `/backend` (or `backend`).
-- Go to **Variables**:
-  - Add variables from `backend/.env.example` (`DEBUG=False`, `DATABASE_URL`, `DJANGO_SECRET_KEY`, `JWT_SECRET`, etc.).
-- Under **Settings** -> **Deploy**:
-  - Railway will use `backend/Dockerfile` or Nixpacks automatically with Gunicorn.
+#### 2. Backend service (`qrit-backend`)
+- **+ New -> GitHub Repo** -> this repository. **Settings -> Root Directory:** `backend`.
+- **Settings -> Networking:** generate a public domain only if you want short links
+  (`/r/<code>`) served from it; the frontend reaches the API privately.
+- **Variables:**
 
-#### 3. Database (`PostgreSQL`):
-- Click **+ New** -> **Database** -> **Add PostgreSQL**.
-- Connect `DATABASE_URL` to `qrit-backend`.
+  | Variable | Value |
+  | :--- | :--- |
+  | `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` |
+  | `DEBUG` | `False` |
+  | `PORT` | `8084` (pinned so the frontend can reference it) |
+  | `DJANGO_SECRET_KEY` | 50+ random characters |
+  | `JWT_SECRET` | 64+ random characters |
+  | `ALLOWED_HOSTS` | your custom API domain, or leave unset (`*`) |
+  | `APP_BASE_URL` | `https://${{qrit-frontend.RAILWAY_PUBLIC_DOMAIN}}` (or your custom frontend domain) |
+  | `API_BASE_URL` / `SHORT_LINK_BASE_URL` | `https://${{RAILWAY_PUBLIC_DOMAIN}}` |
+  | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | from Google Cloud (section 7) |
+  | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | from GitHub (section 7) |
+  | `EMAIL_BACKEND`, `RESEND_API_KEY`, `EMAIL_FROM` | for real emails |
+
+  Railway's own hosts (`healthcheck.railway.app`, `RAILWAY_PUBLIC_DOMAIN`,
+  `RAILWAY_PRIVATE_DOMAIN`) are added to `ALLOWED_HOSTS` automatically, and the
+  `APP_BASE_URL` origin is added to CORS/CSRF automatically.
+
+#### 3. Frontend service (`qrit-frontend`)
+- **+ New -> GitHub Repo** -> same repository. **Settings -> Root Directory:** `frontend`.
+- **Settings -> Networking:** generate the public domain (this is the URL users visit).
+- **Variables:**
+
+  | Variable | Value |
+  | :--- | :--- |
+  | `BACKEND_INTERNAL_URL` | `http://${{qrit-backend.RAILWAY_PRIVATE_DOMAIN}}:${{qrit-backend.PORT}}` |
+  | `NEXT_PUBLIC_API_BASE_URL` | `https://${{qrit-backend.RAILWAY_PUBLIC_DOMAIN}}` |
+  | `NEXT_PUBLIC_APP_URL` | `https://${{RAILWAY_PUBLIC_DOMAIN}}` |
+
+  **Delete `NEXT_PUBLIC_API_URL`** if an older setup defined it. If private
+  networking is unavailable in your project, `BACKEND_INTERNAL_URL` can point at
+  the backend's public `https://` domain instead.
+
+#### What was breaking authentication on Railway (fixed)
+| Symptom | Cause | Fix |
+| :--- | :--- | :--- |
+| Login/register requests went to `localhost:8084` | `NEXT_PUBLIC_API_URL` is baked at build time and defaulted to localhost in the Dockerfile | Same-origin `/api/v1` proxy, backend URL read at runtime |
+| Deploys never turned healthy | Railway's HTTP health check was 301-redirected to HTTPS, and `healthcheck.railway.app` was not an allowed host | `/health` exempt from the HTTPS redirect; Railway hosts auto-allowed |
+| Disallowed hosts returned 500 instead of 400 | `EMAIL_BACKEND=console` overwrote Django's mail setting and crashed the error mailer | App setting renamed to `QRIT_EMAIL_BACKEND` |
+| Browser blocked API calls (CORS) | Frontend origin not in `CORS_ALLOWED_ORIGINS` | `APP_BASE_URL` origin always allowed; the proxy removes CORS from the path anyway |
+| Fresh deploys hit missing tables | Migrations only ran when `RUN_MIGRATIONS` was set | `preDeployCommand: python manage.py migrate` |
+| Backend unreachable on the private network | Gunicorn listened on IPv4 only, `--bind` ignored `$PORT` | Binds `[::]:$PORT` (dual-stack), falling back to IPv4 when the host has no IPv6 |
+| Password change in Profile did nothing | It posted to `/user/profile`, which ignores passwords | Uses `/auth/change-password` |
 
 ---
 
@@ -187,3 +229,71 @@ Both services feature automated health endpoints:
 - **JWT Startup Check**: Server immediately halts on startup in production if default development secrets are detected.
 - **Brute Force Protection**: Account lockout after 5 consecutive failed login attempts (15-minute window).
 - **Token Rotation**: Persistent refresh tokens with automatic family revocation upon reuse detection.
+
+---
+
+## 7. Google and GitHub Sign-in
+
+Sign-in uses the OAuth 2.0 authorization-code flow with PKCE, handled by the
+backend (`backend/api/utils/oauth.py`). The frontend only links to
+`/api/v1/auth/oauth/<provider>/start` and finishes on `/auth/callback`, where a
+single-use, 2-minute code is exchanged for the normal JWT pair; tokens never
+appear in a URL.
+
+**Redirect URIs** (replace the domain with your frontend's public domain, i.e. `APP_BASE_URL`):
+
+```
+https://<frontend-domain>/api/v1/auth/oauth/google/callback
+https://<frontend-domain>/api/v1/auth/oauth/github/callback
+```
+
+For local development add `http://localhost:3000/api/v1/auth/oauth/google/callback`
+to the Google client, and create a second GitHub OAuth App for
+`http://localhost:3000/api/v1/auth/oauth/github/callback` (a GitHub OAuth App
+has exactly one callback URL).
+
+### Google
+1. [Google Cloud Console](https://console.cloud.google.com/) -> create or select a project.
+2. **Google Auth Platform -> Branding**: app name, support email, developer contact.
+3. **Audience**: *External*. While the app is in *Testing*, only listed test users
+   can sign in; click **Publish app** for everyone. `openid`, `email` and
+   `profile` are non-sensitive scopes, so no Google verification is needed.
+4. **Clients -> Create client -> Web application**. Add the Google redirect URI
+   above under *Authorized redirect URIs* (and the frontend origin under
+   *Authorized JavaScript origins*).
+5. Copy the **Client ID** and **Client secret** into the backend's
+   `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`.
+
+### GitHub
+1. GitHub -> **Settings -> Developer settings -> OAuth Apps -> New OAuth App**
+   (or the same under an organization).
+2. *Homepage URL*: `https://<frontend-domain>`; *Authorization callback URL*:
+   the GitHub redirect URI above.
+3. **Register application -> Generate a new client secret**.
+4. Copy the **Client ID** and secret into `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`.
+
+Buttons appear on the login and register pages as soon as a provider's ID and
+secret are both set (`GET /api/v1/auth/oauth/providers`); no frontend rebuild is needed.
+
+### Account rules
+- A Google/GitHub identity is matched on the provider's user ID first, so changing
+  the email at the provider does not create a second account.
+- Otherwise the provider must report the email as **verified**; GitHub's primary
+  verified address is used. Unverified emails are refused.
+- A verified provider email that matches an existing QRit account signs into
+  that account. If that account had never verified its email, its password is
+  discarded and its sessions revoked first (someone may have registered the
+  address without owning it).
+- Accounts created through Google/GitHub have no password; **Profile -> Set a
+  password** adds one. Users can connect or disconnect providers there, and the
+  last sign-in method cannot be removed.
+
+### Troubleshooting
+| Error on `/auth/callback` | Meaning |
+| :--- | :--- |
+| `redirect_uri_mismatch` at Google / "The redirect_uri is not associated" at GitHub | The registered redirect URI differs from `{APP_BASE_URL}/api/v1/auth/oauth/<provider>/callback` (scheme, domain and path must match exactly) |
+| "Your sign-in session expired or was started in another browser tab" | The state cookie was missing: the flow took over 10 minutes, cookies are blocked, or the start and callback hosts differ (check `APP_BASE_URL` / `OAUTH_CALLBACK_BASE_URL`) |
+| "Sign-in with Google isn't set up on this server yet" | `GOOGLE_CLIENT_ID` or `GOOGLE_CLIENT_SECRET` is missing on the backend |
+| "...couldn't complete the sign-in" | The code exchange failed: usually a wrong client secret; the backend log line `OAuth <provider> callback failed` has the provider's error |
+| "The API is unreachable right now" (502 from `/api/v1`) | `BACKEND_INTERNAL_URL` on the frontend is wrong, or the backend is down |
+

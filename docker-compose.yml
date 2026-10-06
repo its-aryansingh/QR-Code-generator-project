@@ -38,6 +38,13 @@ services:
       API_BASE_URL: ${API_BASE_URL:-http://localhost:8084}
       ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,backend}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+      # Google / GitHub sign-in. Redirect URIs to register with the providers:
+      #   ${APP_BASE_URL}/api/v1/auth/oauth/google/callback
+      #   ${APP_BASE_URL}/api/v1/auth/oauth/github/callback
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
       RUN_MIGRATIONS: "true"
     ports:
       - "8084:8084"
@@ -58,13 +65,13 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8084/api/v1}
         NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8084}
         NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
     container_name: qrapp-frontend
     environment:
       PORT: 3000
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8084/api/v1}
+      # The browser calls /api/v1 on this service; it forwards to the backend.
+      BACKEND_INTERNAL_URL: http://backend:8084
     ports:
       - "3000:3000"
     depends_on:
