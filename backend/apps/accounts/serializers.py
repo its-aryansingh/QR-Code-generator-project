@@ -9,18 +9,18 @@ from apps.workspaces.models import Workspace
 from .models import User
 
 
-class RegisterRequestSerializer(serializers.Serializer):
+class RegisterRequestSerializer(serializers.Serializer[Any]):
     email = serializers.EmailField(required=True)
     password = serializers.CharField(required=True, write_only=True)
     name = serializers.CharField(required=False, allow_blank=True, default="")
 
 
-class LoginRequestSerializer(serializers.Serializer):
+class LoginRequestSerializer(serializers.Serializer[Any]):
     email = serializers.EmailField(required=True)
     password = serializers.CharField(required=True, write_only=True)
 
 
-class GoogleAuthRequestSerializer(serializers.Serializer):
+class GoogleAuthRequestSerializer(serializers.Serializer[Any]):
     credential = serializers.CharField(required=False, allow_blank=True, default="")
     id_token = serializers.CharField(required=False, allow_blank=True, default="")
 
@@ -32,36 +32,36 @@ class GoogleAuthRequestSerializer(serializers.Serializer):
         return attrs
 
 
-class GitHubAuthRequestSerializer(serializers.Serializer):
+class GitHubAuthRequestSerializer(serializers.Serializer[Any]):
     code = serializers.CharField(required=True)
     redirect_uri = serializers.CharField(required=False, allow_null=True, default=None)
 
 
-class RefreshTokenRequestSerializer(serializers.Serializer):
+class RefreshTokenRequestSerializer(serializers.Serializer[Any]):
     refresh_token = serializers.CharField(required=False, allow_blank=True, default="")
 
 
-class VerifyEmailRequestSerializer(serializers.Serializer):
+class VerifyEmailRequestSerializer(serializers.Serializer[Any]):
     token = serializers.CharField(required=True)
 
 
-class ForgotPasswordRequestSerializer(serializers.Serializer):
+class ForgotPasswordRequestSerializer(serializers.Serializer[Any]):
     email = serializers.EmailField(required=True)
 
 
-class ResetPasswordRequestSerializer(serializers.Serializer):
+class ResetPasswordRequestSerializer(serializers.Serializer[Any]):
     token = serializers.CharField(required=True)
     password = serializers.CharField(required=True, write_only=True)
 
 
-class ChangePasswordRequestSerializer(serializers.Serializer):
+class ChangePasswordRequestSerializer(serializers.Serializer[Any]):
     current_password = serializers.CharField(
         required=False, allow_blank=True, default="", write_only=True
     )
     new_password = serializers.CharField(required=True, write_only=True)
 
 
-class UpdateMeRequestSerializer(serializers.Serializer):
+class UpdateMeRequestSerializer(serializers.Serializer[Any]):
     name = serializers.CharField(required=False, max_length=120)
     locale = serializers.CharField(required=False, max_length=10)
     timezone = serializers.CharField(required=False, max_length=50)
@@ -111,3 +111,50 @@ class WorkspaceDTOSerializer(serializers.ModelSerializer[Workspace]):
             "created_at",
             "updated_at",
         ]
+
+
+# Response shapes, used for the OpenAPI schema.
+
+
+class AuthResponseSerializer(serializers.Serializer[Any]):
+    user = UserDTOSerializer()
+    token = serializers.CharField(help_text="Same value as access_token.")
+    access_token = serializers.CharField()
+    refresh_token = serializers.CharField()
+    mfa_required = serializers.BooleanField()
+
+
+class RegisterResponseSerializer(serializers.Serializer[Any]):
+    user = UserDTOSerializer()
+    workspace = WorkspaceDTOSerializer()
+    token = serializers.CharField(help_text="Same value as access_token.")
+    access_token = serializers.CharField()
+    refresh_token = serializers.CharField()
+
+
+class RefreshResponseSerializer(serializers.Serializer[Any]):
+    token = serializers.CharField(help_text="Same value as access_token.")
+    access_token = serializers.CharField()
+    refresh_token = serializers.CharField()
+
+
+class MembershipOrgSerializer(serializers.Serializer[Any]):
+    id = serializers.UUIDField()
+    name = serializers.CharField()
+    slug = serializers.CharField()
+    role = serializers.CharField()
+
+
+class MeResponseSerializer(serializers.Serializer[Any]):
+    user = UserDTOSerializer()
+    workspaces = WorkspaceDTOSerializer(many=True)
+    organizations = MembershipOrgSerializer(many=True)
+
+
+class SessionDTOSerializer(serializers.Serializer[Any]):
+    id = serializers.UUIDField()
+    user_agent = serializers.CharField(allow_null=True)
+    ip_prefix = serializers.CharField(allow_null=True)
+    created_at = serializers.DateTimeField()
+    last_used_at = serializers.DateTimeField()
+    current = serializers.BooleanField()

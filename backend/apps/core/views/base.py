@@ -11,7 +11,8 @@ Plan §5.2:
 from typing import Any
 from uuid import UUID
 
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest
+from django.http.response import HttpResponseBase
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.views import APIView
@@ -65,7 +66,7 @@ class WorkspaceScopedAPIView(AuthenticatedAPIView):
 
         self.workspace = ws
 
-    def dispatch(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
+    def dispatch(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponseBase:
         ws_id = self.workspace.id if self.workspace is not None else None
         with workspace_scope(ws_id):
             return super().dispatch(request, *args, **kwargs)
