@@ -10,6 +10,7 @@ import {
   FileText, Bitcoin, Smartphone, QrCode, ChevronRight, Check,
   Folder, AlertCircle
 } from "lucide-react";
+import { API_URL } from "@/lib/config";
 
 const QR_TYPES = [
   { id: "url",      label: "URL",        icon: Link,          desc: "Website or landing page" },
@@ -97,7 +98,7 @@ function ContentFields({ type, fields, onChange }: { type: string; fields: Recor
 export default function CreatePage() {
   const router = useRouter();
   const { accessToken } = useAuthStore();
-  const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8084/api/v1";
+  const api = API_URL;
 
   const [step, setStep] = useState(0);
   const [qrType, setQrType] = useState("url");

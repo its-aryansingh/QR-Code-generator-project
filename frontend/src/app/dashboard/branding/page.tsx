@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useAuthStore } from "@/lib/auth";
+import { API_URL } from "@/lib/config";
 
 export default function BrandingPage() {
-    const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8084/api/v1";
+    const api = API_URL;
     const [workspaceId, setWorkspaceId] = useState("");
     const [branding, setBranding] = useState({
         custom_domain: "",

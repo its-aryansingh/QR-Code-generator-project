@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuthStore } from "@/lib/auth";
 import { toast } from "sonner";
+import { API_URL } from "@/lib/config";
 
 interface Folder {
   id: string;
@@ -139,7 +140,7 @@ export function FolderTree({ workspaceId, selectedFolderId, onSelectFolder }: Fo
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
   const [newColor, setNewColor] = useState("#8B5CF6");
-  const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8084/api/v1";
+  const api = API_URL;
 
   const fetchFolders = useCallback(async () => {
     if (!workspaceId || !accessToken) return;

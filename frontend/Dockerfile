@@ -12,16 +12,17 @@ RUN npm ci
 # Copy source files
 COPY . .
 
-# Build arguments for client-side baked env variables
-ARG NEXT_PUBLIC_API_URL=http://localhost:8084/api/v1
-ARG NEXT_PUBLIC_API_BASE_URL=http://localhost:8084
-ARG NEXT_PUBLIC_APP_URL=http://localhost:3000
-ARG NEXT_PUBLIC_GOOGLE_CLIENT_ID=""
+# NEXT_PUBLIC_* values are baked into the bundle at build time. The API URL is
+# deliberately empty: the browser then calls the same-origin /api/v1 proxy,
+# which reads BACKEND_INTERNAL_URL at runtime (see src/app/api/v1/[...path]).
+# Only set NEXT_PUBLIC_API_URL if the API is served from a different origin.
+ARG NEXT_PUBLIC_API_URL=""
+ARG NEXT_PUBLIC_API_BASE_URL=""
+ARG NEXT_PUBLIC_APP_URL=""
 
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
     NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL \
     NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL \
-    NEXT_PUBLIC_GOOGLE_CLIENT_ID=$NEXT_PUBLIC_GOOGLE_CLIENT_ID \
     NEXT_TELEMETRY_DISABLED=1
 
 # Build the application

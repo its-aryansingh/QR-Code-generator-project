@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { CheckCircle, AlertCircle } from "lucide-react";
+import { API_URL } from "@/lib/config";
 
 interface FormField {
   name: string;
@@ -34,7 +35,7 @@ interface PageData {
 export default function PublicLeadPage() {
   const params = useParams();
   const slug = params?.slug as string;
-  const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8084/api/v1";
+  const api = API_URL;
 
   const [page, setPage] = useState<PageData | null>(null);
   const [fields, setFields] = useState<FormField[]>([]);

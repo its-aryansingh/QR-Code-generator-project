@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { useAuthStore } from "@/lib/auth";
+import { AccountSecurity } from "@/components/auth/account-security";
 import {
-  User, Mail, Building, Key, CreditCard, Shield,
+  User, Mail, Building, Key, CreditCard,
   Save, Check, AlertCircle, Eye, EyeOff, Crown
 } from "lucide-react";
+import { API_URL } from "@/lib/config";
 
 const inputCls = "w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500 transition-colors";
 const labelCls = "text-sm text-zinc-400 block mb-1.5 font-medium";
@@ -33,7 +35,7 @@ const PLAN_COLORS: Record<string, string> = {
 };
 
 export default function ProfilePage() {
-  const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8084/api/v1";
+  const api = API_URL;
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -45,11 +47,6 @@ export default function ProfilePage() {
   const [name, setName] = useState("");
   const [company, setCompany] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
-
-  // Password change
-  const [newPassword, setNewPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [passwordSaved, setPasswordSaved] = useState(false);
 
   // API key
   const [showApiKey, setShowApiKey] = useState(false);
@@ -89,35 +86,6 @@ export default function ProfilePage() {
         setTimeout(() => setSaved(false), 3000);
       } else {
         setError(data.error || "Failed to save");
-      }
-    } catch {
-      setError("Network error");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handlePasswordChange = async () => {
-    if (!newPassword || newPassword.length < 8) {
-      setError("Password must be at least 8 characters");
-      return;
-    }
-    setSaving(true);
-    setError("");
-    const token = useAuthStore.getState().accessToken;
-    try {
-      const res = await fetch(`${api}/user/profile`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ password: newPassword }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setPasswordSaved(true);
-        setNewPassword("");
-        setTimeout(() => setPasswordSaved(false), 3000);
-      } else {
-        setError(data.error || "Failed to update password");
       }
     } catch {
       setError("Network error");
@@ -228,35 +196,7 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* Password */}
-      <div className="bg-zinc-900/50 border border-zinc-800/60 rounded-xl p-6 space-y-4">
-        <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wider flex items-center gap-2">
-          <Shield size={14} className="text-violet-400" /> Security
-        </h2>
-        <div>
-          <label className={labelCls}>New Password</label>
-          <div className="relative">
-            <input
-              type={showPassword ? "text" : "password"}
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="Minimum 8 characters"
-              className={inputCls + " pr-10"}
-            />
-            <button onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300">
-              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <button onClick={handlePasswordChange} disabled={!newPassword || saving}
-            className="px-5 py-2 bg-zinc-800 text-zinc-300 text-sm font-medium rounded-lg hover:bg-zinc-700 transition-colors disabled:opacity-50 border border-zinc-700">
-            Update Password
-          </button>
-          {passwordSaved && <span className="text-sm text-emerald-400 flex items-center gap-1"><Check size={14} /> Updated</span>}
-        </div>
-      </div>
+      <AccountSecurity />
 
       {/* Subscription */}
       <div className="bg-zinc-900/50 border border-zinc-800/60 rounded-xl p-6 space-y-4">

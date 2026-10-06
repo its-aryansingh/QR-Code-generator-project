@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/auth";
 import { QRSecurityPanel, SecurityOptions } from "@/components/dashboard/QRSecurityPanel";
 import { ArrowLeft, Save, Trash2, QrCode, AlertCircle, ExternalLink } from "lucide-react";
+import { API_URL } from "@/lib/config";
 
 interface QRRecord {
   id: string;
@@ -28,7 +29,7 @@ export default function QREditPage() {
   const params = useParams();
   const router = useRouter();
   const { accessToken } = useAuthStore();
-  const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8084/api/v1";
+  const api = API_URL;
   const appBase = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
   const id = params?.id as string;

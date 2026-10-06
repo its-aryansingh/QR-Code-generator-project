@@ -104,6 +104,49 @@ export interface ApiResponse<T> {
   success: boolean;
   data?: T;
   error?: string;
+  code?: string;
+}
+
+// ==================== OAuth (Google / GitHub) ====================
+
+export type OAuthProvider = 'google' | 'github';
+
+export type OAuthProviders = Record<OAuthProvider, boolean>;
+
+export interface OAuthUser {
+  id: string;
+  email: string;
+  name?: string | null;
+  plan?: string | null;
+  avatar_url?: string | null;
+  email_verified: boolean;
+  has_password: boolean;
+}
+
+export interface OAuthExchangeResult extends TokenPair {
+  user: OAuthUser;
+  next: string;
+  provider: OAuthProvider;
+  is_new_user: boolean;
+  password_reset: boolean;
+}
+
+export interface OAuthLinkStart {
+  start_url: string;
+  intent: string;
+}
+
+export interface ConnectedAccount {
+  provider: OAuthProvider;
+  email?: string | null;
+  connected_at: string;
+  last_login_at?: string | null;
+}
+
+export interface ConnectedAccounts {
+  has_password: boolean;
+  providers: OAuthProviders;
+  accounts: ConnectedAccount[];
 }
 
 export interface LoginRequest {

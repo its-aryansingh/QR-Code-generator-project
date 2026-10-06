@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuthStore } from "@/lib/auth";
+import { API_URL } from "@/lib/config";
 
 export default function SettingsPage() {
     const [workspace, setWorkspace] = useState<any>(null);
@@ -13,7 +14,7 @@ export default function SettingsPage() {
     const [saved, setSaved] = useState(false);
     const [deleting, setDeleting] = useState(false);
 
-    const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8084/api/v1";
+    const api = API_URL;
 
     useEffect(() => {
         const token = useAuthStore.getState().accessToken;

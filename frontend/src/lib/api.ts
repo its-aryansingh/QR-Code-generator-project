@@ -14,10 +14,15 @@ import type {
     PublicGenerateResponse,
     ScanAnalytics,
     QRRecord,
+    OAuthProvider,
+    OAuthProviders,
+    OAuthExchangeResult,
+    OAuthLinkStart,
+    ConnectedAccounts,
 } from '@/types';
+import { API_URL, OAUTH_URL } from './config';
 
-export const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8084/api/v1";
+export { API_URL, OAUTH_URL };
 export const BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8084";
 
@@ -136,6 +141,46 @@ class ApiClient {
 
     async googleLogin(idToken: string): Promise<ApiResponse<TokenPair & { user: User }>> {
         const response = await this.client.post<ApiResponse<TokenPair & { user: User }>>('/auth/google', { id_token: idToken });
+        return response.data;
+    }
+
+    // ==================== Google / GitHub sign-in ====================
+
+    /** Full-page URL that starts a sign-in with the provider. */
+    oauthStartUrl(provider: OAuthProvider, next = '/dashboard'): string {
+        return `${OAUTH_URL}/${provider}/start?next=${encodeURIComponent(next)}`;
+    }
+
+    async oauthProviders(): Promise<ApiResponse<OAuthProviders>> {
+        const response = await this.client.get<ApiResponse<OAuthProviders>>('/auth/oauth/providers');
+        return response.data;
+    }
+
+    async oauthExchange(code: string): Promise<ApiResponse<OAuthExchangeResult>> {
+        const response = await this.client.post<ApiResponse<OAuthExchangeResult>>('/auth/oauth/exchange', { code });
+        return response.data;
+    }
+
+    async oauthAccounts(): Promise<ApiResponse<ConnectedAccounts>> {
+        const response = await this.client.get<ApiResponse<ConnectedAccounts>>('/auth/oauth/accounts');
+        return response.data;
+    }
+
+    async oauthLink(provider: OAuthProvider): Promise<ApiResponse<OAuthLinkStart>> {
+        const response = await this.client.post<ApiResponse<OAuthLinkStart>>(`/auth/oauth/${provider}/link`);
+        return response.data;
+    }
+
+    async oauthUnlink(provider: OAuthProvider): Promise<ApiResponse<ConnectedAccounts>> {
+        const response = await this.client.delete<ApiResponse<ConnectedAccounts>>(`/auth/oauth/accounts/${provider}`);
+        return response.data;
+    }
+
+    async changePassword(newPassword: string, currentPassword?: string): Promise<ApiResponse<TokenPair & { message: string }>> {
+        const response = await this.client.post<ApiResponse<TokenPair & { message: string }>>('/auth/change-password', {
+            new_password: newPassword,
+            ...(currentPassword ? { current_password: currentPassword } : {}),
+        });
         return response.data;
     }
 
