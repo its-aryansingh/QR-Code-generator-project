@@ -598,6 +598,24 @@ def update_profile(
     return user
 
 
+GOOGLE_ISSUERS = ("accounts.google.com", "https://accounts.google.com")
+
+
+def _secure_unverified_account(user: User) -> None:
+    """Prepare an unverified account before linking it to a provider identity.
+
+    The provider has just proved who owns this email, but the account was
+    registered without proving it, so whoever set its password may not own
+    the address (pre-account takeover). Mark the email verified, drop that
+    password and end every existing session.
+    """
+    now = datetime.now(UTC)
+    user.email_verified_at = now
+    user.set_unusable_password()
+    user.save(update_fields=["email_verified_at", "password"])
+    Session.objects.filter(user=user, revoked_at__isnull=True).update(revoked_at=now)
+
+
 def google_login(
     credential: str,
     ip_prefix: str | None = None,
@@ -609,16 +627,19 @@ def google_login(
     name: str = ""
     picture: str | None = None
 
-    # In local/test mode: allow test tokens without hitting Google
-    if getattr(settings, "APP_ENV", "local") in ("local", "test") and credential.startswith(
-        "test-google:"
-    ):
+    # Test settings only: fake credentials that skip Google.
+    if getattr(settings, "OAUTH_TEST_TOKENS", False) and credential.startswith("test-google:"):
         parts = credential.split(":")
         sub = parts[1]
         email = parts[2] if len(parts) > 2 else f"google_{sub}@example.com"
         name = parts[3] if len(parts) > 3 else "Google User"
     else:
-        # Verify with Google tokeninfo endpoint
+        client_id = settings.GOOGLE_CLIENT_ID
+        if not client_id:
+            raise ApiError(
+                status=500, code="internal_error", detail="Google OAuth is not configured"
+            )
+        # Verify with Google tokeninfo endpoint (checks signature and expiry)
         try:
             client = safe_client(timeout=5.0)
             resp = client.get(
@@ -628,6 +649,21 @@ def google_login(
             if resp.status_code != 200:
                 raise ApiError(status=401, code="unauthorized", detail="invalid Google credential")
             payload = resp.json()
+            # tokeninfo accepts an ID token minted for *any* Google client, so
+            # the audience check is what stops a token issued to another app
+            # from signing in here.
+            if payload.get("aud") != client_id:
+                raise ApiError(
+                    status=401,
+                    code="unauthorized",
+                    detail="Google credential was not issued for this application",
+                )
+            if payload.get("iss") not in GOOGLE_ISSUERS:
+                raise ApiError(status=401, code="unauthorized", detail="invalid Google credential")
+            if str(payload.get("email_verified", "")).lower() != "true":
+                raise ApiError(
+                    status=401, code="unauthorized", detail="Google email address is not verified"
+                )
             sub = payload.get("sub", "")
             email = payload.get("email", "")
             name = payload.get("name", "")
@@ -658,6 +694,8 @@ def google_login(
         else:
             # Check if user with this email exists
             user = User.objects.filter(email=email_clean, deleted_at__isnull=True).first()
+            if user is not None and user.email_verified_at is None:
+                _secure_unverified_account(user)
             if user is None:
                 # Provision new user and default organization and workspace
                 name_clean = name.strip() or email_clean.split("@")[0]
@@ -743,9 +781,8 @@ def github_login(
     name: str = ""
     avatar_url: str | None = None
 
-    if getattr(settings, "APP_ENV", "local") in ("local", "test") and code.startswith(
-        "test-github:"
-    ):
+    # Test settings only: fake codes that skip GitHub.
+    if getattr(settings, "OAUTH_TEST_TOKENS", False) and code.startswith("test-github:"):
         parts = code.split(":")
         github_id = parts[1]
         email = parts[2] if len(parts) > 2 else f"github_{github_id}@example.com"
@@ -801,25 +838,28 @@ def github_login(
         github_id = str(gh_user.get("id", ""))
         name = gh_user.get("name") or gh_user.get("login") or ""
         avatar_url = gh_user.get("avatar_url")
-        email = gh_user.get("email") or ""
-
-        # 3. If primary email not public, fetch from /user/emails
-        if not email:
-            emails_resp = client.get(
-                "https://api.github.com/user/emails",
-                headers={
-                    "Authorization": f"Bearer {gh_access_token}",
-                    "Accept": "application/vnd.github+json",
-                },
-            )
-            if emails_resp.status_code == 200:
-                emails_list = emails_resp.json()
-                for item in emails_list:
-                    if item.get("primary") and item.get("verified"):
-                        email = item.get("email", "")
-                        break
-                if not email and emails_list:
-                    email = emails_list[0].get("email", "")
+        # 3. Only a verified address may identify the user. Anyone can add an
+        #    unverified address (someone else's) to a GitHub account, so it is
+        #    never used, and neither is the profile's public email field.
+        email = ""
+        emails_resp = client.get(
+            "https://api.github.com/user/emails",
+            headers={
+                "Authorization": f"Bearer {gh_access_token}",
+                "Accept": "application/vnd.github+json",
+            },
+        )
+        if emails_resp.status_code == 200 and isinstance(emails_resp.json(), list):
+            verified = [
+                item
+                for item in emails_resp.json()
+                if isinstance(item, dict) and item.get("verified") and item.get("email")
+            ]
+            chosen = next((item for item in verified if item.get("primary")), None)
+            if chosen is None and verified:
+                chosen = verified[0]
+            if chosen is not None:
+                email = chosen["email"]
 
         if not github_id or not email:
             raise ApiError(
@@ -839,6 +879,8 @@ def github_login(
             user = oauth_acc.user
         else:
             user = User.objects.filter(email=email_clean, deleted_at__isnull=True).first()
+            if user is not None and user.email_verified_at is None:
+                _secure_unverified_account(user)
             if user is None:
                 name_clean = name.strip() or email_clean.split("@")[0]
                 user = User.objects.create_user(
