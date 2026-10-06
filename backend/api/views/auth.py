@@ -193,6 +193,7 @@ class LoginView(APIView):
                 "id": str(user.id), "email": user.email, "name": user.name,
                 "plan": user.plan, "avatar_url": user.avatar_url,
                 "email_verified": user.email_verified,
+                "has_password": user.has_usable_password,
             },
             **tokens,
         }})
@@ -275,6 +276,10 @@ class MeView(APIView):
             "plan": user.plan, "plan_expires_at": user.plan_expires_at,
             "subscription_status": user.subscription_status, "created_at": user.created_at,
             "email_verified": user.email_verified,
+            "has_password": user.has_usable_password,
+            "connected_accounts": list(
+                user.oauth_accounts.order_by("created_at").values_list("provider", flat=True)
+            ),
         }})
 
     @require_auth
@@ -301,8 +306,8 @@ class ChangePasswordView(APIView):
     def post(self, request):
         current = request.data.get("current_password") or request.data.get("currentPassword") or ""
         new_pass = request.data.get("new_password") or request.data.get("newPassword") or ""
-        if not current or not new_pass:
-            return Response({"success": False, "error": "Current and new password required"}, status=400)
+        if not new_pass:
+            return Response({"success": False, "error": "New password required"}, status=400)
 
         # Validate new password strength
         password_errors = validate_password_strength(new_pass)
@@ -316,11 +321,17 @@ class ChangePasswordView(APIView):
             user = User.objects.get(id=request.auth_user["id"])
         except User.DoesNotExist:
             return Response({"success": False, "error": "Not found"}, status=404)
-        if not check_password(current, user.password_hash):
-            return Response({"success": False, "error": "Current password is incorrect"}, status=400)
+        # Accounts created through Google/GitHub have no password to confirm;
+        # they are already authenticated, so they may set one directly.
+        if user.has_usable_password:
+            if not current:
+                return Response({"success": False, "error": "Current and new password required"}, status=400)
+            if not check_password(current, user.password_hash):
+                return Response({"success": False, "error": "Current password is incorrect"}, status=400)
 
         User.objects.filter(pk=user.pk).update(
             password_hash=hash_password(new_pass),
+            has_usable_password=True,
             password_changed_at=timezone.now(),
             updated_at=timezone.now(),
         )
@@ -430,6 +441,7 @@ class ResetPasswordView(APIView):
         with transaction.atomic():
             User.objects.filter(pk=user.pk).update(
                 password_hash=hash_password(new_password),
+                has_usable_password=True,
                 password_changed_at=timezone.now(),
                 updated_at=timezone.now(),
                 failed_login_attempts=0,

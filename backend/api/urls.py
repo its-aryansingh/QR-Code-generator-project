@@ -9,6 +9,7 @@ pre-Django paths working.
 from django.urls import path
 
 from api.views import compat
+from api.views import oauth as oauth_views
 from api.views.analytics import DashboardView, QRAnalyticsView, QRScansView
 from api.views.apikey import ApiKeyRegenerateView, ApiKeyUsageView, ApiKeyView
 from api.views.auth import (
@@ -73,6 +74,14 @@ urlpatterns = [
     path("auth/verify-email", VerifyEmailView.as_view()),
     path("auth/resend-verification", ResendVerificationView.as_view()),
     path("auth/google", compat.GoogleAuthView.as_view()),
+    # Google / GitHub sign-in (authorization-code flow, see api/utils/oauth.py)
+    path("auth/oauth/providers", oauth_views.OAuthProvidersView.as_view()),
+    path("auth/oauth/exchange", oauth_views.OAuthExchangeView.as_view()),
+    path("auth/oauth/accounts", oauth_views.OAuthAccountsView.as_view()),
+    path("auth/oauth/accounts/<str:provider>", oauth_views.OAuthAccountDetailView.as_view()),
+    path("auth/oauth/<str:provider>/start", oauth_views.OAuthStartView.as_view()),
+    path("auth/oauth/<str:provider>/callback", oauth_views.OAuthCallbackView.as_view()),
+    path("auth/oauth/<str:provider>/link", oauth_views.OAuthLinkView.as_view()),
 
     # ---------------------------------------------------------------- QR
     path("qr/generate", GenerateView.as_view()),

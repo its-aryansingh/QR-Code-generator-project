@@ -49,97 +49,60 @@ class PaymentsPortalView(PortalView):
 
 from django.conf import settings
 from django.utils import timezone
+
 from api.models import User
+from api.utils import oauth
+
 
 class GoogleAuthView(APIView):
-    """Verify a Google ID token and login or create the user."""
+    """Sign in with a Google ID token (Google Identity Services / One Tap).
+
+    The redirect flow under /auth/oauth/google/* is the primary path; this one
+    stays for clients that already hold a GIS credential. It applies the same
+    verification and account-linking rules: RS256 against Google's keys, our
+    client id as audience, Google as issuer, and a verified email.
+    """
 
     def post(self, request):
-        id_token_str = request.data.get("id_token") or request.data.get("credential") or ""
-        if not id_token_str:
-            return Response(
-                {"success": False, "error": "Google ID token is required"},
-                status=400,
-            )
-
-        google_client_id = getattr(settings, "GOOGLE_CLIENT_ID", "")
-        if not google_client_id:
+        credential = request.data.get("id_token") or request.data.get("credential") or ""
+        if not credential:
+            return Response({"success": False, "error": "Google ID token is required"}, status=400)
+        if not settings.GOOGLE_CLIENT_ID:
             return Response(
                 {"success": False,
                  "error": "Google sign-in is not configured on this deployment.",
-                 "code": "google_auth_unavailable"},
+                 "code": "not_configured"},
                 status=501,
             )
-
         try:
-            from google.oauth2 import id_token as google_id_token
-            from google.auth.transport import requests as google_requests
-
-            idinfo = google_id_token.verify_oauth2_token(
-                id_token_str,
-                google_requests.Request(),
-                google_client_id,
-            )
-        except ValueError:
+            claims = oauth.verify_google_id_token(credential)
+            result = oauth.resolve_sign_in(oauth.google_profile_from_claims(claims))
+        except oauth.OAuthError as exc:
+            status = {"invalid_token": 401, "provider_unavailable": 503}.get(exc.code, 400)
+            messages = {
+                "invalid_token": "Invalid Google ID token",
+                "email_missing": "Your Google account did not share an email address.",
+                "email_unverified": "Your Google email address is not verified.",
+                "provider_already_linked": "This account is already connected to a different Google account.",
+                "provider_unavailable": "Google could not be reached. Please try again.",
+            }
             return Response(
-                {"success": False, "error": "Invalid Google ID token"},
-                status=401,
+                {"success": False, "error": messages.get(exc.code, "Google sign-in failed"), "code": exc.code},
+                status=status,
             )
-        except Exception:
-            return Response(
-                {"success": False, "error": "Failed to verify Google token"},
-                status=500,
-            )
-
-        email = (idinfo.get("email") or "").strip().lower()
-        if not email:
-            return Response(
-                {"success": False, "error": "Google account has no email"},
-                status=400,
-            )
-
-        name = idinfo.get("name", "")
-        avatar = idinfo.get("picture", "")
-
-        try:
-            user = User.objects.get(email=email)
-            # Update avatar if missing
-            if avatar and not user.avatar_url:
-                User.objects.filter(pk=user.pk).update(avatar_url=avatar)
-        except User.DoesNotExist:
-            import uuid as _uuid
-            from api.utils.auth import generate_api_key, hash_password
-            import secrets
-
-            user = User(
-                id=_uuid.uuid4(),
-                email=email,
-                password_hash=hash_password(secrets.token_urlsafe(32)),
-                name=name,
-                avatar_url=avatar,
-                email_verified=True,
-                email_verified_at=timezone.now(),
-                api_key=generate_api_key(),
-                api_calls_reset_at=timezone.now().date(),
-                created_at=timezone.now(),
-                updated_at=timezone.now(),
-            )
-            user.save(force_insert=True)
-
-        # Update last login
-        from api.utils.ip import get_client_ip
-        User.objects.filter(pk=user.pk).update(
-            last_login_at=timezone.now(),
-            last_login_ip=get_client_ip(request),
-        )
 
         from api.utils.auth import sign_tokens
+        from api.utils.ip import get_client_ip
+        from api.views.oauth import user_payload
+
+        user = result.user
+        User.objects.filter(pk=user.pk).update(
+            last_login_at=timezone.now(), last_login_ip=get_client_ip(request)[:45],
+        )
         tokens = sign_tokens(str(user.id), user.email, user.plan or "free")
         return Response({"success": True, "data": {
-            "user": {
-                "id": str(user.id), "email": user.email, "name": user.name or name,
-                "plan": user.plan, "avatar_url": user.avatar_url or avatar,
-                "email_verified": True,
-            },
+            "user": user_payload(user),
             **tokens,
+            "is_new_user": result.is_new_user,
+            "password_reset": result.password_reset,
         }})

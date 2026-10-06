@@ -28,6 +28,9 @@ class User(models.Model):
     last_login_at = models.DateTimeField(null=True, blank=True)
     last_login_ip = models.CharField(max_length=45, null=True, blank=True)
     password_changed_at = models.DateTimeField(null=True, blank=True)
+    # False for accounts created through Google/GitHub sign-in: their stored hash
+    # is random, so the UI offers "set a password" instead of "change password".
+    has_usable_password = models.BooleanField(default=True)
 
     class Meta:
         managed = True
@@ -500,6 +503,59 @@ class RefreshToken(models.Model):
     class Meta:
         managed = True
         db_table = "refresh_tokens"
+
+
+class OAuthAccount(models.Model):
+    """A Google or GitHub identity linked to a user.
+
+    Sign-in matches on (provider, provider_user_id) first, so a user who later
+    changes the email on their Google/GitHub account still lands in the same
+    QRit account.
+    """
+
+    PROVIDER_CHOICES = [("google", "Google"), ("github", "GitHub")]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="oauth_accounts")
+    provider = models.CharField(max_length=20, choices=PROVIDER_CHOICES)
+    provider_user_id = models.CharField(max_length=255)
+    email = models.CharField(max_length=255, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_login_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        managed = True
+        db_table = "oauth_accounts"
+        constraints = [
+            models.UniqueConstraint(fields=["provider", "provider_user_id"],
+                                    name="oauth_accounts_provider_uid_uniq"),
+            models.UniqueConstraint(fields=["user", "provider"],
+                                    name="oauth_accounts_user_provider_uniq"),
+        ]
+
+
+class AuthHandoffCode(models.Model):
+    """Single-use code that carries a finished OAuth sign-in to the frontend.
+
+    The callback redirects the browser with this short-lived code instead of
+    tokens, so tokens never appear in a URL, browser history or access log.
+    Only the SHA-256 of the code is stored.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    code_hash = models.CharField(max_length=64, unique=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="auth_handoff_codes")
+    provider = models.CharField(max_length=20)
+    next_path = models.CharField(max_length=512, default="/dashboard")
+    is_new_user = models.BooleanField(default=False)
+    password_reset = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    used_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        managed = True
+        db_table = "auth_handoff_codes"
 
 
 class LoginAttempt(models.Model):
