@@ -39,7 +39,7 @@ def _send_resend(to: str, subject: str, html: str):
 
 
 def send_email(to: str, subject: str, html: str):
-    backend = getattr(settings, "EMAIL_BACKEND", "console")
+    backend = getattr(settings, "QRIT_EMAIL_BACKEND", "console")
     if backend == "resend":
         _send_resend(to, subject, html)
     else:

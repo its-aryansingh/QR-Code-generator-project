@@ -12,9 +12,34 @@ def _csv_env(name, default=""):
     return [item.strip() for item in raw.split(",") if item.strip()]
 
 
+def _origin(url):
+    """`https://app.example.com/some/path` -> `https://app.example.com`."""
+    from urllib.parse import urlsplit
+
+    parts = urlsplit((url or "").strip())
+    if parts.scheme in ("http", "https") and parts.netloc:
+        return f"{parts.scheme}://{parts.netloc}"
+    return ""
+
+
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "django-insecure-change-in-production")
 DEBUG = os.environ.get("DEBUG", "False") == "True"
 ALLOWED_HOSTS = _csv_env("ALLOWED_HOSTS", "*") or ["*"]
+if "*" not in ALLOWED_HOSTS:
+    # Railway's health checker calls the container as `healthcheck.railway.app`,
+    # the frontend proxy calls it on the private domain, and the platform
+    # exposes both names as variables. Without these the deploy never turns
+    # healthy (400 DisallowedHost) and every proxied API call fails.
+    for _host in (
+        "healthcheck.railway.app",
+        os.environ.get("RAILWAY_PUBLIC_DOMAIN", ""),
+        os.environ.get("RAILWAY_PRIVATE_DOMAIN", ""),
+        "localhost",
+        "127.0.0.1",
+        "[::1]",
+    ):
+        if _host and _host not in ALLOWED_HOSTS:
+            ALLOWED_HOSTS.append(_host)
 
 INSTALLED_APPS = [
     "django.contrib.staticfiles",
@@ -37,6 +62,9 @@ X_FRAME_OPTIONS = "DENY"
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+# The platform health check is plain HTTP with no X-Forwarded-Proto; redirecting
+# it to https makes Railway mark every deploy as failed.
+SECURE_REDIRECT_EXEMPT = [r"^health/?$"]
 if not DEBUG:
     SECURE_SSL_REDIRECT = os.environ.get("SECURE_SSL_REDIRECT", "True") == "True"
     SECURE_HSTS_SECONDS = int(os.environ.get("SECURE_HSTS_SECONDS", 31536000))
@@ -56,6 +84,11 @@ CORS_ALLOWED_ORIGINS = _csv_env(
     "CORS_ALLOWED_ORIGINS",
     "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001",
 )
+# The frontend's own origin is always allowed, so a deploy that only sets
+# APP_BASE_URL does not silently fail every preflight.
+_app_origin = _origin(os.environ.get("APP_BASE_URL", ""))
+if _app_origin and _app_origin not in CORS_ALLOWED_ORIGINS:
+    CORS_ALLOWED_ORIGINS.append(_app_origin)
 CORS_ALLOWED_ORIGIN_REGEXES = _csv_env("CORS_ALLOWED_ORIGIN_REGEXES")
 CORS_ALLOW_ALL_ORIGINS = os.environ.get("CORS_ALLOW_ALL_ORIGINS", "False") == "True"
 CORS_ALLOW_CREDENTIALS = True
@@ -112,11 +145,38 @@ APP_BASE_URL = os.environ.get("APP_BASE_URL", "http://localhost:3000")
 API_BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:8084")
 SHORT_LINK_BASE_URL = os.environ.get("SHORT_LINK_BASE_URL", API_BASE_URL)
 
-# ---------------------------------------------------------------- Google OAuth
-GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
+# ---------------------------------------------------------------- OAuth (Google, GitHub)
+# Redirect URIs registered with the providers are
+#   {OAUTH_CALLBACK_BASE_URL}/api/v1/auth/oauth/<provider>/callback
+# It defaults to the frontend URL because the frontend proxies /api/v1 to this
+# service, which keeps the state cookie and the callback on one site.
+OAUTH_CALLBACK_BASE_URL = (os.environ.get("OAUTH_CALLBACK_BASE_URL") or APP_BASE_URL).rstrip("/")
+OAUTH_STATE_MAX_AGE_SECONDS = int(os.environ.get("OAUTH_STATE_MAX_AGE_SECONDS", 600))
+OAUTH_HANDOFF_TTL_SECONDS = int(os.environ.get("OAUTH_HANDOFF_TTL_SECONDS", 120))
+OAUTH_HTTP_TIMEOUT_SECONDS = float(os.environ.get("OAUTH_HTTP_TIMEOUT_SECONDS", 10))
+
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "").strip()
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "").strip()
+GITHUB_CLIENT_ID = os.environ.get("GITHUB_CLIENT_ID", "").strip()
+GITHUB_CLIENT_SECRET = os.environ.get("GITHUB_CLIENT_SECRET", "").strip()
+
+# Provider endpoints. Overridable only so the end-to-end suite can point them at
+# a local stand-in; production never sets these.
+GOOGLE_AUTHORIZE_URL = os.environ.get("GOOGLE_AUTHORIZE_URL", "https://accounts.google.com/o/oauth2/v2/auth")
+GOOGLE_TOKEN_URL = os.environ.get("GOOGLE_TOKEN_URL", "https://oauth2.googleapis.com/token")
+GOOGLE_JWKS_URL = os.environ.get("GOOGLE_JWKS_URL", "https://www.googleapis.com/oauth2/v3/certs")
+GOOGLE_ISSUERS = _csv_env("GOOGLE_ISSUERS", "https://accounts.google.com,accounts.google.com")
+GITHUB_AUTHORIZE_URL = os.environ.get("GITHUB_AUTHORIZE_URL", "https://github.com/login/oauth/authorize")
+GITHUB_TOKEN_URL = os.environ.get("GITHUB_TOKEN_URL", "https://github.com/login/oauth/access_token")
+GITHUB_API_URL = os.environ.get("GITHUB_API_URL", "https://api.github.com").rstrip("/")
 
 # ---------------------------------------------------------------- Email
-EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND", "console")  # 'console' or 'resend'
+# The env var keeps its name, but the value lives in its own setting: Django
+# reserves EMAIL_BACKEND for a dotted import path, and its error-mail logging
+# handler crashed on "console" (turning every logged security error, such as a
+# disallowed Host, into a 500).
+QRIT_EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND", "console").strip().lower()  # 'console' or 'resend'
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
 EMAIL_FROM = os.environ.get("EMAIL_FROM", "noreply@qrit.app")
 
