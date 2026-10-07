@@ -3,6 +3,7 @@
 from uuid import uuid4
 
 import pytest
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from apps.accounts.tokens import (
     TokenManager,
@@ -58,8 +59,8 @@ def test_ed25519_jwt_expired() -> None:
 
 
 def test_ed25519_jwt_invalid_signature() -> None:
-    tm1 = TokenManager()
-    tm2 = TokenManager()  # different key
+    tm1 = TokenManager(private_key=Ed25519PrivateKey.generate())
+    tm2 = TokenManager(private_key=Ed25519PrivateKey.generate())  # different key
     user_id = uuid4()
     session_id = uuid4()
 
