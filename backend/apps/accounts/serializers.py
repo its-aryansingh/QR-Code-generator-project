@@ -23,17 +23,25 @@ class LoginRequestSerializer(serializers.Serializer[Any]):
 class GoogleAuthRequestSerializer(serializers.Serializer[Any]):
     credential = serializers.CharField(required=False, allow_blank=True, default="")
     id_token = serializers.CharField(required=False, allow_blank=True, default="")
+    code = serializers.CharField(
+        required=False, allow_blank=True, default="", help_text="Redirect flow: authorization code"
+    )
+    state = serializers.CharField(
+        required=False, allow_blank=True, default="", help_text="Redirect flow: state"
+    )
 
     def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
         token = attrs.get("credential") or attrs.get("id_token")
-        if not token:
-            raise serializers.ValidationError("Either credential or id_token is required")
+        if not token and not attrs.get("code"):
+            raise serializers.ValidationError("Either code, credential or id_token is required")
         attrs["token"] = token
         return attrs
 
 
 class GitHubAuthRequestSerializer(serializers.Serializer[Any]):
     code = serializers.CharField(required=True)
+    state = serializers.CharField(required=False, allow_blank=True, default="")
+    # Accepted for older clients and ignored: the redirect URI is fixed server-side.
     redirect_uri = serializers.CharField(required=False, allow_null=True, default=None)
 
 
@@ -88,7 +96,9 @@ class UserDTOSerializer(serializers.ModelSerializer[User]):
         ]
 
     def get_has_password(self, obj: User) -> bool:
-        return bool(obj.password)
+        # Accounts created through Google/GitHub store Django's unusable-password
+        # marker ("!..."), which is a non-empty string.
+        return obj.has_usable_password()
 
     def get_email_verified(self, obj: User) -> bool:
         return obj.email_verified_at is not None
@@ -122,6 +132,9 @@ class AuthResponseSerializer(serializers.Serializer[Any]):
     access_token = serializers.CharField()
     refresh_token = serializers.CharField()
     mfa_required = serializers.BooleanField()
+    next = serializers.CharField(
+        required=False, help_text="Social sign-in only: where to send the user next."
+    )
 
 
 class RegisterResponseSerializer(serializers.Serializer[Any]):

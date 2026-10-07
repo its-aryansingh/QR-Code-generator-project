@@ -7,6 +7,7 @@ Plan §6.3, §7.1, §7.2:
 - Profile and session management.
 """
 
+import hmac
 import re
 import secrets
 import zoneinfo
@@ -620,8 +621,13 @@ def google_login(
     credential: str,
     ip_prefix: str | None = None,
     user_agent: str | None = None,
+    expected_nonce: str | None = None,
 ) -> tuple[User, Session, str, str, str, bool]:
-    """Authenticate or register a user via Google ID Token."""
+    """Authenticate or register a user via Google ID Token.
+
+    `expected_nonce` is set by the redirect flow: the token must carry the nonce
+    this browser was given, so a token captured elsewhere cannot be replayed.
+    """
     sub: str = ""
     email: str = ""
     name: str = ""
@@ -641,9 +647,10 @@ def google_login(
             )
         # Verify with Google tokeninfo endpoint (checks signature and expiry)
         try:
-            client = safe_client(timeout=5.0)
+            # Provider URLs come from settings, never from the request.
+            client = safe_client(timeout=5.0, allow_private=True)
             resp = client.get(
-                "https://oauth2.googleapis.com/tokeninfo",
+                settings.GOOGLE_TOKENINFO_URL,
                 params={"id_token": credential},
             )
             if resp.status_code != 200:
@@ -663,6 +670,14 @@ def google_login(
             if str(payload.get("email_verified", "")).lower() != "true":
                 raise ApiError(
                     status=401, code="unauthorized", detail="Google email address is not verified"
+                )
+            if expected_nonce is not None and not hmac.compare_digest(
+                str(payload.get("nonce", "")), expected_nonce
+            ):
+                raise ApiError(
+                    status=401,
+                    code="unauthorized",
+                    detail="Google sign-in did not match this browser session",
                 )
             sub = payload.get("sub", "")
             email = payload.get("email", "")
@@ -770,11 +785,54 @@ def google_login(
     return user, session, access_token, plain_refresh, plain_csrf, False
 
 
+def google_code_login(
+    code: str,
+    redirect_uri: str,
+    code_verifier: str,
+    nonce: str,
+    ip_prefix: str | None = None,
+    user_agent: str | None = None,
+) -> tuple[User, Session, str, str, str, bool]:
+    """Redirect flow: exchange an authorization code for an ID token, then sign in."""
+    if getattr(settings, "OAUTH_TEST_TOKENS", False) and code.startswith("test-google:"):
+        return google_login(code, ip_prefix=ip_prefix, user_agent=user_agent)
+
+    client_id = settings.GOOGLE_CLIENT_ID
+    client_secret = settings.GOOGLE_CLIENT_SECRET
+    if not client_id or not client_secret:
+        raise ApiError(status=500, code="internal_error", detail="Google OAuth is not configured")
+    try:
+        resp = safe_client(timeout=10.0, allow_private=True).post(
+            settings.GOOGLE_TOKEN_URL,
+            data={
+                "code": code,
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "redirect_uri": redirect_uri,
+                "grant_type": "authorization_code",
+                "code_verifier": code_verifier,
+            },
+            headers={"Accept": "application/json"},
+        )
+        data = resp.json() if resp.status_code == 200 else {}
+    except Exception as err:
+        raise ApiError(
+            status=502, code="provider_unavailable", detail="Google could not be reached"
+        ) from err
+    id_token = data.get("id_token") if isinstance(data, dict) else None
+    if not id_token:
+        raise ApiError(
+            status=401, code="unauthorized", detail="Google authorization exchange failed"
+        )
+    return google_login(id_token, ip_prefix=ip_prefix, user_agent=user_agent, expected_nonce=nonce)
+
+
 def github_login(
     code: str,
     redirect_uri: str | None = None,
     ip_prefix: str | None = None,
     user_agent: str | None = None,
+    code_verifier: str | None = None,
 ) -> tuple[User, Session, str, str, str, bool]:
     """Authenticate or register a user via GitHub OAuth authorization code."""
     github_id: str = ""
@@ -796,7 +854,8 @@ def github_login(
                 status=500, code="internal_error", detail="GitHub OAuth is not configured"
             )
 
-        client = safe_client(timeout=10.0)
+        # Provider URLs come from settings, never from the request.
+        client = safe_client(timeout=10.0, allow_private=True)
         # 1. Exchange code for GitHub access token
         token_payload: dict[str, Any] = {
             "client_id": client_id,
@@ -805,9 +864,11 @@ def github_login(
         }
         if redirect_uri:
             token_payload["redirect_uri"] = redirect_uri
+        if code_verifier:
+            token_payload["code_verifier"] = code_verifier
 
         token_resp = client.post(
-            "https://github.com/login/oauth/access_token",
+            settings.GITHUB_TOKEN_URL,
             data=token_payload,
             headers={"Accept": "application/json"},
         )
@@ -824,7 +885,7 @@ def github_login(
 
         # 2. Fetch GitHub user profile
         user_resp = client.get(
-            "https://api.github.com/user",
+            f"{settings.GITHUB_API_URL}/user",
             headers={
                 "Authorization": f"Bearer {gh_access_token}",
                 "Accept": "application/vnd.github+json",
@@ -844,7 +905,7 @@ def github_login(
         #    never used, and neither is the profile's public email field.
         email = ""
         emails_resp = client.get(
-            "https://api.github.com/user/emails",
+            f"{settings.GITHUB_API_URL}/user/emails",
             headers={
                 "Authorization": f"Bearer {gh_access_token}",
                 "Accept": "application/vnd.github+json",

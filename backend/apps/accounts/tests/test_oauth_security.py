@@ -7,6 +7,7 @@ tests replace with a fake so the real verification code paths run.
 import json
 from datetime import UTC, datetime
 from typing import Any
+from urllib.parse import parse_qs, urlsplit
 
 import pytest
 from django.test import Client
@@ -77,6 +78,18 @@ def github_client(emails: list[dict[str, Any]], public_email: str | None = None)
     )
 
 
+def github_post(code: str) -> Any:
+    """POST a GitHub code the way the callback page does, with this browser's state."""
+    client = Client()
+    started = client.get("/api/v1/auth/github/start")
+    state = parse_qs(urlsplit(started["Location"]).query)["state"][0]
+    return client.post(
+        "/api/v1/auth/github",
+        data=json.dumps({"code": code, "state": state}),
+        content_type="application/json",
+    )
+
+
 def post(path: str, body: dict[str, Any]) -> Any:
     return Client().post(path, data=json.dumps(body), content_type="application/json")
 
@@ -122,7 +135,7 @@ def test_test_github_code_is_rejected_in_production(providers: Any, monkeypatch:
     )
     monkeypatch.setattr(services, "safe_client", lambda **_: fake)
 
-    resp = post("/api/v1/auth/github", {"code": "test-github:1:victim@example.com:x"})
+    resp = github_post("test-github:1:victim@example.com:x")
 
     assert resp.status_code == 401
     assert not OAuthAccount.objects.exists()
@@ -170,7 +183,7 @@ def test_github_never_uses_an_unverified_email(providers: Any, monkeypatch: Any)
     )
     monkeypatch.setattr(services, "safe_client", lambda **_: fake)
 
-    resp = post("/api/v1/auth/github", {"code": "real-code"})
+    resp = github_post("real-code")
 
     assert resp.status_code == 401
     assert not OAuthAccount.objects.filter(user=victim).exists()
@@ -187,7 +200,7 @@ def test_github_prefers_the_primary_verified_email(providers: Any, monkeypatch: 
     )
     monkeypatch.setattr(services, "safe_client", lambda **_: fake)
 
-    resp = post("/api/v1/auth/github", {"code": "real-code"})
+    resp = github_post("real-code")
 
     assert resp.status_code == 200, resp.content
     assert resp.json()["user"]["email"] == "octo@example.com"
