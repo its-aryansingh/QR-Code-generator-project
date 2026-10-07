@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useAuthStore } from "@/lib/auth";
 import { Copy, Check, Eye, EyeOff, RefreshCw, Lock, Terminal } from "lucide-react";
+import { API_URL } from "@/lib/config";
 
 interface APIKeyInfo {
   api_key: string;
@@ -14,7 +15,7 @@ interface APIKeyInfo {
 
 export default function APIKeyPage() {
   const { accessToken } = useAuthStore();
-  const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8084/api/v1";
+  const api = API_URL;
 
   const [keyInfo, setKeyInfo] = useState<APIKeyInfo | null>(null);
   const [loading, setLoading] = useState(true);

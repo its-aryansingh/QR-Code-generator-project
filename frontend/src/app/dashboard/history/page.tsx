@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useAuthStore } from "@/lib/auth";
+import { API_URL } from "@/lib/config";
 
 interface QRRecord {
   id: string;
@@ -25,7 +26,7 @@ const TYPE_LABELS: Record<string, string> = {
 
 export default function HistoryPage() {
   const { accessToken } = useAuthStore();
-  const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8084/api/v1";
+  const api = API_URL;
 
   const [records, setRecords] = useState<QRRecord[]>([]);
   const [total, setTotal] = useState(0);

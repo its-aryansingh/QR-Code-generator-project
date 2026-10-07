@@ -3,12 +3,13 @@
 import { useState, useEffect } from "react";
 import { useAuthStore } from "@/lib/auth";
 import { BulkUpload } from "@/components/dashboard/BulkUpload";
+import { API_URL } from "@/lib/config";
 
 export default function BulkPage() {
   const { accessToken } = useAuthStore();
   const [workspaceId, setWorkspaceId] = useState<string>("");
 
-  const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8084/api/v1";
+  const api = API_URL;
 
   useEffect(() => {
     const stored = localStorage.getItem("qrit_active_workspace");

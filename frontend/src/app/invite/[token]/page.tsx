@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/auth";
 import Link from "next/link";
 import { Users, Shield, Clock, Check, AlertCircle, LogIn } from "lucide-react";
+import { API_URL } from "@/lib/config";
 
 interface InviteInfo {
   workspace_name: string;
@@ -20,7 +21,7 @@ export default function InviteAcceptPage() {
   const router = useRouter();
   const { accessToken, isAuthenticated } = useAuthStore();
   const token = params.token as string;
-  const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8084/api/v1";
+  const api = API_URL;
 
   const [invite, setInvite] = useState<InviteInfo | null>(null);
   const [loading, setLoading] = useState(true);

@@ -15,8 +15,9 @@ import type {
   WorkspaceOverview, WorkspaceQR,
 } from "@/types/enterprise";
 
-export const API_URL =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "http://127.0.0.1:8084/api/v1";
+import { API_URL } from "./config";
+
+export { API_URL };
 export const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") || API_URL.replace(/\/api\/v1$/, "");
 
@@ -76,8 +77,10 @@ async function refreshTokens(): Promise<boolean> {
         body: JSON.stringify({ refresh_token: refreshToken }),
       });
       const payload = await response.json();
-      if (!response.ok || !payload?.success || !payload?.data?.access_token) return false;
-      useAuthStore.getState().setTokens(payload.data);
+      // v3 answers with the bare token pair; v1 wrapped it in {success, data}.
+      const tokens = payload?.success ? payload.data : payload;
+      if (!response.ok || !tokens?.access_token) return false;
+      useAuthStore.getState().setTokens(tokens);
       return true;
     } catch {
       return false;
@@ -141,8 +144,10 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   }
 
   if (!response.ok || payload?.success === false) {
+    // v3 errors are RFC 7807 problem documents: the message is in `detail`.
+    const detail = (payload as { detail?: unknown } | null)?.detail;
     throw new ApiError(
-      payload?.error || `Request failed (${response.status})`,
+      payload?.error || (typeof detail === "string" ? detail : "") || `Request failed (${response.status})`,
       response.status,
       (payload as Record<string, unknown>) || {},
     );
@@ -182,7 +187,16 @@ const ws = (id: string) => `/workspaces/${id}`;
 
 export const enterprise = {
   // ---------------------------------------------------------------- account
-  me: () => request<Profile>("/auth/me"),
+  /** v3 serves the profile at /me as {user, workspaces, organizations}; v1 used /auth/me. */
+  me: async () => {
+    try {
+      const body = await request<{ user?: Profile } & Partial<Profile>>("/me");
+      return (body.user ?? body) as Profile;
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) return request<Profile>("/auth/me");
+      throw error;
+    }
+  },
   updateProfile: (body: { name?: string; company?: string; avatar_url?: string }) =>
     request<Profile>("/auth/me", { method: "PUT", body }),
   changePassword: (current_password: string, new_password: string) =>

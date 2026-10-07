@@ -6,6 +6,7 @@ import {
   User, Mail, Building, Key, CreditCard, Shield,
   Save, Check, AlertCircle, Eye, EyeOff, Crown
 } from "lucide-react";
+import { API_URL } from "@/lib/config";
 
 const inputCls = "w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500 transition-colors";
 const labelCls = "text-sm text-zinc-400 block mb-1.5 font-medium";
@@ -33,7 +34,7 @@ const PLAN_COLORS: Record<string, string> = {
 };
 
 export default function ProfilePage() {
-  const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8084/api/v1";
+  const api = API_URL;
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);

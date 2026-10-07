@@ -20,6 +20,10 @@ Plan §5.2, §7.1, §8:
 from typing import Any
 from uuid import UUID
 
+from django.conf import settings
+from django.http import HttpRequest, HttpResponseRedirect
+from django.http.response import HttpResponseBase
+from django.views import View
 from drf_spectacular.utils import extend_schema, inline_serializer
 from rest_framework import serializers, status
 from rest_framework.request import Request
@@ -30,6 +34,7 @@ from apps.core.net import ip_key, ip_prefix
 from apps.core.views import AuthenticatedAPIView, PublicAPIView
 from apps.workspaces.models import WorkspaceMember
 
+from . import oauth_flow
 from .authentication import Principal
 from .cookies import (
     REFRESH_COOKIE_NAME,
@@ -61,6 +66,7 @@ from .services import (
     change_password,
     forgot_password,
     github_login,
+    google_code_login,
     google_login,
     list_user_sessions,
     login,
@@ -158,8 +164,71 @@ class LoginView(PublicAPIView):
         return response
 
 
+class OAuthProvidersView(PublicAPIView):
+    """Which sign-in buttons to show; read at runtime so nothing is baked into the frontend."""
+
+    @extend_schema(
+        responses={
+            200: inline_serializer(
+                "OAuthProvidersResponse",
+                {"google": serializers.BooleanField(), "github": serializers.BooleanField()},
+            )
+        }
+    )
+    def get(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        return Response({p: oauth_flow.provider_configured(p) for p in oauth_flow.PROVIDERS})
+
+
+class OAuthStartView(View):
+    """GET /api/v1/auth/<provider>/start?next=/dashboard -> 302 to Google or GitHub."""
+
+    def get(self, request: HttpRequest, provider: str) -> HttpResponseBase:
+        next_path = oauth_flow.safe_next(request.GET.get("next"))
+        if provider not in oauth_flow.PROVIDERS:
+            return _no_store(HttpResponseRedirect(oauth_flow.frontend_url("/login")))
+        if not oauth_flow.provider_configured(provider):
+            return _no_store(
+                HttpResponseRedirect(
+                    oauth_flow.frontend_url(f"/callback/{provider}", error="not_configured")
+                )
+            )
+        url, cookie = oauth_flow.authorize_redirect(provider, next_path)
+        response = _no_store(HttpResponseRedirect(url))
+        oauth_flow.set_state_cookie(response, cookie)
+        return response
+
+
+def _no_store(response: HttpResponseRedirect) -> HttpResponseRedirect:
+    response["Cache-Control"] = "no-store"
+    return response
+
+
+def _is_test_code(value: str, prefix: str) -> bool:
+    return bool(getattr(settings, "OAUTH_TEST_TOKENS", False)) and value.startswith(prefix)
+
+
+def _social_response(result: tuple[User, Session, str, str, str, bool], next_path: str) -> Response:
+    user, _session, access_token, refresh_token, csrf_token, mfa_required = result
+    resp_data = {
+        "user": UserDTOSerializer(user).data,
+        "token": access_token,
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "mfa_required": mfa_required,
+        "next": next_path,
+    }
+    response = Response(resp_data, status=status.HTTP_200_OK)
+    set_auth_cookies(response, access_token, refresh_token, csrf_token)
+    oauth_flow.clear_state_cookie(response)
+    return response
+
+
 class GoogleAuthView(PublicAPIView):
-    """Sign in or register with Google OAuth ID token."""
+    """Sign in or register with Google.
+
+    `{code, state}` completes the redirect flow started at /auth/google/start.
+    `{credential}` (or `id_token`) accepts a Google Identity Services ID token.
+    """
 
     @extend_schema(request=GoogleAuthRequestSerializer, responses={200: AuthResponseSerializer})
     def post(self, request: Request, *args: Any, **kwargs: Any) -> Response:
@@ -168,28 +237,37 @@ class GoogleAuthView(PublicAPIView):
             raise unprocessable(
                 code="invalid_input", detail="validation failed", errors=serializer.errors
             )
+        data = serializer.validated_data
+        code = data.get("code") or ""
+        if code:
+            if _is_test_code(code, "test-google:") and not data.get("state"):
+                result = google_login(
+                    credential=code,
+                    ip_prefix=ip_prefix(request),
+                    user_agent=request.META.get("HTTP_USER_AGENT"),
+                )
+                return _social_response(result, oauth_flow.DEFAULT_NEXT)
+            flow = oauth_flow.consume_state(request, "google", data.get("state") or "")
+            result = google_code_login(
+                code=code,
+                redirect_uri=oauth_flow.callback_url("google"),
+                code_verifier=flow["verifier"],
+                nonce=flow["nonce"],
+                ip_prefix=ip_prefix(request),
+                user_agent=request.META.get("HTTP_USER_AGENT"),
+            )
+            return _social_response(result, flow["next"])
 
-        token = serializer.validated_data["token"]
-        user, session, access_token, refresh_token, csrf_token, mfa_required = google_login(
-            credential=token,
+        result = google_login(
+            credential=data["token"],
             ip_prefix=ip_prefix(request),
             user_agent=request.META.get("HTTP_USER_AGENT"),
         )
-
-        resp_data = {
-            "user": UserDTOSerializer(user).data,
-            "token": access_token,
-            "access_token": access_token,
-            "refresh_token": refresh_token,
-            "mfa_required": mfa_required,
-        }
-        response = Response(resp_data, status=status.HTTP_200_OK)
-        set_auth_cookies(response, access_token, refresh_token, csrf_token)
-        return response
+        return _social_response(result, oauth_flow.DEFAULT_NEXT)
 
 
 class GitHubAuthView(PublicAPIView):
-    """Sign in or register with GitHub OAuth authorization code."""
+    """Complete the GitHub redirect flow started at /auth/github/start with `{code, state}`."""
 
     @extend_schema(request=GitHubAuthRequestSerializer, responses={200: AuthResponseSerializer})
     def post(self, request: Request, *args: Any, **kwargs: Any) -> Response:
@@ -198,27 +276,27 @@ class GitHubAuthView(PublicAPIView):
             raise unprocessable(
                 code="invalid_input", detail="validation failed", errors=serializer.errors
             )
+        data = serializer.validated_data
+        code = data["code"]
+        if _is_test_code(code, "test-github:") and not data.get("state"):
+            result = github_login(
+                code=code,
+                ip_prefix=ip_prefix(request),
+                user_agent=request.META.get("HTTP_USER_AGENT"),
+            )
+            return _social_response(result, oauth_flow.DEFAULT_NEXT)
 
-        code = serializer.validated_data["code"]
-        redirect_uri = serializer.validated_data.get("redirect_uri")
-
-        user, session, access_token, refresh_token, csrf_token, mfa_required = github_login(
+        # The redirect URI and PKCE verifier come from this browser's flow
+        # cookie, never from the request body.
+        flow = oauth_flow.consume_state(request, "github", data.get("state") or "")
+        result = github_login(
             code=code,
-            redirect_uri=redirect_uri,
+            redirect_uri=oauth_flow.callback_url("github"),
+            code_verifier=flow["verifier"],
             ip_prefix=ip_prefix(request),
             user_agent=request.META.get("HTTP_USER_AGENT"),
         )
-
-        resp_data = {
-            "user": UserDTOSerializer(user).data,
-            "token": access_token,
-            "access_token": access_token,
-            "refresh_token": refresh_token,
-            "mfa_required": mfa_required,
-        }
-        response = Response(resp_data, status=status.HTTP_200_OK)
-        set_auth_cookies(response, access_token, refresh_token, csrf_token)
-        return response
+        return _social_response(result, flow["next"])
 
 
 class RefreshView(PublicAPIView):

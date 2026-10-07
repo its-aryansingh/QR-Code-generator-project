@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuthStore } from "@/lib/auth";
 import { toast } from "sonner";
+import { API_URL } from "@/lib/config";
 
 interface Member {
   id: string;
@@ -45,7 +46,7 @@ export function TeamPanel({ workspaceId, currentUserRole = "viewer" }: TeamPanel
   const [inviteRole, setInviteRole] = useState("editor");
   const [sending, setSending] = useState(false);
 
-  const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8084/api/v1";
+  const api = API_URL;
   const canManage = currentUserRole === "owner" || currentUserRole === "admin";
 
   const fetchTeam = useCallback(async () => {

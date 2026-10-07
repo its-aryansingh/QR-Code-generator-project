@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuthStore } from "@/lib/auth";
+import { API_URL } from "@/lib/config";
 
 interface LeadPage {
     id: string;
@@ -25,7 +26,7 @@ interface Lead {
 }
 
 export default function LeadCapturePage() {
-    const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8084/api/v1";
+    const api = API_URL;
     const [workspaceId, setWorkspaceId] = useState("");
     const [pages, setPages] = useState<LeadPage[]>([]);
     const [leads, setLeads] = useState<Lead[]>([]);

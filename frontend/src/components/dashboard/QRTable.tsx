@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useAuthStore } from "@/lib/auth";
 import { toast } from "sonner";
+import { API_URL } from "@/lib/config";
 
 interface QRRecord {
   id: string;
@@ -43,7 +44,7 @@ export function QRTable({ workspaceId, folderId, onSelect }: QRTableProps) {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   const limit = 20;
-  const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8084/api/v1";
+  const api = API_URL;
 
   const fetchRecords = useCallback(async () => {
     if (!workspaceId || !accessToken) return;

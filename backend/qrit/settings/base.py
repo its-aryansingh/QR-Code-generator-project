@@ -19,6 +19,8 @@ DEBUG = env.APP_ENV in ("local", "test")
 APP_ENV = env.APP_ENV
 COOKIE_SECURE = env.COOKIE_SECURE
 COOKIE_DOMAIN = env.COOKIE_DOMAIN
+# Public URL of the web app; OAuth redirect URIs are built from it.
+APP_BASE_URL = env.APP_BASE_URL.rstrip("/")
 
 # Read through django.conf.settings by apps.accounts.tokens, apps.core.crypto,
 # apps.core.ratelimit and apps.core.net. Left undefined, each worker generated
@@ -213,3 +215,9 @@ GOOGLE_CLIENT_ID = env.GOOGLE_CLIENT_ID
 GOOGLE_CLIENT_SECRET = env.GOOGLE_CLIENT_SECRET
 GITHUB_CLIENT_ID = env.GITHUB_CLIENT_ID
 GITHUB_CLIENT_SECRET = env.GITHUB_CLIENT_SECRET
+GOOGLE_AUTHORIZE_URL = env.GOOGLE_AUTHORIZE_URL
+GOOGLE_TOKEN_URL = env.GOOGLE_TOKEN_URL
+GOOGLE_TOKENINFO_URL = env.GOOGLE_TOKENINFO_URL
+GITHUB_AUTHORIZE_URL = env.GITHUB_AUTHORIZE_URL
+GITHUB_TOKEN_URL = env.GITHUB_TOKEN_URL
+GITHUB_API_URL = env.GITHUB_API_URL.rstrip("/")

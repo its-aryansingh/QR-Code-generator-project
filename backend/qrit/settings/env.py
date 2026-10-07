@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     DJANGO_SETTINGS_MODULE: str = "qrit.settings.api"
     DJANGO_SECRET_KEY: str = "local-insecure-secret-key-change-in-production-min-50-characters-long"
     ALLOWED_HOSTS: str = "localhost,127.0.0.1,healthcheck.railway.app,.railway.app,.up.railway.app"
+    # Injected by Railway into every service.
+    RAILWAY_PRIVATE_DOMAIN: str = ""
+    RAILWAY_PUBLIC_DOMAIN: str = ""
 
     # Databases
     DATABASE_URL: str = "postgresql://qrit_app:qrit_dev_password@localhost:5432/qrit"
@@ -82,6 +85,13 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_SECRET: str = ""
     GITHUB_CLIENT_ID: str = ""
     GITHUB_CLIENT_SECRET: str = ""
+    # Provider endpoints. Only end-to-end tests point these elsewhere.
+    GOOGLE_AUTHORIZE_URL: str = "https://accounts.google.com/o/oauth2/v2/auth"
+    GOOGLE_TOKEN_URL: str = "https://oauth2.googleapis.com/token"
+    GOOGLE_TOKENINFO_URL: str = "https://oauth2.googleapis.com/tokeninfo"
+    GITHUB_AUTHORIZE_URL: str = "https://github.com/login/oauth/authorize"
+    GITHUB_TOKEN_URL: str = "https://github.com/login/oauth/access_token"
+    GITHUB_API_URL: str = "https://api.github.com"
     WEB_RISK_API_KEY: str = ""
     DOH_URL: str = "https://cloudflare-dns.com/dns-query"
     CF_API_TOKEN: str = ""
@@ -125,7 +135,19 @@ class Settings(BaseSettings):
 
     @property
     def allowed_hosts_list(self) -> list[str]:
-        return [h.strip() for h in self.ALLOWED_HOSTS.split(",") if h.strip()]
+        hosts = [h.strip() for h in self.ALLOWED_HOSTS.split(",") if h.strip()]
+        # Railway's health checker and the service's own Railway domains are
+        # always accepted: the web app reaches this service on its private
+        # domain (*.railway.internal), which a restricted ALLOWED_HOSTS (or the
+        # default above) would otherwise reject with 400 DisallowedHost.
+        for host in (
+            "healthcheck.railway.app",
+            self.RAILWAY_PRIVATE_DOMAIN,
+            self.RAILWAY_PUBLIC_DOMAIN,
+        ):
+            if host and host not in hosts and "*" not in hosts:
+                hosts.append(host)
+        return hosts
 
     @property
     def cors_allowed_origins_list(self) -> list[str]:

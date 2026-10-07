@@ -12,6 +12,7 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell
 } from "recharts";
+import { API_URL } from "@/lib/config";
 
 const inputCls = "w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2.5 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-violet-500 transition-colors";
 const labelCls = "block text-xs text-zinc-500 mb-1.5 font-medium";
@@ -50,7 +51,7 @@ export default function EditQRPage() {
   const params = useParams();
   const router = useRouter();
   const { accessToken } = useAuthStore();
-  const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8084/api/v1";
+  const api = API_URL;
   const qrId = params.id as string;
   const workspaceId = typeof window !== "undefined" ? localStorage.getItem("qrit_active_workspace") : null;
 

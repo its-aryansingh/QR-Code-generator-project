@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuthStore } from "@/lib/auth";
 import Link from "next/link";
+import { API_URL } from "@/lib/config";
 
 interface DashboardStats {
     totalQR: number;
@@ -18,7 +19,7 @@ export default function DashboardOverview() {
 
     useEffect(() => {
         const token = useAuthStore.getState().accessToken;
-        const api = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8084/api/v1';
+        const api = API_URL;
 
         // Fetch stats
         Promise.all([
