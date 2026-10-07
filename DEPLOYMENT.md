@@ -119,6 +119,13 @@ web: cd backend && gunicorn qrapp.wsgi:application --config gunicorn.conf.py --b
 
 ### Method D: Railway.app (Monorepo Setup)
 
+> [!IMPORTANT]
+> With the v3 API in `backend/`, follow
+> [`docs/v3/SIGN_IN_AND_RAILWAY.md`](docs/v3/SIGN_IN_AND_RAILWAY.md) for the
+> variables. In particular, do **not** set `NEXT_PUBLIC_API_URL`: the web app
+> forwards `/api/v1` to `BACKEND_INTERNAL_URL` at runtime, and Google/GitHub
+> sign-in depend on that. The steps below are the original v1 setup.
+
 In Railway, this monorepo should be deployed as **two separate services** from the same GitHub repository:
 
 #### 1. Frontend Service (`qrit-frontend`):
