@@ -11,21 +11,6 @@ import { useAuthStore } from "@/lib/auth";
 import { SocialAuthButtons } from "@/components/auth/social-auth-buttons";
 import { PasswordInput } from "@/components/auth/password-input";
 
-const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
-const GITHUB_CLIENT_ID = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID || "";
-
-declare global {
-    interface Window {
-        google?: {
-            accounts: {
-                id: {
-                    initialize: (config: Record<string, unknown>) => void;
-                    prompt: () => void;
-                };
-            };
-        };
-    }
-}
 
 function LoginForm() {
     const router = useRouter();
@@ -34,7 +19,6 @@ function LoginForm() {
     const setReturnUrl = useAuthStore((state) => state.setReturnUrl);
     const returnUrl = useAuthStore((state) => state.returnUrl);
     const [isLoading, setIsLoading] = useState(false);
-    const [isGoogleLoading, setIsGoogleLoading] = useState(false);
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
 
@@ -51,73 +35,6 @@ function LoginForm() {
         setReturnUrl(null);
         router.push(destination);
     }, [returnUrl, setReturnUrl, router]);
-
-    const handleGoogleResponse = useCallback(async (response: { credential: string }) => {
-        setIsGoogleLoading(true);
-        try {
-            const result = await api.googleLogin(response.credential);
-            if (result.success && result.data) {
-                setTokens(result.data);
-                toast.success("Welcome!", { description: "Signed in with Google" });
-                navigateAfterAuth();
-            } else {
-                toast.error("Google sign-in failed", { description: result.error || "Could not authenticate" });
-            }
-        } catch (error: unknown) {
-            const message = error instanceof Error ? error.message : "An error occurred";
-            toast.error("Google sign-in failed", { description: message });
-        } finally {
-            setIsGoogleLoading(false);
-        }
-    }, [setTokens, navigateAfterAuth]);
-
-    useEffect(() => {
-        if (!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID.includes("YOUR_GOOGLE")) return;
-
-        const script = document.createElement("script");
-        script.src = "https://accounts.google.com/gsi/client";
-        script.async = true;
-        script.defer = true;
-        script.onload = () => {
-            window.google?.accounts.id.initialize({
-                client_id: GOOGLE_CLIENT_ID,
-                callback: handleGoogleResponse,
-            });
-        };
-        document.head.appendChild(script);
-
-        return () => {
-            if (script.parentNode) {
-                script.parentNode.removeChild(script);
-            }
-        };
-    }, [handleGoogleResponse]);
-
-    const handleGoogleClick = () => {
-        if (!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID.includes("YOUR_GOOGLE")) {
-            toast.error("Google sign-in not configured", {
-                description: "Set NEXT_PUBLIC_GOOGLE_CLIENT_ID in .env.local",
-            });
-            return;
-        }
-        window.google?.accounts.id.prompt();
-    };
-
-    const handleGithubClick = () => {
-        if (!GITHUB_CLIENT_ID || GITHUB_CLIENT_ID.includes("YOUR_GITHUB")) {
-            toast.error("GitHub sign-in not configured", {
-                description: "Set NEXT_PUBLIC_GITHUB_CLIENT_ID in your environment variables",
-            });
-            return;
-        }
-        const state = Math.random().toString(36).substring(2) + Date.now().toString(36);
-        sessionStorage.setItem("github_oauth_state", state);
-        const redirectUri = `${window.location.origin}/callback/github`;
-        const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${encodeURIComponent(
-            GITHUB_CLIENT_ID
-        )}&scope=user:email&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(state)}`;
-        window.location.href = githubAuthUrl;
-    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -190,12 +107,7 @@ function LoginForm() {
             </div>
 
             {/* Social Auth Buttons */}
-            <SocialAuthButtons
-                onGoogleClick={handleGoogleClick}
-                onGithubClick={handleGithubClick}
-                isGoogleLoading={isGoogleLoading}
-                mode="login"
-            />
+            <SocialAuthButtons mode="login" next={returnUrl || "/dashboard"} />
 
             {/* Email/Password Form */}
             <form onSubmit={handleSubmit} className="space-y-5">

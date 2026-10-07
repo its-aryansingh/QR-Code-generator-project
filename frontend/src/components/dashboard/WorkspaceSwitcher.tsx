@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useAuthStore } from "@/lib/auth";
+import { API_URL } from "@/lib/config";
 
 interface Workspace {
   id: string;
@@ -28,7 +29,7 @@ export function WorkspaceSwitcher({ onWorkspaceChange, compact = false }: Worksp
   const [loading, setLoading] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8084/api/v1";
+  const api = API_URL;
 
   useEffect(() => {
     if (!accessToken) return;

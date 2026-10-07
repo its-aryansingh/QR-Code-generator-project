@@ -3,9 +3,10 @@
 import { useState } from "react";
 import { useAuthStore } from "@/lib/auth";
 import { useWorkspace } from "@/lib/workspace";
+import { API_URL } from "@/lib/config";
 
 export default function ReportsPage() {
-    const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8084/api/v1";
+    const api = API_URL;
     const [downloading, setDownloading] = useState<string | null>(null);
     const [days, setDays] = useState(30);
     const { workspaceId } = useWorkspace();

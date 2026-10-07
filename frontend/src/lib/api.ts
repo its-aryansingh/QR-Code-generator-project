@@ -14,12 +14,37 @@ import type {
     PublicGenerateResponse,
     ScanAnalytics,
     QRRecord,
+    OAuthProvider,
+    OAuthProviders,
+    OAuthSignIn,
 } from '@/types';
 
-export const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8084/api/v1";
+import { API_URL, OAUTH_URL } from './config';
+
+export { API_URL, OAUTH_URL };
 export const BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8084";
+
+/**
+ * The v3 backend answers with bare JSON on success and RFC 7807 problem
+ * documents on errors, while the pages in this app were written for v1's
+ * `{success, data}` / `{success: false, error}` envelope. Translate here, once,
+ * so both shapes work everywhere.
+ */
+export function toEnvelope<T>(body: unknown): ApiResponse<T> {
+    if (body && typeof body === 'object' && !Array.isArray(body) && 'success' in body) {
+        return body as ApiResponse<T>;
+    }
+    return { success: true, data: body as T };
+}
+
+function problemToError(body: unknown): unknown {
+    if (body && typeof body === 'object' && !('error' in body) && 'detail' in body) {
+        const problem = body as { detail?: unknown; code?: unknown };
+        return { ...problem, success: false, error: String(problem.detail ?? 'Request failed') };
+    }
+    return body;
+}
 
 class ApiClient {
     private client: AxiosInstance;
@@ -56,10 +81,16 @@ class ApiClient {
             return config;
         });
 
-        // Response interceptor: handle 401 with queued refresh
+        // Response interceptor: normalise v3 bodies, handle 401 with queued refresh
         this.client.interceptors.response.use(
-            (response) => response,
+            (response) => {
+                response.data = toEnvelope(response.data);
+                return response;
+            },
             async (error: AxiosError) => {
+                if (error.response) {
+                    error.response.data = problemToError(error.response.data);
+                }
                 const originalRequest = error.config as InternalAxiosRequestConfig & { _retried?: boolean };
 
                 if (
@@ -67,7 +98,9 @@ class ApiClient {
                     originalRequest &&
                     !originalRequest._retried &&
                     !originalRequest.url?.includes('/auth/refresh') &&
-                    !originalRequest.url?.includes('/auth/login')
+                    !originalRequest.url?.includes('/auth/login') &&
+                    !originalRequest.url?.includes('/auth/google') &&
+                    !originalRequest.url?.includes('/auth/github')
                 ) {
                     originalRequest._retried = true;
 
@@ -100,13 +133,14 @@ class ApiClient {
             if (!refreshToken) return false;
 
             try {
-                const response = await axios.post<ApiResponse<TokenPair>>(
+                const response = await axios.post(
                     `${API_URL}/auth/refresh`,
                     { refresh_token: refreshToken }
                 );
+                const body = toEnvelope<TokenPair>(response.data);
 
-                if (response.data.success && response.data.data) {
-                    useAuthStore.getState().setTokens(response.data.data);
+                if (body.success && body.data) {
+                    useAuthStore.getState().setTokens(body.data);
                     return true;
                 }
                 return false;
@@ -139,11 +173,23 @@ class ApiClient {
         return response.data;
     }
 
-    async githubLogin(code: string, redirectUri?: string): Promise<ApiResponse<TokenPair & { user: User }>> {
-        const response = await this.client.post<ApiResponse<TokenPair & { user: User }>>('/auth/github', {
-            code,
-            redirect_uri: redirectUri,
-        });
+    // ==================== Google / GitHub sign-in ====================
+
+    /** Which providers the server has credentials for (read at runtime). */
+    async oauthProviders(): Promise<ApiResponse<OAuthProviders>> {
+        const response = await this.client.get<ApiResponse<OAuthProviders>>('/auth/oauth/providers');
+        return response.data;
+    }
+
+    /** Finish the redirect flow: the backend checks `state` against this browser's cookie. */
+    async oauthComplete(provider: OAuthProvider, code: string, state: string): Promise<ApiResponse<OAuthSignIn>> {
+        // Always same-origin (even if NEXT_PUBLIC_API_URL points elsewhere): the
+        // state cookie set by /start lives on this site.
+        const response = await this.client.post<ApiResponse<OAuthSignIn>>(
+            `${OAUTH_URL}/${provider}`,
+            { code, state },
+            { baseURL: '' },
+        );
         return response.data;
     }
 

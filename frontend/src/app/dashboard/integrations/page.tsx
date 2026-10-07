@@ -4,6 +4,7 @@ import { startTransition, useState, useEffect, useCallback } from "react";
 import { useAuthStore } from "@/lib/auth";
 import { useWorkspace } from "@/lib/workspace";
 import { Check, Copy, ExternalLink, Zap, Plus } from "lucide-react";
+import { API_URL } from "@/lib/config";
 
 interface Webhook {
   id: string;
@@ -155,7 +156,7 @@ function IntegrationCard({ integration, workspaceId, existingWebhooks }: {
   existingWebhooks: Webhook[];
 }) {
   const { accessToken } = useAuthStore();
-  const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8084/api/v1";
+  const api = API_URL;
   const [expanded, setExpanded] = useState(false);
   const [webhookUrl, setWebhookUrl] = useState("");
   const [saving, setSaving] = useState(false);
@@ -321,7 +322,7 @@ function IntegrationCard({ integration, workspaceId, existingWebhooks }: {
 
 export default function IntegrationsPage() {
   const { accessToken } = useAuthStore();
-  const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8084/api/v1";
+  const api = API_URL;
   const [workspaceId, setWorkspaceId] = useState("");
   const [webhooks, setWebhooks] = useState<Webhook[]>([]);
   const { workspaceId: activeWorkspaceId } = useWorkspace();

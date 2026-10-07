@@ -4,6 +4,7 @@ import { useState, useRef, useCallback } from "react";
 import JSZip from "jszip";
 import { useAuthStore } from "@/lib/auth";
 import { toast } from "sonner";
+import { API_URL } from "@/lib/config";
 
 interface PreviewRow {
   row: number;
@@ -77,7 +78,7 @@ export function BulkUpload({ workspaceId, onComplete }: BulkUploadProps) {
   const [isDragging, setIsDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8084/api/v1";
+  const api = API_URL;
 
   const handleFile = useCallback((f: File | null) => {
     if (!f) return;

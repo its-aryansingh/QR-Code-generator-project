@@ -6,6 +6,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/auth";
+import { API_URL } from "@/lib/config";
 
 const plans = [
     {
@@ -133,7 +134,7 @@ export default function PricingPage() {
     const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
     const router = useRouter();
     const { isAuthenticated, accessToken } = useAuthStore();
-    const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8084/api/v1";
+    const api = API_URL;
 
     const handleCheckout = async (planName: string, href: string) => {
         if (planName === "Free" || planName === "Enterprise") {

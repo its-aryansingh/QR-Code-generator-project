@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import axios from "axios";
@@ -12,100 +12,17 @@ import { SocialAuthButtons } from "@/components/auth/social-auth-buttons";
 import { PasswordInput } from "@/components/auth/password-input";
 import { PasswordStrength, getPasswordScore } from "@/components/auth/password-strength";
 
-const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
-const GITHUB_CLIENT_ID = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID || "";
-
-declare global {
-    interface Window {
-        google?: {
-            accounts: {
-                id: {
-                    initialize: (config: Record<string, unknown>) => void;
-                    prompt: () => void;
-                };
-            };
-        };
-    }
-}
 
 export default function RegisterPage() {
     const router = useRouter();
     const setTokens = useAuthStore((state) => state.setTokens);
     const [isLoading, setIsLoading] = useState(false);
-    const [isGoogleLoading, setIsGoogleLoading] = useState(false);
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
 
     const passwordScore = getPasswordScore(password);
     const isPasswordStrong = passwordScore >= 4; // Need at least 4 of 5 requirements
-
-    const handleGoogleResponse = useCallback(async (response: { credential: string }) => {
-        setIsGoogleLoading(true);
-        try {
-            const result = await api.googleLogin(response.credential);
-            if (result.success && result.data) {
-                setTokens(result.data);
-                toast.success("Welcome!", { description: "Account created with Google" });
-                router.push("/dashboard");
-            } else {
-                toast.error("Google sign-up failed", { description: result.error || "Could not authenticate" });
-            }
-        } catch (error: unknown) {
-            const message = error instanceof Error ? error.message : "An error occurred";
-            toast.error("Google sign-up failed", { description: message });
-        } finally {
-            setIsGoogleLoading(false);
-        }
-    }, [setTokens, router]);
-
-    useEffect(() => {
-        if (!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID.includes("YOUR_GOOGLE")) return;
-
-        const script = document.createElement("script");
-        script.src = "https://accounts.google.com/gsi/client";
-        script.async = true;
-        script.defer = true;
-        script.onload = () => {
-            window.google?.accounts.id.initialize({
-                client_id: GOOGLE_CLIENT_ID,
-                callback: handleGoogleResponse,
-            });
-        };
-        document.head.appendChild(script);
-
-        return () => {
-            if (script.parentNode) {
-                script.parentNode.removeChild(script);
-            }
-        };
-    }, [handleGoogleResponse]);
-
-    const handleGoogleClick = () => {
-        if (!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID.includes("YOUR_GOOGLE")) {
-            toast.error("Google sign-in not configured", {
-                description: "Set NEXT_PUBLIC_GOOGLE_CLIENT_ID in .env.local",
-            });
-            return;
-        }
-        window.google?.accounts.id.prompt();
-    };
-
-    const handleGithubClick = () => {
-        if (!GITHUB_CLIENT_ID || GITHUB_CLIENT_ID.includes("YOUR_GITHUB")) {
-            toast.error("GitHub sign-in not configured", {
-                description: "Set NEXT_PUBLIC_GITHUB_CLIENT_ID in your environment variables",
-            });
-            return;
-        }
-        const state = Math.random().toString(36).substring(2) + Date.now().toString(36);
-        sessionStorage.setItem("github_oauth_state", state);
-        const redirectUri = `${window.location.origin}/callback/github`;
-        const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${encodeURIComponent(
-            GITHUB_CLIENT_ID
-        )}&scope=user:email&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(state)}`;
-        window.location.href = githubAuthUrl;
-    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -182,12 +99,7 @@ export default function RegisterPage() {
             </div>
 
             {/* Social Auth Buttons */}
-            <SocialAuthButtons
-                onGoogleClick={handleGoogleClick}
-                onGithubClick={handleGithubClick}
-                isGoogleLoading={isGoogleLoading}
-                mode="register"
-            />
+            <SocialAuthButtons mode="register" next="/dashboard" />
 
             {/* Email/Password Form */}
             <form onSubmit={handleSubmit} className="space-y-5">

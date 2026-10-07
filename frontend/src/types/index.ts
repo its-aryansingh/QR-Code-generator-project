@@ -104,6 +104,21 @@ export interface ApiResponse<T> {
   success: boolean;
   data?: T;
   error?: string;
+  code?: string;
+}
+
+// ==================== Google / GitHub sign-in ====================
+
+export type OAuthProvider = 'google' | 'github';
+
+export type OAuthProviders = Record<OAuthProvider, boolean>;
+
+export interface OAuthSignIn {
+  user: { id: string; email: string; name?: string | null; avatar_url?: string | null };
+  access_token: string;
+  refresh_token: string;
+  /** Same-site path the user was heading to when they started signing in. */
+  next?: string;
 }
 
 export interface LoginRequest {
