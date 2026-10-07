@@ -17,6 +17,7 @@ import jwt
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 
 from apps.core.errors import ApiError
 
@@ -77,6 +78,10 @@ def parse_ed25519_private_key(raw: str | bytes) -> Ed25519PrivateKey:
     raise ValueError("Ed25519 private key must be string or bytes")
 
 
+def _ephemeral_key_allowed() -> bool:
+    return getattr(settings, "APP_ENV", "local") in ("local", "test")
+
+
 class TokenManager:
     """Handles Ed25519 access JWT signing and verification."""
 
@@ -89,12 +94,18 @@ class TokenManager:
 
         if private_key is None:
             raw_key = getattr(settings, "JWT_ED25519_PRIVATE_KEY", "")
-            if raw_key:
-                try:
-                    private_key = parse_ed25519_private_key(raw_key)
-                except Exception:
-                    private_key = Ed25519PrivateKey.generate()
-            else:
+            try:
+                private_key = parse_ed25519_private_key(raw_key) if raw_key else None
+            except Exception as err:
+                if not _ephemeral_key_allowed():
+                    raise ImproperlyConfigured(
+                        f"JWT_ED25519_PRIVATE_KEY is not a valid Ed25519 private key: {err}"
+                    ) from err
+            if private_key is None:
+                # A key made up per process only works with a single process:
+                # tokens signed by one worker fail on every other worker.
+                if not _ephemeral_key_allowed():
+                    raise ImproperlyConfigured("JWT_ED25519_PRIVATE_KEY must be set")
                 private_key = Ed25519PrivateKey.generate()
 
         self._private_key = private_key
@@ -128,7 +139,7 @@ class TokenManager:
         headers = {"kid": self.key_id}
         token = jwt.encode(
             claims,
-            self._private_key,  # type: ignore[arg-type]
+            self._private_key,
             algorithm="EdDSA",
             headers=headers,
         )
@@ -139,7 +150,7 @@ class TokenManager:
         try:
             claims = jwt.decode(
                 token_str,
-                self._public_key,  # type: ignore[arg-type]
+                self._public_key,
                 algorithms=["EdDSA"],
                 issuer="qrit",
                 options={"require": ["sub", "sid", "exp", "iat"]},

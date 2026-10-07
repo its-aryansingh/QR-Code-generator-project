@@ -12,6 +12,28 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 SECRET_KEY = env.DJANGO_SECRET_KEY
 DEBUG = env.APP_ENV in ("local", "test")
+
+# Code reads these through django.conf.settings (auth cookies, the SSRF guard in
+# apps.core.http). They must be real settings: getattr(settings, "APP_ENV",
+# "local") used to fall back to "local" everywhere, including production.
+APP_ENV = env.APP_ENV
+COOKIE_SECURE = env.COOKIE_SECURE
+COOKIE_DOMAIN = env.COOKIE_DOMAIN
+
+# Read through django.conf.settings by apps.accounts.tokens, apps.core.crypto,
+# apps.core.ratelimit and apps.core.net. Left undefined, each worker generated
+# its own JWT signing key (tokens from one gunicorn worker failed on another and
+# every deploy signed everyone out) and rate limiting never reached Redis.
+JWT_ED25519_PRIVATE_KEY = env.JWT_ED25519_PRIVATE_KEY
+JWT_KEY_ID = env.JWT_KEY_ID
+APP_ENCRYPTION_KEY = env.APP_ENCRYPTION_KEY
+EDGE_SHARED_SECRET = env.EDGE_SHARED_SECRET
+REDIS_URL = env.REDIS_URL
+
+# Fake provider credentials ("test-google:..." / "test-github:...") are accepted
+# only when this is True, and only qrit.settings.test turns it on. It is
+# deliberately not tied to APP_ENV, which defaults to "local" when unset.
+OAUTH_TEST_TOKENS = False
 ALLOWED_HOSTS = env.allowed_hosts_list
 
 # Silence security.W008: SSL redirect is handled at edge (Cloudflare/Railway)

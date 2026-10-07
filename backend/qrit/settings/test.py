@@ -19,3 +19,11 @@ DATABASES = {
 
 # In-memory email backend for testing
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
+
+# Lets the OAuth tests use "test-google:..." / "test-github:..." credentials
+# instead of calling Google and GitHub. Never enabled outside this module.
+OAUTH_TEST_TOKENS = True
+
+# Rate limits use the per-process in-memory limiter in tests, so counts never
+# leak between tests or between runs through a shared Redis.
+REDIS_URL = ""

@@ -20,31 +20,38 @@ Plan §5.2, §7.1, §8:
 from typing import Any
 from uuid import UUID
 
-from django.http import HttpRequest
-from rest_framework import status
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import serializers, status
+from rest_framework.request import Request
 from rest_framework.response import Response
 
-from apps.core.errors import ApiError, unprocessable
+from apps.core.errors import ApiError, forbidden, unprocessable
 from apps.core.net import ip_key, ip_prefix
 from apps.core.views import AuthenticatedAPIView, PublicAPIView
 from apps.workspaces.models import WorkspaceMember
 
+from .authentication import Principal
 from .cookies import (
     REFRESH_COOKIE_NAME,
     clear_auth_cookies,
     extract_access_token,
     set_auth_cookies,
 )
-from .models import Session
+from .models import Session, User
 from .serializers import (
+    AuthResponseSerializer,
     ChangePasswordRequestSerializer,
     ForgotPasswordRequestSerializer,
     GitHubAuthRequestSerializer,
     GoogleAuthRequestSerializer,
     LoginRequestSerializer,
+    MeResponseSerializer,
+    RefreshResponseSerializer,
     RefreshTokenRequestSerializer,
     RegisterRequestSerializer,
+    RegisterResponseSerializer,
     ResetPasswordRequestSerializer,
+    SessionDTOSerializer,
     UpdateMeRequestSerializer,
     UserDTOSerializer,
     VerifyEmailRequestSerializer,
@@ -69,10 +76,30 @@ from .services import (
 from .tokens import get_token_manager, hash_token
 
 
+def _user(request: Request) -> User:
+    """The signed-in user. AuthenticatedAPIView has already rejected anonymous callers."""
+    user = request.user
+    if not isinstance(user, User):
+        raise forbidden(code="unauthorized", detail="Authentication credentials required")
+    return user
+
+
+def _principal(request: Request) -> Principal:
+    principal = request.auth
+    if not isinstance(principal, Principal):
+        raise forbidden(code="unauthorized", detail="Authentication credentials required")
+    return principal
+
+
+def _flag(name: str, field: str) -> Any:
+    return inline_serializer(name, {field: serializers.BooleanField()})
+
+
 class RegisterView(PublicAPIView):
     """Register a new user account with default organization and workspace."""
 
-    def post(self, request: HttpRequest, *args: Any, **kwargs: Any) -> Response:
+    @extend_schema(request=RegisterRequestSerializer, responses={201: RegisterResponseSerializer})
+    def post(self, request: Request, *args: Any, **kwargs: Any) -> Response:
         serializer = RegisterRequestSerializer(data=request.data)
         if not serializer.is_valid():
             raise unprocessable(
@@ -103,7 +130,8 @@ class RegisterView(PublicAPIView):
 class LoginView(PublicAPIView):
     """Authenticate with email and password."""
 
-    def post(self, request: HttpRequest, *args: Any, **kwargs: Any) -> Response:
+    @extend_schema(request=LoginRequestSerializer, responses={200: AuthResponseSerializer})
+    def post(self, request: Request, *args: Any, **kwargs: Any) -> Response:
         serializer = LoginRequestSerializer(data=request.data)
         if not serializer.is_valid():
             raise unprocessable(
@@ -133,7 +161,8 @@ class LoginView(PublicAPIView):
 class GoogleAuthView(PublicAPIView):
     """Sign in or register with Google OAuth ID token."""
 
-    def post(self, request: HttpRequest, *args: Any, **kwargs: Any) -> Response:
+    @extend_schema(request=GoogleAuthRequestSerializer, responses={200: AuthResponseSerializer})
+    def post(self, request: Request, *args: Any, **kwargs: Any) -> Response:
         serializer = GoogleAuthRequestSerializer(data=request.data)
         if not serializer.is_valid():
             raise unprocessable(
@@ -162,7 +191,8 @@ class GoogleAuthView(PublicAPIView):
 class GitHubAuthView(PublicAPIView):
     """Sign in or register with GitHub OAuth authorization code."""
 
-    def post(self, request: HttpRequest, *args: Any, **kwargs: Any) -> Response:
+    @extend_schema(request=GitHubAuthRequestSerializer, responses={200: AuthResponseSerializer})
+    def post(self, request: Request, *args: Any, **kwargs: Any) -> Response:
         serializer = GitHubAuthRequestSerializer(data=request.data)
         if not serializer.is_valid():
             raise unprocessable(
@@ -194,7 +224,10 @@ class GitHubAuthView(PublicAPIView):
 class RefreshView(PublicAPIView):
     """Rotate session refresh token with family reuse detection."""
 
-    def post(self, request: HttpRequest, *args: Any, **kwargs: Any) -> Response:
+    @extend_schema(
+        request=RefreshTokenRequestSerializer, responses={200: RefreshResponseSerializer}
+    )
+    def post(self, request: Request, *args: Any, **kwargs: Any) -> Response:
         token_str = ""
         if REFRESH_COOKIE_NAME in request.COOKIES:
             token_str = request.COOKIES[REFRESH_COOKIE_NAME]
@@ -229,7 +262,8 @@ class RefreshView(PublicAPIView):
 class LogoutView(PublicAPIView):
     """Revoke session and clear authentication cookies."""
 
-    def post(self, request: HttpRequest, *args: Any, **kwargs: Any) -> Response:
+    @extend_schema(request=RefreshTokenRequestSerializer, responses={204: None})
+    def post(self, request: Request, *args: Any, **kwargs: Any) -> Response:
         session_id = None
         auth_principal = getattr(request, "auth", None)
         if auth_principal is not None and getattr(auth_principal, "session_id", None):
@@ -248,8 +282,9 @@ class LogoutView(PublicAPIView):
             ref_tok = None
             if hasattr(request, "COOKIES") and REFRESH_COOKIE_NAME in request.COOKIES:
                 ref_tok = request.COOKIES[REFRESH_COOKIE_NAME]
-            if not ref_tok and isinstance(getattr(request, "data", None), dict):
-                ref_tok = request.data.get("refresh_token")
+            body = request.data
+            if not ref_tok and isinstance(body, dict):
+                ref_tok = body.get("refresh_token")
             if ref_tok:
                 token_hash = hash_token(ref_tok)
                 sess = Session.objects.filter(refresh_token_hash=token_hash).first()
@@ -267,7 +302,11 @@ class LogoutView(PublicAPIView):
 class VerifyEmailView(PublicAPIView):
     """Verify email address with single-use token."""
 
-    def post(self, request: HttpRequest, *args: Any, **kwargs: Any) -> Response:
+    @extend_schema(
+        request=VerifyEmailRequestSerializer,
+        responses={200: _flag("VerifyEmailResponse", "verified")},
+    )
+    def post(self, request: Request, *args: Any, **kwargs: Any) -> Response:
         serializer = VerifyEmailRequestSerializer(data=request.data)
         if not serializer.is_valid():
             raise unprocessable(
@@ -281,15 +320,20 @@ class VerifyEmailView(PublicAPIView):
 class ResendVerificationView(AuthenticatedAPIView):
     """Resend verification email to authenticated user."""
 
-    def post(self, request: HttpRequest, *args: Any, **kwargs: Any) -> Response:
-        resend_verification(request.user)
+    @extend_schema(request=None, responses={202: _flag("ResendVerificationResponse", "sent")})
+    def post(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        resend_verification(_user(request))
         return Response({"sent": True}, status=status.HTTP_202_ACCEPTED)
 
 
 class ForgotPasswordView(PublicAPIView):
     """Request password reset link."""
 
-    def post(self, request: HttpRequest, *args: Any, **kwargs: Any) -> Response:
+    @extend_schema(
+        request=ForgotPasswordRequestSerializer,
+        responses={202: _flag("ForgotPasswordResponse", "accepted")},
+    )
+    def post(self, request: Request, *args: Any, **kwargs: Any) -> Response:
         serializer = ForgotPasswordRequestSerializer(data=request.data)
         if not serializer.is_valid():
             return Response({"accepted": True}, status=status.HTTP_202_ACCEPTED)
@@ -304,7 +348,8 @@ class ForgotPasswordView(PublicAPIView):
 class ResetPasswordView(PublicAPIView):
     """Reset password using verified email token."""
 
-    def post(self, request: HttpRequest, *args: Any, **kwargs: Any) -> Response:
+    @extend_schema(request=ResetPasswordRequestSerializer, responses={204: None})
+    def post(self, request: Request, *args: Any, **kwargs: Any) -> Response:
         serializer = ResetPasswordRequestSerializer(data=request.data)
         if not serializer.is_valid():
             raise unprocessable(
@@ -321,8 +366,9 @@ class ResetPasswordView(PublicAPIView):
 class MeView(AuthenticatedAPIView):
     """Current user profile and memberships."""
 
-    def get(self, request: HttpRequest, *args: Any, **kwargs: Any) -> Response:
-        user = request.user
+    @extend_schema(responses={200: MeResponseSerializer})
+    def get(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        user = _user(request)
         memberships = WorkspaceMember.objects.filter(user=user).select_related("workspace")
 
         workspaces_data = []
@@ -352,7 +398,8 @@ class MeView(AuthenticatedAPIView):
         }
         return Response(resp, status=status.HTTP_200_OK)
 
-    def patch(self, request: HttpRequest, *args: Any, **kwargs: Any) -> Response:
+    @extend_schema(request=UpdateMeRequestSerializer, responses={200: UserDTOSerializer})
+    def patch(self, request: Request, *args: Any, **kwargs: Any) -> Response:
         serializer = UpdateMeRequestSerializer(data=request.data)
         if not serializer.is_valid():
             raise unprocessable(
@@ -360,7 +407,7 @@ class MeView(AuthenticatedAPIView):
             )
 
         user = update_profile(
-            user=request.user,
+            user=_user(request),
             name=serializer.validated_data.get("name"),
             locale=serializer.validated_data.get("locale"),
             timezone_name=serializer.validated_data.get("timezone"),
@@ -371,7 +418,8 @@ class MeView(AuthenticatedAPIView):
 class ChangePasswordView(AuthenticatedAPIView):
     """Change current user's password and sign out other sessions."""
 
-    def post(self, request: HttpRequest, *args: Any, **kwargs: Any) -> Response:
+    @extend_schema(request=ChangePasswordRequestSerializer, responses={204: None})
+    def post(self, request: Request, *args: Any, **kwargs: Any) -> Response:
         serializer = ChangePasswordRequestSerializer(data=request.data)
         if not serializer.is_valid():
             raise unprocessable(
@@ -379,10 +427,10 @@ class ChangePasswordView(AuthenticatedAPIView):
             )
 
         change_password(
-            user=request.user,
+            user=_user(request),
             current_password=serializer.validated_data.get("current_password", ""),
             new_password=serializer.validated_data["new_password"],
-            current_session_id=request.auth.session_id,
+            current_session_id=_principal(request).session_id,
         )
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -390,10 +438,15 @@ class ChangePasswordView(AuthenticatedAPIView):
 class SessionsListView(AuthenticatedAPIView):
     """List active sessions for current user."""
 
-    def get(self, request: HttpRequest, *args: Any, **kwargs: Any) -> Response:
+    @extend_schema(
+        responses={
+            200: inline_serializer("SessionListResponse", {"data": SessionDTOSerializer(many=True)})
+        }
+    )
+    def get(self, request: Request, *args: Any, **kwargs: Any) -> Response:
         sessions = list_user_sessions(
-            user=request.user,
-            current_session_id=request.auth.session_id,
+            user=_user(request),
+            current_session_id=_principal(request).session_id,
         )
         return Response({"data": sessions}, status=status.HTTP_200_OK)
 
@@ -401,6 +454,7 @@ class SessionsListView(AuthenticatedAPIView):
 class SessionRevokeView(AuthenticatedAPIView):
     """Revoke a specific session."""
 
-    def delete(self, request: HttpRequest, id: UUID, *args: Any, **kwargs: Any) -> Response:
-        revoke_user_session(user=request.user, session_id=id)
+    @extend_schema(responses={204: None})
+    def delete(self, request: Request, id: UUID, *args: Any, **kwargs: Any) -> Response:
+        revoke_user_session(user=_user(request), session_id=id)
         return Response(status=status.HTTP_204_NO_CONTENT)

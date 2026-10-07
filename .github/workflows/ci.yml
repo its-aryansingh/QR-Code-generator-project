@@ -71,8 +71,9 @@ jobs:
           DJANGO_SETTINGS_MODULE: qrit.settings.api
           APP_ENV: production
           DJANGO_SECRET_KEY: production-secret-key-at-least-50-characters-long-safe-and-random
-          APP_ENCRYPTION_KEY: ZGV2ZWxvcG1lbnQtZW5jcnlwdGlvbi1rZXktMzJieXRlcw==
-          JWT_ED25519_PRIVATE_KEY: MC4CAQAwBQYDK2VwBCIEIHsV70EaTfZ+kS1xM6g6eM+VpD7kP8E3jK1qR9sT2uX/
+          # CI-only throwaway values; production refuses the placeholders in env.py.
+          APP_ENCRYPTION_KEY: h3AeW4eAXw0YeZDGuaMfsj1QuP+BYxXuhNElududUmY=
+          JWT_ED25519_PRIVATE_KEY: MC4CAQAwBQYDK2VwBCIEIDe1XrbiipxakPMml2GH4xUlan9aKfb/leIBdNfOknVp
           SCAN_SALT_SECRET: production-scan-salt-secret-32-bytes-minimum
           EDGE_SHARED_SECRET: production-edge-shared-secret-32-chars-min
           SERIAL_MAC_KEY: production-serial-mac-key-32-bytes-min
