@@ -53,3 +53,46 @@ def test_production_refuses_to_invent_a_signing_key(settings, raw: str) -> None:
     settings.JWT_ED25519_PRIVATE_KEY = raw
     with pytest.raises(ImproperlyConfigured):
         TokenManager()
+
+
+STRONG = {
+    "DJANGO_SECRET_KEY": "s" * 60,
+    "APP_ENCRYPTION_KEY": "h3AeW4eAXw0YeZDGuaMfsj1QuP+BYxXuhNElududUmY=",
+    "JWT_ED25519_PRIVATE_KEY": "MC4CAQAwBQYDK2VwBCIEIDe1XrbiipxakPMml2GH4xUlan9aKfb/leIBdNfOknVp",
+    "SCAN_SALT_SECRET": "x" * 40,
+    "EDGE_SHARED_SECRET": "y" * 40,
+    "SERIAL_MAC_KEY": "z" * 40,
+    "VERIFY_TOKEN_KEY": "w" * 40,
+}
+
+
+@pytest.fixture
+def clean_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    for name in ("APP_ENV", "RAILWAY_ENVIRONMENT_NAME", *STRONG):
+        monkeypatch.delenv(name, raising=False)
+
+
+@pytest.mark.parametrize("placeholder", sorted(STRONG))
+def test_production_refuses_each_committed_placeholder(clean_env: None, placeholder: str) -> None:
+    from qrit.settings.env import Settings
+
+    values = {k: v for k, v in STRONG.items() if k != placeholder}
+    with pytest.raises(ValueError, match=placeholder):
+        Settings(APP_ENV="production", **values)
+
+
+def test_production_accepts_real_secrets(clean_env: None) -> None:
+    from qrit.settings.env import Settings
+
+    assert Settings(APP_ENV="production", **STRONG).APP_ENV == "production"
+
+
+def test_railway_without_app_env_is_treated_as_production(clean_env: None) -> None:
+    from qrit.settings.env import Settings
+
+    with pytest.raises(ValueError, match="JWT_ED25519_PRIVATE_KEY"):
+        Settings(RAILWAY_ENVIRONMENT_NAME="production")
+    assert Settings(RAILWAY_ENVIRONMENT_NAME="production", **STRONG).APP_ENV == "production"
+    assert Settings(RAILWAY_ENVIRONMENT_NAME="staging", **STRONG).APP_ENV == "staging"
+    # An explicit APP_ENV always wins.
+    assert Settings(RAILWAY_ENVIRONMENT_NAME="production", APP_ENV="local").APP_ENV == "local"

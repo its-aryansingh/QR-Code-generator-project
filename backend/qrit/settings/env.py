@@ -19,6 +19,8 @@ class Settings(BaseSettings):
 
     # Core environment
     APP_ENV: Literal["local", "test", "staging", "production"] = "local"
+    # Set by Railway on every deploy; implies APP_ENV when APP_ENV is unset.
+    RAILWAY_ENVIRONMENT_NAME: str = ""
     DJANGO_SETTINGS_MODULE: str = "qrit.settings.api"
     DJANGO_SECRET_KEY: str = "local-insecure-secret-key-change-in-production-min-50-characters-long"
     ALLOWED_HOSTS: str = "localhost,127.0.0.1,healthcheck.railway.app,.railway.app,.up.railway.app"
@@ -172,26 +174,39 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_production_secrets(self) -> "Settings":
-        if self.APP_ENV == "production":
-            required_secrets = [
-                ("DJANGO_SECRET_KEY", self.DJANGO_SECRET_KEY),
-                ("APP_ENCRYPTION_KEY", self.APP_ENCRYPTION_KEY),
-                ("JWT_ED25519_PRIVATE_KEY", self.JWT_ED25519_PRIVATE_KEY),
-                ("SCAN_SALT_SECRET", self.SCAN_SALT_SECRET),
-                ("EDGE_SHARED_SECRET", self.EDGE_SHARED_SECRET),
-                ("SERIAL_MAC_KEY", self.SERIAL_MAC_KEY),
-                ("VERIFY_TOKEN_KEY", self.VERIFY_TOKEN_KEY),
-            ]
+        # On Railway an unset APP_ENV must not fall back to "local", which
+        # turns DEBUG on and accepts the placeholder secrets committed above.
+        if "APP_ENV" not in self.model_fields_set and self.RAILWAY_ENVIRONMENT_NAME:
+            name = self.RAILWAY_ENVIRONMENT_NAME.strip().lower()
+            self.APP_ENV = "staging" if name == "staging" else "production"
+
+        if self.APP_ENV in ("staging", "production"):
+            fields = Settings.model_fields
             missing = [
                 name
-                for name, val in required_secrets
-                if not val or "insecure" in val or "dev" in val
+                for name in _PRODUCTION_SECRETS
+                if not getattr(self, name) or getattr(self, name) == fields[name].default
             ]
             if missing:
                 raise ValueError(
-                    f"Production startup failed: the following secrets must be securely configured: {', '.join(missing)}"
+                    f"{self.APP_ENV} startup failed: set real values for {', '.join(missing)} "
+                    "(empty or the placeholder from qrit/settings/env.py)"
                 )
         return self
+
+
+# Secrets that must not keep their committed placeholder outside local/test:
+# with the placeholder JWT key anyone who has read this repository can mint
+# access tokens.
+_PRODUCTION_SECRETS = (
+    "DJANGO_SECRET_KEY",
+    "APP_ENCRYPTION_KEY",
+    "JWT_ED25519_PRIVATE_KEY",
+    "SCAN_SALT_SECRET",
+    "EDGE_SHARED_SECRET",
+    "SERIAL_MAC_KEY",
+    "VERIFY_TOKEN_KEY",
+)
 
 
 # Read environment once on import
