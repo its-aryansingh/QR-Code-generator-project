@@ -49,6 +49,8 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           const stillValid = previous && workspaces.some((w) => w.id === previous);
           const activeId = stillValid ? previous : workspaces[0]?.id ?? null;
           set({ workspaces, activeId, loading: false, loaded: true });
+          // Pages that call the API directly read the id from here.
+          if (activeId) localStorage.setItem("qrit_active_workspace", activeId);
           if (activeId) await get().refreshEntitlements();
         } catch (error) {
           set({

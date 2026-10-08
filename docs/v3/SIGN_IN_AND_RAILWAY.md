@@ -120,9 +120,19 @@ If private networking is unavailable, `BACKEND_INTERNAL_URL` can be the api's pu
 | GitHub login CSRF; Google One Tap often did nothing | Client-only `state` check that could be skipped; `prompt()` suppressed by browsers | this PR (server-checked state + PKCE, redirect flow for both) |
 | OAuth-only users shown as having a password | `has_password` was `bool(password)`, which is true for Django's unusable-password marker | this PR |
 
-## Known gap
+## Dashboard and QR codes
 
-v3 has not yet ported v1's dashboard endpoints (`/workspaces`, QR codes,
-analytics…). After signing in, the v1 dashboard pages show "Request failed
-(404)" until those phases land or `apps/web` replaces `frontend/` (plan §7.24).
-Sign-in, sign-out, session refresh and the profile in the sidebar work.
+The v1 dashboard in `frontend/` now works against v3 for the core flow:
+- the overview, plan limits and folders;
+- creating, listing, viewing, editing, pausing and deleting QR codes (bulk
+  move, tag, activate, deactivate, delete included);
+- scanning: printed dynamic codes point at `https://<web-domain>/r/<code>`,
+  which the web app forwards to the API. The API redirects and counts the scan.
+
+These endpoints answer in v1's `{"success": true, "data": ...}` envelope
+because several pages call them with a bare `fetch` (see
+`apps/workspaces/access.py`).
+
+Still missing: analytics detail pages, campaigns (read-only list only),
+templates, team/invites, webhooks, API keys, branding, audit log and exports.
+Those pages show an error or a locked card until their phases land.
