@@ -15,6 +15,7 @@ interface QRRecord {
   is_dynamic: boolean;
   is_active: boolean;
   short_code: string;
+  short_url?: string | null;
   scan_count: number;
   redirect_url?: string;
   expires_at?: string;
@@ -30,7 +31,8 @@ export default function QREditPage() {
   const router = useRouter();
   const { accessToken } = useAuthStore();
   const api = API_URL;
-  const appBase = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const appBase =
+    process.env.NEXT_PUBLIC_APP_URL || (typeof window !== "undefined" ? window.location.origin : "");
 
   const id = params?.id as string;
   const workspaceId = typeof window !== "undefined" ? localStorage.getItem("qrit_active_workspace") : null;
@@ -81,7 +83,8 @@ export default function QREditPage() {
 
   const loadPreview = useCallback(async () => {
     if (!record || !accessToken) return;
-    const content = record.is_dynamic ? (redirectUrl || record.content) : record.content;
+    // A dynamic code prints its short link; editing the destination doesn't change it.
+    const content = record.is_dynamic ? (record.short_url || record.content) : record.content;
     try {
       const res = await fetch(`${api}/qr/generate`, {
         method: "POST",
@@ -91,7 +94,7 @@ export default function QREditPage() {
       const data = await res.json();
       if (data.success) setPreview(data.data.qr_base64);
     } catch {}
-  }, [record, redirectUrl, title, accessToken, api]);
+  }, [record, title, accessToken, api]);
 
   useEffect(() => {
     if (record) loadPreview();
@@ -166,7 +169,7 @@ export default function QREditPage() {
 
   if (!record) return null;
 
-  const shortUrl = `${appBase}/r/${record.short_code}`;
+  const shortUrl = record.short_url || `${appBase}/r/${record.short_code}`;
 
   return (
     <div className="max-w-3xl space-y-6">
