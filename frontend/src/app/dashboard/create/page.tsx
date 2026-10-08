@@ -1,457 +1,763 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import { useAuthStore } from "@/lib/auth";
-import { QRSecurityPanel, SecurityOptions } from "@/components/dashboard/QRSecurityPanel";
-import { CustomizeQRPanel } from "@/components/dashboard/CustomizeQRPanel";
-import {
-  Link, Wifi, User, Mail, MessageSquare, MapPin, Calendar,
-  FileText, Bitcoin, Smartphone, QrCode, ChevronRight, Check,
-  Folder, AlertCircle
-} from "lucide-react";
-import { API_URL } from "@/lib/config";
+/**
+ * Create a QR code on one screen: choose what it does, fill in the details,
+ * style it, create. The code on the right is the exact code that will be
+ * printed, redrawn as you type.
+ */
+import Link from "next/link";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { Check, ChevronDown, Copy, Download, ImagePlus, Loader2, Plus, X } from "lucide-react";
 
-const QR_TYPES = [
-  { id: "url",      label: "URL",        icon: Link,          desc: "Website or landing page" },
-  { id: "wifi",     label: "Wi-Fi",      icon: Wifi,          desc: "Network credentials" },
-  { id: "vcard",    label: "vCard",      icon: User,          desc: "Contact card" },
-  { id: "email",    label: "Email",      icon: Mail,          desc: "Pre-filled email" },
-  { id: "sms",      label: "SMS",        icon: MessageSquare, desc: "Pre-filled text message" },
-  { id: "location", label: "Location",   icon: MapPin,        desc: "GPS coordinates" },
-  { id: "event",    label: "Event",      icon: Calendar,      desc: "Calendar event" },
-  { id: "text",     label: "Plain Text", icon: FileText,      desc: "Any text content" },
-  { id: "bitcoin",  label: "Bitcoin",    icon: Bitcoin,       desc: "Crypto payment address" },
-  { id: "upi",      label: "UPI",        icon: Smartphone,    desc: "India UPI payment" },
-  { id: "whatsapp", label: "WhatsApp",   icon: MessageSquare, desc: "WhatsApp chat link" },
+import {
+  DEFAULT_FIELDS, QR_TYPES, TRACKABLE, TYPE_BY_ID, buildContent, suggestName,
+  type FieldDef, type Fields, type QrTypeId,
+} from "@/components/create/qr-types";
+import {
+  DEFAULT_STYLE, QrProof, QrThumb, downloadQr,
+  type CornerStyle, type DotStyle, type QrStyle,
+} from "@/components/create/qr-proof";
+import { getContrastRatio } from "@/components/qr-scannability";
+import { ApiError, enterprise } from "@/lib/enterprise";
+import { useWorkspace, useWorkspaceStore } from "@/lib/workspace";
+import type { Folder, WorkspaceQR } from "@/types/enterprise";
+
+const INKS = [
+  { name: "Ink", value: "#111827" },
+  { name: "Violet", value: "#5B21B6" },
+  { name: "Ocean", value: "#0E4A7B" },
+  { name: "Forest", value: "#14532D" },
+  { name: "Wine", value: "#7F1D3B" },
 ];
 
-const STEPS = ["Type", "Content", "Security", "Customize", "Review"];
+const DOTS: { id: DotStyle; label: string }[] = [
+  { id: "square", label: "Square" },
+  { id: "rounded", label: "Rounded" },
+  { id: "dots", label: "Dots" },
+  { id: "classy-rounded", label: "Soft" },
+];
 
-interface FolderItem { id: string; name: string; parentId?: string }
-interface WorkspaceItem { id: string; name: string }
+const CORNERS: { id: CornerStyle; label: string }[] = [
+  { id: "square", label: "Square" },
+  { id: "extra-rounded", label: "Rounded" },
+  { id: "dot", label: "Circle" },
+];
 
-const emptyContent: Record<string, Record<string, string>> = {
-  url:      { url: "" },
-  wifi:     { ssid: "", password: "", encryption: "WPA" },
-  vcard:    { firstName: "", lastName: "", org: "", phone: "", email: "", website: "" },
-  email:    { to: "", subject: "", body: "" },
-  sms:      { to: "", message: "" },
-  location: { lat: "", lng: "", label: "" },
-  event:    { title: "", start: "", end: "", location: "" },
-  text:     { text: "" },
-  bitcoin:  { address: "", amount: "" },
-  upi:      { vpa: "", name: "", amount: "" },
-  whatsapp: { phone: "", message: "" },
-};
+const MAX_LOGO_BYTES = 300 * 1024;
 
-function buildContent(type: string, fields: Record<string, string>): string {
-  switch (type) {
-    case "url":      return fields.url;
-    case "wifi":     return `WIFI:T:${fields.encryption};S:${fields.ssid};P:${fields.password};;`;
-    case "vcard":    return `BEGIN:VCARD\nVERSION:3.0\nFN:${fields.firstName} ${fields.lastName}\nORG:${fields.org}\nTEL:${fields.phone}\nEMAIL:${fields.email}\nURL:${fields.website}\nEND:VCARD`;
-    case "email":    return `mailto:${fields.to}?subject=${encodeURIComponent(fields.subject)}&body=${encodeURIComponent(fields.body)}`;
-    case "sms":      return `SMSTO:${fields.to}:${fields.message}`;
-    case "location": return `geo:${fields.lat},${fields.lng}${fields.label ? `?q=${encodeURIComponent(fields.label)}` : ""}`;
-    case "event":    return `BEGIN:VEVENT\nSUMMARY:${fields.title}\nDTSTART:${fields.start.replace(/[-:T]/g, "").slice(0, 15)}\nDTEND:${fields.end.replace(/[-:T]/g, "").slice(0, 15)}\nLOCATION:${fields.location}\nEND:VEVENT`;
-    case "text":     return fields.text;
-    case "bitcoin":  return `bitcoin:${fields.address}${fields.amount ? `?amount=${fields.amount}` : ""}`;
-    case "upi":      return `upi://pay?pa=${fields.vpa}&pn=${encodeURIComponent(fields.name)}&am=${fields.amount}`;
-    case "whatsapp": return `https://wa.me/${fields.phone.replace(/\D/g, "")}${fields.message ? `?text=${encodeURIComponent(fields.message)}` : ""}`;
-    default:         return "";
-  }
+const field =
+  "w-full rounded-lg border border-zinc-800 bg-zinc-900/70 px-3.5 py-2.5 text-[15px] text-zinc-100 placeholder:text-zinc-600 " +
+  "transition-colors hover:border-zinc-700 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/25";
+const fieldError = "border-red-500/70 focus:border-red-500 focus:ring-red-500/20";
+
+function flattenFolders(folders: Folder[], depth = 0): { id: string; name: string }[] {
+  return folders.flatMap((f) => [
+    { id: f.id, name: `${"  ".repeat(depth)}${f.name}` },
+    ...flattenFolders((f as Folder & { children?: Folder[] }).children ?? [], depth + 1),
+  ]);
 }
 
-const inputCls = "w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2.5 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-violet-500";
-const labelCls = "block text-xs text-zinc-500 mb-1.5";
+export default function CreateQRPage() {
+  const { workspaceId, workspace, entitlements, atLeast, loaded } = useWorkspace();
+  const loadWorkspaces = useWorkspaceStore((s) => s.load);
+  const refreshEntitlements = useWorkspaceStore((s) => s.refreshEntitlements);
 
-function ContentFields({ type, fields, onChange }: { type: string; fields: Record<string, string>; onChange: (k: string, v: string) => void }) {
-  const f = (key: string, label: string, placeholder = "", inputType = "text") => (
-    <div key={key}>
-      <label className={labelCls}>{label}</label>
-      <input type={inputType} value={fields[key] ?? ""} onChange={(e) => onChange(key, e.target.value)} placeholder={placeholder} className={inputCls} />
-    </div>
-  );
-  const ta = (key: string, label: string, placeholder = "") => (
-    <div key={key}>
-      <label className={labelCls}>{label}</label>
-      <textarea value={fields[key] ?? ""} onChange={(e) => onChange(key, e.target.value)} placeholder={placeholder} rows={3} className={inputCls + " resize-none"} />
-    </div>
-  );
-
-  switch (type) {
-    case "url":      return <>{f("url", "Website URL", "https://example.com", "url")}</>;
-    case "wifi":     return <>{f("ssid", "Network Name (SSID)", "MyNetwork")}{f("password", "Password", "••••••••", "password")}<div><label className={labelCls}>Encryption</label><select value={fields.encryption} onChange={(e) => onChange("encryption", e.target.value)} className={inputCls}><option value="WPA">WPA/WPA2</option><option value="WEP">WEP</option><option value="nopass">None</option></select></div></>;
-    case "vcard":    return <div className="grid sm:grid-cols-2 gap-3">{f("firstName","First Name","John")}{f("lastName","Last Name","Doe")}{f("org","Organization","Acme Inc.")}{f("phone","Phone","+1 555 0123","tel")}{f("email","Email","john@acme.com","email")}{f("website","Website","https://acme.com","url")}</div>;
-    case "email":    return <>{f("to","To Email","recipient@example.com","email")}{f("subject","Subject","Hello")}{ta("body","Body","Your message here…")}</>;
-    case "sms":      return <>{f("to","Phone Number","+1 555 0123","tel")}{ta("message","Message","Your message here…")}</>;
-    case "location": return <div className="grid sm:grid-cols-2 gap-3">{f("lat","Latitude","37.7749","number")}{f("lng","Longitude","-122.4194","number")}<div className="sm:col-span-2">{f("label","Label (optional)","Acme HQ")}</div></div>;
-    case "event":    return <>{f("title","Event Title","Team Meeting")}<div className="grid sm:grid-cols-2 gap-3">{f("start","Start","","datetime-local")}{f("end","End","","datetime-local")}</div>{f("location","Location (optional)","Conference Room A")}</>;
-    case "text":     return <>{ta("text","Plain Text","Enter any text…")}</>;
-    case "bitcoin":  return <>{f("address","Bitcoin Address","1A1zP1eP5QGefi2DMPTfTL5SLmv7Divf")}{f("amount","Amount (BTC, optional)","0.001","number")}</>;
-    case "upi":      return <>{f("vpa","UPI VPA","name@upi")}{f("name","Payee Name","John Doe")}{f("amount","Amount (₹, optional)","100","number")}</>;
-    case "whatsapp": return <>{f("phone","Phone (with country code)","+1 555 0123","tel")}{ta("message","Pre-filled Message (optional)","Hi there!")}</>;
-    default:         return null;
-  }
-}
-
-export default function CreatePage() {
-  const router = useRouter();
-  const { accessToken } = useAuthStore();
-  const api = API_URL;
-
-  const [step, setStep] = useState(0);
-  const [qrType, setQrType] = useState("url");
-  const [title, setTitle] = useState("");
-  const [isDynamic, setIsDynamic] = useState(true);
-  const [fields, setFields] = useState<Record<string, string>>(emptyContent["url"]);
-  const [security, setSecurity] = useState<SecurityOptions>({ password: "", expiresAt: "", maxScans: "", geoRestrictions: "" });
-  const [workspaceId, setWorkspaceId] = useState("");
+  const [type, setType] = useState<QrTypeId>("url");
+  const [values, setValues] = useState<Record<QrTypeId, Fields>>(() => structuredClone(DEFAULT_FIELDS));
+  const [name, setName] = useState("");
+  const [tracked, setTracked] = useState(true);
+  const [style, setStyle] = useState<QrStyle>(DEFAULT_STYLE);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [folderId, setFolderId] = useState("");
-  const [workspaces, setWorkspaces] = useState<WorkspaceItem[]>([]);
-  const [folders, setFolders] = useState<FolderItem[]>([]);
-  const [preview, setPreview] = useState<string | null>(null);
+  const [folders, setFolders] = useState<{ id: string; name: string }[]>([]);
+  const [password, setPassword] = useState("");
+  const [expiresAt, setExpiresAt] = useState("");
+  const [maxScans, setMaxScans] = useState("");
+
+  const [showErrors, setShowErrors] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
+  const [serverError, setServerError] = useState<{ field?: string; message: string; upgrade?: boolean } | null>(null);
+  const [created, setCreated] = useState<WorkspaceQR | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [host, setHost] = useState("");
 
-  // Customization state
-  const [designTab, setDesignTab] = useState("templates");
-  const [selectedDotStyle, setSelectedDotStyle] = useState("square");
-  const [selectedCornerStyle, setSelectedCornerStyle] = useState("square");
-  const [selectedFrame, setSelectedFrame] = useState("none");
-  const [eyeInnerStyle, setEyeInnerStyle] = useState("square");
-  const [quietZone, setQuietZone] = useState(20);
-  const [errorLevel, setErrorLevel] = useState("M");
-  const [qrColor, setQrColor] = useState("#000000");
-  const [bgColor, setBgColor] = useState("#FFFFFF");
-  const [useGradient, setUseGradient] = useState(false);
-  const [gradientStart, setGradientStart] = useState("#4F46E5");
-  const [gradientEnd, setGradientEnd] = useState("#EC4899");
-  const [gradientType, setGradientType] = useState<"linear" | "radial">("linear");
-  const [gradientRotation, setGradientRotation] = useState(135);
-  const [transparentBg, setTransparentBg] = useState(false);
-  const [logoFile, setLogoFile] = useState<string | null>(null);
-  const [logoSize, setLogoSize] = useState(0.2);
-  const [logoMargin, setLogoMargin] = useState(5);
-  const [bgImage, setBgImage] = useState<string | null>(null);
+  const fieldRefs = useRef<Record<string, HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null>>({});
+  const logoInput = useRef<HTMLInputElement>(null);
+  const formId = useId();
 
   useEffect(() => {
-    if (!accessToken) return;
-    fetch(`${api}/workspaces`, { headers: { Authorization: `Bearer ${accessToken}` } })
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.success) {
-          setWorkspaces(d.data ?? []);
-          const stored = localStorage.getItem("qrit_active_workspace");
-          const initial = stored ?? d.data?.[0]?.id ?? "";
-          setWorkspaceId(initial);
-        }
-      })
-      .catch(() => {});
-  }, [accessToken]);
+    void loadWorkspaces();
+    setHost(window.location.host);
+  }, [loadWorkspaces]);
 
   useEffect(() => {
-    if (!workspaceId || !accessToken) return;
-    fetch(`${api}/workspaces/${workspaceId}/folders`, { headers: { Authorization: `Bearer ${accessToken}` } })
-      .then((r) => r.json())
-      .then((d) => { if (d.success) setFolders(d.data ?? []); })
-      .catch(() => {});
-  }, [workspaceId, accessToken]);
+    if (!workspaceId) return;
+    enterprise.listFolders(workspaceId).then((f) => setFolders(flattenFolders(f))).catch(() => setFolders([]));
+  }, [workspaceId]);
 
-  const handleTypeSelect = (t: string) => {
-    setQrType(t);
-    setFields({ ...emptyContent[t] });
-    setStep(1);
+  const def = TYPE_BY_ID[type];
+  const fields = values[type];
+  const built = useMemo(() => buildContent(type, fields), [type, fields]);
+  const canTrack = TRACKABLE.has(type);
+  const dynamic = canTrack && tracked;
+  const suggestion = suggestName(type, fields);
+  const contrast = style.background === "transparent" ? 21 : getContrastRatio(style.color, style.background);
+  const used = entitlements?.usage?.qr_codes;
+  const limit = entitlements?.limits?.max_qr_codes;
+  const canCreate = !loaded || atLeast("editor");
+
+  // What the printed code will contain. Before a tracked code exists its
+  // short link isn't known yet; a stand-in of the same length gives the same
+  // density, so the preview looks like the final code.
+  const proofData = created
+    ? (created.is_dynamic && created.short_url) || created.content
+    : dynamic && !built.error
+      ? `https://${host || "qrit.app"}/r/0000000`
+      : built.content;
+  const isPlaceholder = !created && (!built.content || (type === "url" && !!built.error));
+
+  const errorFor = (key: string): string | undefined => {
+    if (serverError?.field === key) return serverError.message;
+    if (showErrors && built.error?.field === key) return built.error.message;
+    return undefined;
   };
 
-  const handleFieldChange = (k: string, v: string) => setFields((prev) => ({ ...prev, [k]: v }));
+  const setField = (key: string, value: string) => {
+    setValues((prev) => ({ ...prev, [type]: { ...prev[type], [key]: value } }));
+    if (serverError?.field) setServerError(null);
+  };
 
-  const generatePreview = useCallback(async () => {
-    if (!accessToken) return;
-    const content = buildContent(qrType, fields);
-    if (!content) return;
-    try {
-      const res = await fetch(`${api}/qr/generate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ title: title || content.slice(0, 40), content, qr_type: qrType, size: 300, is_dynamic: false }),
-      });
-      const data = await res.json();
-      if (data.success) setPreview(data.data.qr_base64);
-    } catch {}
-  }, [accessToken, qrType, fields, title]);
+  const pickType = (next: QrTypeId) => {
+    setType(next);
+    setShowErrors(false);
+    setServerError(null);
+    window.requestAnimationFrame(() => fieldRefs.current[TYPE_BY_ID[next].fields[0].key]?.focus());
+  };
 
-  useEffect(() => {
-    if (step === 4) generatePreview();
-  }, [step, generatePreview]);
+  const onLogo = (file: File | undefined) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) return setServerError({ message: "The logo must be an image (PNG, JPG or SVG)." });
+    if (file.size > MAX_LOGO_BYTES) return setServerError({ message: "Use a logo under 300 KB. A small square PNG works best." });
+    const reader = new FileReader();
+    reader.onload = () => setStyle((s) => ({ ...s, logo: String(reader.result) }));
+    reader.readAsDataURL(file);
+  };
 
-  const handleSubmit = async () => {
+  const submit = useCallback(async () => {
+    if (submitting || created) return;
+    setShowErrors(true);
+    setServerError(null);
+    if (built.error) {
+      fieldRefs.current[built.error.field]?.focus();
+      return;
+    }
+    if (!workspaceId) {
+      setServerError({ message: "Your workspace is still loading. Try again in a moment." });
+      return;
+    }
     setSubmitting(true);
-    setError("");
-    const content = buildContent(qrType, fields);
     const body: Record<string, unknown> = {
-      title: title || content.slice(0, 60),
-      content,
-      qr_type: qrType,
-      size: 512,
-      is_dynamic: isDynamic,
-      workspace_id: workspaceId || undefined,
+      title: name.trim() || suggestion || def.label,
+      content: built.content,
+      qr_type: type,
+      size: 1024,
+      is_dynamic: dynamic,
       folder_id: folderId || undefined,
+      customization: {
+        foreground_color: style.color,
+        background_color: style.background,
+        body_style: style.dots,
+        corner_style: style.corners,
+        ...(style.logo ? { logo: { url: style.logo, size: 0.32 } } : {}),
+      },
     };
-    if (security.password) body.password = security.password;
-    if (security.expiresAt) body.expires_at = new Date(security.expiresAt).toISOString();
-    if (security.maxScans) body.max_scans = parseInt(security.maxScans);
-    if (security.geoRestrictions) body.geo_restrictions = security.geoRestrictions;
-
-    // Add customization
-    const customization: Record<string, unknown> = {
-      foreground_color: qrColor,
-      background_color: transparentBg ? "transparent" : bgColor,
-      body_style: selectedDotStyle,
-      corner_style: selectedCornerStyle,
-    };
-    if (useGradient) {
-      customization.gradient = { type: gradientType, start_color: gradientStart, end_color: gradientEnd, rotation: gradientRotation };
-    }
-    if (selectedFrame !== "none") {
-      customization.frame = { style: selectedFrame };
-    }
-    if (logoFile) {
-      customization.logo = { url: logoFile, size: logoSize };
-    }
-    body.customization = customization;
-
+    if (dynamic && password) body.password = password;
+    if (dynamic && expiresAt) body.expires_at = new Date(expiresAt).toISOString();
+    if (dynamic && maxScans) body.max_scans = Number(maxScans);
     try {
-      const res = await fetch(`${api}/qr/generate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-      if (data.success) {
-        router.push("/dashboard/qr-codes");
+      const qr = await enterprise.createQR(workspaceId, body);
+      setCreated(qr);
+      void refreshEntitlements();
+    } catch (error) {
+      if (error instanceof ApiError) {
+        if (error.code === "invalid_url" || error.code === "content_required") {
+          setServerError({ field: def.fields[0].key, message: error.message });
+        } else if (error.isUpgradeRequired) {
+          setServerError({ message: error.message, upgrade: true });
+        } else {
+          setServerError({ message: error.message });
+        }
       } else {
-        setError(data.error ?? "Failed to create QR code");
+        setServerError({ message: "Couldn't reach the server. Check your connection and try again." });
       }
-    } catch {
-      setError("Network error. Please try again.");
     } finally {
       setSubmitting(false);
     }
+  }, [submitting, created, built, workspaceId, name, suggestion, def, type, dynamic, folderId, style, password, expiresAt, maxScans, refreshEntitlements]);
+
+  // Ctrl/⌘ + Enter creates from anywhere on the page, textareas included.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        void submit();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [submit]);
+
+  const startOver = () => {
+    setCreated(null);
+    setValues(structuredClone(DEFAULT_FIELDS));
+    setName("");
+    setPassword("");
+    setExpiresAt("");
+    setMaxScans("");
+    setShowErrors(false);
+    setServerError(null);
+    window.requestAnimationFrame(() => fieldRefs.current[def.fields[0].key]?.focus());
   };
 
-  return (
-    <div className="max-w-3xl space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold text-zinc-100">Create QR Code</h1>
-        <p className="text-sm text-zinc-500 mt-1">Generate a QR code with enterprise security and tracking.</p>
-      </div>
+  const copyLink = async (text: string) => {
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1600);
+  };
 
-      {/* Step indicator */}
-      <div className="flex items-center gap-1">
-        {STEPS.map((s, i) => (
-          <div key={s} className="flex items-center gap-1">
-            <button
-              onClick={() => i < step && setStep(i)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                i === step ? "bg-violet-600 text-white" :
-                i < step ? "bg-zinc-800 text-zinc-300 hover:bg-zinc-700 cursor-pointer" :
-                "bg-zinc-900 text-zinc-600 cursor-default"
-              }`}
-            >
-              {i < step ? <Check size={11} /> : <span>{i + 1}</span>}
-              {s}
-            </button>
-            {i < STEPS.length - 1 && <ChevronRight size={14} className="text-zinc-700" />}
-          </div>
-        ))}
-      </div>
+  const fileName = (created?.title || name || suggestion || "qr-code").slice(0, 60);
 
-      {/* Step 0: Type selector */}
-      {step === 0 && (
-        <div className="grid sm:grid-cols-2 gap-2">
-          {QR_TYPES.map(({ id, label, icon: Icon, desc }) => (
-            <button
-              key={id}
-              onClick={() => handleTypeSelect(id)}
-              className="flex items-center gap-3 p-4 bg-zinc-900 border border-zinc-800 rounded-xl text-left hover:border-violet-600 hover:bg-zinc-800/60 transition-all group"
-            >
-              <div className="w-9 h-9 rounded-lg bg-zinc-800 group-hover:bg-violet-900/40 flex items-center justify-center shrink-0">
-                <Icon size={18} className="text-zinc-400 group-hover:text-violet-400" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-zinc-200">{label}</p>
-                <p className="text-xs text-zinc-500">{desc}</p>
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Step 1: Content */}
-      {step === 1 && (
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 space-y-4">
-          <div className="flex items-center gap-2 mb-2">
-            <QrCode size={16} className="text-violet-400" />
-            <span className="text-sm font-semibold text-zinc-300">
-              {QR_TYPES.find((t) => t.id === qrType)?.label} Content
-            </span>
-          </div>
-
-          <div>
-            <label className={labelCls}>Title (optional)</label>
-            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="My QR Code" className={inputCls} />
-          </div>
-
-          <ContentFields type={qrType} fields={fields} onChange={handleFieldChange} />
-
-          <div className="flex items-center gap-3 pt-2">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={isDynamic} onChange={(e) => setIsDynamic(e.target.checked)} className="w-4 h-4 rounded accent-violet-500" />
-              <span className="text-sm text-zinc-300">Dynamic QR (editable after creation)</span>
-            </label>
-          </div>
-
-          {/* Workspace / folder */}
-          <div className="grid sm:grid-cols-2 gap-3 pt-1 border-t border-zinc-800">
-            <div>
-              <label className={labelCls + " flex items-center gap-1.5"}><Folder size={11} /> Workspace</label>
-              <select value={workspaceId} onChange={(e) => setWorkspaceId(e.target.value)} className={inputCls}>
-                <option value="">— No workspace —</option>
-                {workspaces.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className={labelCls + " flex items-center gap-1.5"}><Folder size={11} /> Folder (optional)</label>
-              <select value={folderId} onChange={(e) => setFolderId(e.target.value)} className={inputCls} disabled={!folders.length}>
-                <option value="">— Root —</option>
-                {folders.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
-              </select>
-            </div>
-          </div>
-
-          <div className="flex justify-between pt-2">
-            <button onClick={() => setStep(0)} className="px-4 py-2 text-sm text-zinc-400 hover:text-zinc-200">← Back</button>
-            <button
-              onClick={() => setStep(2)}
-              disabled={!buildContent(qrType, fields)}
-              className="px-5 py-2 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg"
-            >
-              Next: Security →
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Step 2: Security */}
-      {step === 2 && (
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 space-y-5">
-          <QRSecurityPanel value={security} onChange={setSecurity} />
-          <div className="flex justify-between pt-2 border-t border-zinc-800">
-            <button onClick={() => setStep(1)} className="px-4 py-2 text-sm text-zinc-400 hover:text-zinc-200">← Back</button>
-            <button
-              onClick={() => setStep(3)}
-              className="px-5 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-lg"
-            >
-              Next: Customize →
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Step 3: Customize */}
-      {step === 3 && (
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 space-y-5">
-          <CustomizeQRPanel
-            designTab={designTab} setDesignTab={setDesignTab}
-            selectedDotStyle={selectedDotStyle} setSelectedDotStyle={setSelectedDotStyle}
-            selectedCornerStyle={selectedCornerStyle} setSelectedCornerStyle={setSelectedCornerStyle}
-            selectedFrame={selectedFrame} setSelectedFrame={setSelectedFrame}
-            eyeInnerStyle={eyeInnerStyle} setEyeInnerStyle={setEyeInnerStyle}
-            quietZone={quietZone} setQuietZone={setQuietZone}
-            errorLevel={errorLevel} setErrorLevel={setErrorLevel}
-            qrColor={qrColor} setQrColor={setQrColor}
-            bgColor={bgColor} setBgColor={setBgColor}
-            useGradient={useGradient} setUseGradient={setUseGradient}
-            gradientStart={gradientStart} setGradientStart={setGradientStart}
-            gradientEnd={gradientEnd} setGradientEnd={setGradientEnd}
-            gradientType={gradientType} setGradientType={setGradientType}
-            gradientRotation={gradientRotation} setGradientRotation={setGradientRotation}
-            transparentBg={transparentBg} setTransparentBg={setTransparentBg}
-            logoFile={logoFile} setLogoFile={setLogoFile}
-            logoSize={logoSize} setLogoSize={setLogoSize}
-            logoMargin={logoMargin} setLogoMargin={setLogoMargin}
-            bgImage={bgImage} setBgImage={setBgImage}
+  const renderField = (f: FieldDef, index: number) => {
+    const id = `${formId}-${f.key}`;
+    const err = errorFor(f.key);
+    const common = {
+      id,
+      value: fields[f.key] ?? "",
+      "aria-invalid": err ? true : undefined,
+      "aria-describedby": err ? `${id}-error` : undefined,
+      className: `${field} ${err ? fieldError : ""}`,
+      placeholder: f.placeholder,
+      autoComplete: f.autoComplete,
+      autoFocus: index === 0 && type === "url",
+    };
+    return (
+      <div key={f.key} className={f.wide || f.multiline ? "sm:col-span-2" : ""}>
+        <label htmlFor={id} className="mb-1.5 block text-[13px] font-medium text-zinc-300">
+          {f.label}
+        </label>
+        {f.options ? (
+          <select
+            {...common}
+            ref={(el) => { fieldRefs.current[f.key] = el; }}
+            onChange={(e) => setField(f.key, e.target.value)}
+          >
+            {f.options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        ) : f.multiline ? (
+          <textarea
+            {...common}
+            rows={3}
+            ref={(el) => { fieldRefs.current[f.key] = el; }}
+            onChange={(e) => setField(f.key, e.target.value)}
+            className={`${common.className} resize-y min-h-[84px]`}
           />
-          <div className="flex justify-between pt-2 border-t border-zinc-800">
-            <button onClick={() => setStep(2)} className="px-4 py-2 text-sm text-zinc-400 hover:text-zinc-200">← Back</button>
-            <button
-              onClick={() => setStep(4)}
-              className="px-5 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-lg"
-            >
-              Review →
-            </button>
-          </div>
-        </div>
-      )}
+        ) : (
+          <input
+            {...common}
+            type={f.input === "url" ? "text" : f.input ?? "text"}
+            inputMode={f.input === "url" ? "url" : undefined}
+            spellCheck={f.input === "url" ? false : undefined}
+            ref={(el) => { fieldRefs.current[f.key] = el; }}
+            onChange={(e) => setField(f.key, e.target.value)}
+          />
+        )}
+        {err && (
+          <p id={`${id}-error`} role="alert" className="mt-1.5 text-[13px] text-red-400">
+            {err}
+          </p>
+        )}
+      </div>
+    );
+  };
 
-      {/* Step 4: Review */}
-      {step === 4 && (
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 space-y-5">
-          <div className="flex gap-6">
-            {/* Preview */}
-            <div className="shrink-0">
-              {preview ? (
-                <img src={preview} alt="QR preview" className="w-36 h-36 rounded-lg border border-zinc-700" />
-              ) : (
-                <div className="w-36 h-36 rounded-lg border border-zinc-700 bg-zinc-800 flex items-center justify-center">
-                  <div className="w-6 h-6 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+  const createButton = (extra = "") => (
+    <button
+      type="submit"
+      form={formId}
+      disabled={submitting || !canCreate}
+      className={`inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-violet-600 px-5 text-[15px] font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] transition-colors hover:bg-violet-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 disabled:cursor-not-allowed disabled:opacity-50 ${extra}`}
+    >
+      {submitting ? <Loader2 size={17} className="animate-spin" /> : null}
+      {submitting ? "Creating" : "Create QR code"}
+    </button>
+  );
+
+  const shortLink = created?.is_dynamic ? created.short_url : null;
+
+  return (
+    <div className="mx-auto w-full max-w-[1120px] pb-28 lg:pb-10">
+      <header className="mb-7 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-[26px] font-semibold tracking-[-0.02em] text-zinc-50">
+            {created ? "Your QR code is ready" : "New QR code"}
+          </h1>
+          <p className="mt-1 text-[15px] text-zinc-400">
+            {created
+              ? created.is_dynamic
+                ? "Download it for print or copy the link. You can change where it sends people at any time."
+                : "Download it for print. Everything it needs is inside the code."
+              : "Fill in what it should open. Your code updates as you type."}
+          </p>
+        </div>
+        {typeof used === "number" && typeof limit === "number" && (
+          <p className="text-[13px] text-zinc-500">
+            {used} of {limit} codes used{workspace ? ` in ${workspace.name}` : ""}
+          </p>
+        )}
+      </header>
+
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px] lg:gap-12">
+        {/* ------------------------------------------------------------ form */}
+        {created ? (
+          <section className="motion-safe:animate-[fadein_200ms_ease-out] space-y-6">
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-6">
+              <p className="text-[13px] font-medium text-zinc-400">{TYPE_BY_ID[type].label}</p>
+              <h2 className="mt-1 text-xl font-semibold text-zinc-50">{created.title}</h2>
+              <dl className="mt-5 space-y-3 text-[15px]">
+                {shortLink && (
+                  <div>
+                    <dt className="text-[13px] text-zinc-500">Printed link</dt>
+                    <dd className="mt-1 flex items-center gap-2">
+                      <a href={shortLink} target="_blank" rel="noreferrer" className="truncate text-violet-300 hover:text-violet-200 underline-offset-4 hover:underline">
+                        {shortLink.replace(/^https?:\/\//, "")}
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => copyLink(shortLink)}
+                        className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-zinc-700 px-2.5 text-[13px] text-zinc-200 hover:bg-zinc-800"
+                      >
+                        {copied ? <Check size={14} /> : <Copy size={14} />}
+                        {copied ? "Copied" : "Copy"}
+                      </button>
+                    </dd>
+                  </div>
+                )}
+                <div>
+                  <dt className="text-[13px] text-zinc-500">{created.is_dynamic ? "Sends people to" : "Contains"}</dt>
+                  <dd className="mt-1 break-words text-zinc-200 whitespace-pre-line line-clamp-4">{created.content}</dd>
+                </div>
+              </dl>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={startOver}
+                className="inline-flex h-11 items-center gap-2 rounded-xl bg-violet-600 px-5 text-[15px] font-semibold text-white hover:bg-violet-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+              >
+                <Plus size={17} /> Create another
+              </button>
+              <Link
+                href={`/dashboard/qr-codes/${created.id}`}
+                className="inline-flex h-11 items-center rounded-xl border border-zinc-700 px-5 text-[15px] font-medium text-zinc-200 hover:bg-zinc-800"
+              >
+                Open details
+              </Link>
+              <Link href="/dashboard/qr-codes" className="inline-flex h-11 items-center px-2 text-[15px] text-zinc-400 hover:text-zinc-200">
+                All QR codes
+              </Link>
+            </div>
+          </section>
+        ) : (
+          <form
+            id={formId}
+            noValidate
+            onSubmit={(e) => {
+              e.preventDefault();
+              void submit();
+            }}
+            className="space-y-8"
+          >
+            {!canCreate && (
+              <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-[14px] text-amber-200">
+                You can view codes in this workspace, but creating them needs the editor role. Ask a workspace admin for access.
+              </p>
+            )}
+
+            {/* What it does */}
+            <fieldset>
+              <legend className="mb-3 text-[13px] font-medium text-zinc-300">What should it open?</legend>
+              <div role="radiogroup" aria-label="QR code type" className="flex flex-wrap gap-2">
+                {QR_TYPES.map(({ id, label, icon: Icon }) => {
+                  const active = id === type;
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      role="radio"
+                      aria-checked={active}
+                      onClick={() => pickType(id)}
+                      className={`inline-flex h-9 items-center gap-2 rounded-full border px-3.5 text-[14px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 ${
+                        active
+                          ? "border-violet-500/60 bg-violet-500/15 text-violet-100"
+                          : "border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
+                      }`}
+                    >
+                      <Icon size={15} strokeWidth={2} />
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </fieldset>
+
+            {/* Details */}
+            <div>
+              <div className="grid gap-4 sm:grid-cols-2">{def.fields.map(renderField)}</div>
+              {def.hint && <p className="mt-2.5 text-[13px] text-zinc-500">{def.hint}</p>}
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <label htmlFor={`${formId}-name`} className="mb-1.5 block text-[13px] font-medium text-zinc-300">
+                  Name <span className="font-normal text-zinc-500">(only you see this)</span>
+                </label>
+                <input
+                  id={`${formId}-name`}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder={suggestion || "Lunch menu, table 4"}
+                  maxLength={200}
+                  className={field}
+                />
+              </div>
+            </div>
+
+            {canTrack && (
+              <label className="flex cursor-pointer items-start justify-between gap-6 rounded-xl border border-zinc-800 px-4 py-3.5 hover:border-zinc-700">
+                <span>
+                  <span className="block text-[15px] font-medium text-zinc-100">Track scans and change the link later</span>
+                  <span className="mt-0.5 block text-[13px] text-zinc-500">
+                    {tracked
+                      ? "The code prints a short link, so you can see scans and send people somewhere new without reprinting."
+                      : "The address is printed straight into the code. It can't be changed or tracked later."}
+                  </span>
+                </span>
+                <span className="relative mt-0.5 inline-flex shrink-0">
+                  <input type="checkbox" role="switch" checked={tracked} onChange={(e) => setTracked(e.target.checked)} className="peer sr-only" />
+                  <span className="h-6 w-10 rounded-full bg-zinc-700 transition-colors peer-checked:bg-violet-600 peer-focus-visible:ring-2 peer-focus-visible:ring-violet-400" />
+                  <span className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition-transform peer-checked:translate-x-4 motion-reduce:transition-none" />
+                </span>
+              </label>
+            )}
+
+            {/* Look */}
+            <fieldset className="space-y-5 border-t border-zinc-800/80 pt-7">
+              <legend className="sr-only">Style</legend>
+              <div className="flex flex-wrap items-center gap-x-8 gap-y-4">
+                <div>
+                  <p className="mb-2 text-[13px] font-medium text-zinc-300">Color</p>
+                  <div className="flex items-center gap-2">
+                    {INKS.map((ink) => (
+                      <button
+                        key={ink.value}
+                        type="button"
+                        title={ink.name}
+                        aria-label={`${ink.name} color`}
+                        aria-pressed={style.color === ink.value}
+                        onClick={() => setStyle((s) => ({ ...s, color: ink.value }))}
+                        className={`h-8 w-8 rounded-full border-2 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 ${
+                          style.color === ink.value ? "scale-110 border-white" : "border-zinc-700 hover:scale-105"
+                        }`}
+                        style={{ backgroundColor: ink.value }}
+                      />
+                    ))}
+                    <label
+                      title="Custom color"
+                      className={`relative h-8 w-8 cursor-pointer overflow-hidden rounded-full border-2 ${
+                        INKS.some((i) => i.value === style.color) ? "border-zinc-700" : "scale-110 border-white"
+                      }`}
+                      style={{ background: "conic-gradient(#ef4444,#f59e0b,#22c55e,#06b6d4,#6366f1,#d946ef,#ef4444)" }}
+                    >
+                      <span className="sr-only">Custom color</span>
+                      <input
+                        type="color"
+                        value={style.color}
+                        onChange={(e) => setStyle((s) => ({ ...s, color: e.target.value }))}
+                        className="absolute inset-0 cursor-pointer opacity-0"
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="mb-2 text-[13px] font-medium text-zinc-300">Background</p>
+                  <Segmented
+                    value={style.background === "transparent" ? "transparent" : "white"}
+                    options={[{ id: "white", label: "White" }, { id: "transparent", label: "None" }]}
+                    onChange={(v) => setStyle((s) => ({ ...s, background: v === "transparent" ? "transparent" : "#FFFFFF" }))}
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-x-8 gap-y-4">
+                <div>
+                  <p className="mb-2 text-[13px] font-medium text-zinc-300">Pattern</p>
+                  <div className="flex gap-2">
+                    {DOTS.map((d) => (
+                      <ShapeButton key={d.id} label={d.label} active={style.dots === d.id} onClick={() => setStyle((s) => ({ ...s, dots: d.id }))}>
+                        <DotGlyph kind={d.id} />
+                      </ShapeButton>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="mb-2 text-[13px] font-medium text-zinc-300">Corners</p>
+                  <div className="flex gap-2">
+                    {CORNERS.map((c) => (
+                      <ShapeButton key={c.id} label={c.label} active={style.corners === c.id} onClick={() => setStyle((s) => ({ ...s, corners: c.id }))}>
+                        <CornerGlyph kind={c.id} />
+                      </ShapeButton>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="mb-2 text-[13px] font-medium text-zinc-300">Logo</p>
+                  {style.logo ? (
+                    <div className="flex h-11 items-center gap-2 rounded-xl border border-zinc-800 pl-1.5 pr-1">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={style.logo} alt="" className="h-8 w-8 rounded-md bg-white object-contain p-0.5" />
+                      <button
+                        type="button"
+                        onClick={() => setStyle((s) => ({ ...s, logo: null }))}
+                        className="inline-flex h-8 items-center gap-1 rounded-lg px-2 text-[13px] text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+                      >
+                        <X size={14} /> Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => logoInput.current?.click()}
+                      className="inline-flex h-11 items-center gap-2 rounded-xl border border-dashed border-zinc-700 px-3.5 text-[14px] text-zinc-300 hover:border-zinc-500 hover:text-zinc-100"
+                    >
+                      <ImagePlus size={16} /> Add logo
+                    </button>
+                  )}
+                  <input
+                    ref={logoInput}
+                    type="file"
+                    accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                    className="hidden"
+                    onChange={(e) => {
+                      onLogo(e.target.files?.[0]);
+                      e.target.value = "";
+                    }}
+                  />
+                </div>
+              </div>
+
+              {contrast < 4 && (
+                <p className="text-[13px] text-amber-300">
+                  This color is light against the background, so some phones may not scan it. Pick a darker color.
+                </p>
+              )}
+            </fieldset>
+
+            {/* Extras */}
+            <div className="border-t border-zinc-800/80 pt-5">
+              <button
+                type="button"
+                aria-expanded={moreOpen}
+                onClick={() => setMoreOpen((o) => !o)}
+                className="inline-flex items-center gap-1.5 text-[14px] font-medium text-zinc-300 hover:text-zinc-100"
+              >
+                <ChevronDown size={16} className={`transition-transform motion-reduce:transition-none ${moreOpen ? "rotate-180" : ""}`} />
+                More options
+                <span className="font-normal text-zinc-500">folder{dynamic ? ", password, expiry, scan limit" : ""}</span>
+              </button>
+              {moreOpen && (
+                <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor={`${formId}-folder`} className="mb-1.5 block text-[13px] font-medium text-zinc-300">Folder</label>
+                    <select id={`${formId}-folder`} value={folderId} onChange={(e) => setFolderId(e.target.value)} className={field}>
+                      <option value="">No folder</option>
+                      {folders.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+                    </select>
+                  </div>
+                  {dynamic ? (
+                    <>
+                      <div>
+                        <label htmlFor={`${formId}-password`} className="mb-1.5 block text-[13px] font-medium text-zinc-300">Password to open</label>
+                        <input id={`${formId}-password`} type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Leave empty for none" className={field} />
+                      </div>
+                      <div>
+                        <label htmlFor={`${formId}-expires`} className="mb-1.5 block text-[13px] font-medium text-zinc-300">Stops working on</label>
+                        <input id={`${formId}-expires`} type="datetime-local" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} className={`${field} [color-scheme:dark]`} />
+                      </div>
+                      <div>
+                        <label htmlFor={`${formId}-limit`} className="mb-1.5 block text-[13px] font-medium text-zinc-300">Scan limit</label>
+                        <input id={`${formId}-limit`} type="number" min={1} inputMode="numeric" value={maxScans} onChange={(e) => setMaxScans(e.target.value)} placeholder="No limit" className={field} />
+                      </div>
+                    </>
+                  ) : (
+                    <p className="self-end pb-2.5 text-[13px] text-zinc-500">
+                      Password, expiry and scan limits work on tracked links only.
+                    </p>
+                  )}
                 </div>
               )}
             </div>
+          </form>
+        )}
 
-            {/* Summary */}
-            <div className="flex-1 space-y-2 text-sm">
-              <Row label="Type" value={QR_TYPES.find((t) => t.id === qrType)?.label ?? qrType} />
-              <Row label="Title" value={title || "(auto)"} />
-              <Row label="Mode" value={isDynamic ? "Dynamic" : "Static"} />
-              <Row label="Workspace" value={workspaces.find((w) => w.id === workspaceId)?.name ?? "—"} />
-              {security.password && <Row label="Password" value="Protected ✓" />}
-              {security.expiresAt && <Row label="Expires" value={new Date(security.expiresAt).toLocaleString()} />}
-              {security.maxScans && <Row label="Max scans" value={security.maxScans} />}
-              {security.geoRestrictions && <Row label="Geo" value={security.geoRestrictions} />}
-            </div>
-          </div>
-
-          {error && (
-            <div className="flex items-center gap-2 p-3 bg-red-950/40 border border-red-800 rounded-lg text-sm text-red-400">
-              <AlertCircle size={14} /> {error}
-            </div>
-          )}
-
-          <div className="flex justify-between pt-2 border-t border-zinc-800">
-            <button onClick={() => setStep(3)} className="px-4 py-2 text-sm text-zinc-400 hover:text-zinc-200">← Back</button>
-            <button
-              onClick={handleSubmit}
-              disabled={submitting}
-              className="px-6 py-2 bg-violet-600 hover:bg-violet-500 disabled:opacity-60 text-white text-sm font-semibold rounded-lg flex items-center gap-2"
+        {/* ------------------------------------------------------------ proof */}
+        <aside id={`${formId}-proof`} className="lg:sticky lg:top-6 lg:self-start">
+          <div className="rounded-3xl border border-zinc-800/80 bg-[radial-gradient(120%_80%_at_50%_0%,rgba(255,255,255,0.045),transparent_60%)] px-5 pb-6 pt-4">
+            <QrProof
+              data={proofData || "https://qrit.app"}
+              style={style}
+              placeholder={isPlaceholder}
+              label={created ? `QR code for ${created.title}` : "Preview of your QR code"}
             >
-              {submitting && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-              {submitting ? "Creating…" : "Create QR Code"}
-            </button>
+              <p className="mt-2 min-h-[40px] text-center text-[13px] leading-5 text-zinc-500">
+                {created
+                  ? shortLink
+                    ? `Scans open ${shortLink.replace(/^https?:\/\//, "")}`
+                    : "The details are printed inside the code."
+                  : isPlaceholder
+                    ? "Your code appears here as you type."
+                    : dynamic
+                      ? `Prints a short link on ${host || "your site"}. The last part is added when you create it.`
+                      : "Everything is printed inside the code, so it works without internet."}
+              </p>
+            </QrProof>
+
+            {created ? (
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => downloadQr(proofData, style, fileName, "png")}
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-white text-[15px] font-semibold text-zinc-900 hover:bg-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+                >
+                  <Download size={16} /> PNG
+                </button>
+                <button
+                  type="button"
+                  onClick={() => downloadQr(proofData, style, fileName, "svg")}
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-zinc-700 text-[15px] font-medium text-zinc-100 hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+                >
+                  <Download size={16} /> SVG
+                </button>
+                <p className="col-span-2 mt-1 text-center text-[12px] text-zinc-500">SVG stays sharp at any print size.</p>
+              </div>
+            ) : (
+              <div className="mt-4 hidden flex-col gap-2 lg:flex">
+                {createButton("w-full")}
+                <p className="text-center text-[12px] text-zinc-500">or press Ctrl + Enter</p>
+              </div>
+            )}
+
+            {serverError && !serverError.field && (
+              <p role="alert" className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-3.5 py-2.5 text-[13px] text-red-300">
+                {serverError.message}
+                {serverError.upgrade && (
+                  <>
+                    {" "}
+                    <Link href="/pricing" className="font-medium text-red-200 underline underline-offset-2">
+                      See plans
+                    </Link>
+                  </>
+                )}
+              </p>
+            )}
           </div>
+        </aside>
+      </div>
+
+      {/* Phone: the create button stays in reach. */}
+      {!created && (
+        <div className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-3 border-t border-zinc-800 bg-zinc-950/90 px-4 py-3 backdrop-blur lg:hidden">
+          <button
+            type="button"
+            aria-label="Show the preview"
+            onClick={() => document.getElementById(`${formId}-proof`)?.scrollIntoView({ behavior: "smooth", block: "center" })}
+            className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+          >
+            <QrThumb data={proofData || "https://qrit.app"} style={style} faded={isPlaceholder} />
+          </button>
+          {createButton("flex-1")}
         </div>
       )}
     </div>
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Segmented({
+  value, options, onChange,
+}: { value: string; options: { id: string; label: string }[]; onChange: (id: string) => void }) {
   return (
-    <div className="flex items-start gap-2">
-      <span className="text-zinc-500 w-24 shrink-0">{label}</span>
-      <span className="text-zinc-200">{value}</span>
+    <div role="radiogroup" className="inline-flex h-8 rounded-lg border border-zinc-800 p-0.5">
+      {options.map((o) => (
+        <button
+          key={o.id}
+          type="button"
+          role="radio"
+          aria-checked={value === o.id}
+          onClick={() => onChange(o.id)}
+          className={`rounded-md px-3 text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 ${
+            value === o.id ? "bg-zinc-800 text-zinc-100" : "text-zinc-400 hover:text-zinc-200"
+          }`}
+        >
+          {o.label}
+        </button>
+      ))}
     </div>
+  );
+}
+
+function ShapeButton({
+  label, active, onClick, children,
+}: { label: string; active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      title={label}
+      onClick={onClick}
+      className={`flex h-11 w-11 items-center justify-center rounded-xl border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 ${
+        active ? "border-violet-500/70 bg-violet-500/10 text-violet-100" : "border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
+      }`}
+    >
+      <span className="sr-only">{label}</span>
+      {children}
+    </button>
+  );
+}
+
+/** A 3x3 patch of modules in the given style. */
+function DotGlyph({ kind }: { kind: DotStyle }) {
+  const cells = [[0, 0], [1, 0], [0, 1], [2, 1], [1, 2], [2, 2]];
+  return (
+    <svg viewBox="0 0 18 18" width="20" height="20" aria-hidden fill="currentColor">
+      {cells.map(([x, y]) => {
+        const cx = x * 6 + 3;
+        const cy = y * 6 + 3;
+        if (kind === "dots") return <circle key={`${x}${y}`} cx={cx} cy={cy} r={2.6} />;
+        const r = kind === "rounded" ? 1.8 : kind === "classy-rounded" ? 2.6 : 0;
+        return <rect key={`${x}${y}`} x={cx - 2.8} y={cy - 2.8} width={5.6} height={5.6} rx={r} />;
+      })}
+    </svg>
+  );
+}
+
+/** A finder pattern (the big corner squares) in the given style. */
+function CornerGlyph({ kind }: { kind: CornerStyle }) {
+  const outer = kind === "dot" ? 9 : kind === "extra-rounded" ? 5 : 0.5;
+  const inner = kind === "dot" ? 4 : kind === "extra-rounded" ? 1.5 : 0;
+  return (
+    <svg viewBox="0 0 20 20" width="20" height="20" aria-hidden>
+      <rect x="1.5" y="1.5" width="17" height="17" rx={outer} fill="none" stroke="currentColor" strokeWidth="3" />
+      <rect x="6.5" y="6.5" width="7" height="7" rx={inner} fill="currentColor" />
+    </svg>
   );
 }

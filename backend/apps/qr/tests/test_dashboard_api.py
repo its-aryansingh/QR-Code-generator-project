@@ -296,3 +296,20 @@ def test_folders_and_bulk_actions(alice: Api) -> None:
     assert deleted["affected"] == 1
     assert alice.ok("get", base)["total"] == 1
     assert scan(one["short_code"]).status_code == 404
+
+
+@pytest.mark.django_db
+def test_addresses_without_https_are_accepted(alice: Api) -> None:
+    """People type `www.example.com`; the create wizard sends it as is."""
+    qr = alice.create(content="www.example.com/menu")
+    assert qr["is_dynamic"] is True
+    assert qr["content"] == "https://www.example.com/menu"
+    assert scan(qr["short_code"])["Location"] == "https://www.example.com/menu"
+
+    edited = alice.ok("put", f"/qr/{qr['id']}", {"redirect_url": "example.org"})
+    assert edited["content"] == "https://example.org"
+
+    response = alice.call(
+        "post", "/qr/generate", {"workspace_id": alice.workspace_id, "content": "not a url"}
+    )
+    assert response.status_code == 422
