@@ -7,6 +7,7 @@ import {
   Save, Check, AlertCircle, Eye, EyeOff, Crown
 } from "lucide-react";
 import { API_URL } from "@/lib/config";
+import { MIN_PASSWORD_LENGTH } from "@/components/auth/password-strength";
 
 const inputCls = "w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500 transition-colors";
 const labelCls = "text-sm text-zinc-400 block mb-1.5 font-medium";
@@ -99,8 +100,8 @@ export default function ProfilePage() {
   };
 
   const handlePasswordChange = async () => {
-    if (!newPassword || newPassword.length < 8) {
-      setError("Password must be at least 8 characters");
+    if (!newPassword || newPassword.length < MIN_PASSWORD_LENGTH) {
+      setError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
       return;
     }
     setSaving(true);
@@ -241,7 +242,7 @@ export default function ProfilePage() {
               type={showPassword ? "text" : "password"}
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="Minimum 8 characters"
+              placeholder={`Minimum ${MIN_PASSWORD_LENGTH} characters`}
               className={inputCls + " pr-10"}
             />
             <button onClick={() => setShowPassword(!showPassword)}

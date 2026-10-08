@@ -10,7 +10,7 @@ import { api } from "@/lib/api";
 import { useAuthStore } from "@/lib/auth";
 import { SocialAuthButtons } from "@/components/auth/social-auth-buttons";
 import { PasswordInput } from "@/components/auth/password-input";
-import { PasswordStrength, getPasswordScore } from "@/components/auth/password-strength";
+import { PasswordStrength, MIN_PASSWORD_LENGTH, meetsPasswordPolicy } from "@/components/auth/password-strength";
 
 
 export default function RegisterPage() {
@@ -21,14 +21,13 @@ export default function RegisterPage() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
 
-    const passwordScore = getPasswordScore(password);
-    const isPasswordStrong = passwordScore >= 4; // Need at least 4 of 5 requirements
+    const isPasswordStrong = meetsPasswordPolicy(password);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
         if (!isPasswordStrong) {
-            toast.error("Password too weak", { description: "Please meet at least 4 of the 5 password requirements" });
+            toast.error("Password too weak", { description: `Use at least ${MIN_PASSWORD_LENGTH} characters and meet 4 of the 5 requirements` });
             return;
         }
 
