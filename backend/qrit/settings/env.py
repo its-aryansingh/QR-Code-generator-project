@@ -184,7 +184,7 @@ class Settings(BaseSettings):
             fields = Settings.model_fields
             missing = [
                 name
-                for name in _PRODUCTION_SECRETS
+                for name in (*_PRODUCTION_SECRETS, *_PRODUCTION_ENDPOINTS)
                 if not getattr(self, name) or getattr(self, name) == fields[name].default
             ]
             if missing:
@@ -206,6 +206,15 @@ _PRODUCTION_SECRETS = (
     "EDGE_SHARED_SECRET",
     "SERIAL_MAC_KEY",
     "VERIFY_TOKEN_KEY",
+)
+
+# Endpoints whose localhost defaults only work on a developer machine. Left
+# unset in production, the database default failed as an unexplained 2-second
+# pool timeout, and the APP_BASE_URL default sends Google/GitHub sign-in back
+# to localhost:3000.
+_PRODUCTION_ENDPOINTS = (
+    "DATABASE_URL",
+    "APP_BASE_URL",
 )
 
 

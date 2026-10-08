@@ -63,6 +63,9 @@ STRONG = {
     "EDGE_SHARED_SECRET": "y" * 40,
     "SERIAL_MAC_KEY": "z" * 40,
     "VERIFY_TOKEN_KEY": "w" * 40,
+    # Not secrets, but their localhost defaults are wrong anywhere but a laptop.
+    "DATABASE_URL": "postgresql://app:pw@postgres.railway.internal:5432/railway",
+    "APP_BASE_URL": "https://qrit.example.com",
 }
 
 
