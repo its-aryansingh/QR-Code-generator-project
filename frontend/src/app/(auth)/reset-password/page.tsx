@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { ArrowLeft, ArrowRight, CheckCircle2, XCircle } from "lucide-react";
 import { api } from "@/lib/api";
 import { PasswordInput } from "@/components/auth/password-input";
-import { PasswordStrength, getPasswordScore } from "@/components/auth/password-strength";
+import { PasswordStrength, MIN_PASSWORD_LENGTH, meetsPasswordPolicy } from "@/components/auth/password-strength";
 
 function ResetPasswordForm() {
     const router = useRouter();
@@ -20,8 +20,7 @@ function ResetPasswordForm() {
     const [success, setSuccess] = useState(false);
     const [error, setError] = useState("");
 
-    const passwordScore = getPasswordScore(password);
-    const isPasswordStrong = passwordScore >= 4;
+    const isPasswordStrong = meetsPasswordPolicy(password);
     const passwordsMatch = password === confirmPassword;
 
     useEffect(() => {
@@ -34,7 +33,7 @@ function ResetPasswordForm() {
         e.preventDefault();
 
         if (!isPasswordStrong) {
-            toast.error("Password too weak", { description: "Please meet at least 4 of the 5 requirements" });
+            toast.error("Password too weak", { description: `Use at least ${MIN_PASSWORD_LENGTH} characters and meet 4 of the 5 requirements` });
             return;
         }
         if (!passwordsMatch) {

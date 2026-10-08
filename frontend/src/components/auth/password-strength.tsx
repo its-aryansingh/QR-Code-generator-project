@@ -11,8 +11,11 @@ interface Requirement {
   test: (pw: string) => boolean;
 }
 
+/** Must match the API (backend/apps/accounts/passwords.py), which refuses shorter passwords. */
+export const MIN_PASSWORD_LENGTH = 10;
+
 const requirements: Requirement[] = [
-  { label: "At least 8 characters", test: (pw) => pw.length >= 8 },
+  { label: `At least ${MIN_PASSWORD_LENGTH} characters`, test: (pw) => pw.length >= MIN_PASSWORD_LENGTH },
   { label: "One uppercase letter", test: (pw) => /[A-Z]/.test(pw) },
   { label: "One lowercase letter", test: (pw) => /[a-z]/.test(pw) },
   { label: "One number", test: (pw) => /\d/.test(pw) },
@@ -22,6 +25,11 @@ const requirements: Requirement[] = [
 export function getPasswordScore(password: string): number {
   if (!password) return 0;
   return requirements.filter((r) => r.test(password)).length;
+}
+
+/** Length is mandatory (the API enforces it); then at least 4 of the 5 checks. */
+export function meetsPasswordPolicy(password: string): boolean {
+  return password.length >= MIN_PASSWORD_LENGTH && getPasswordScore(password) >= 4;
 }
 
 function getStrength(password: string): { score: number; label: string; color: string } {
