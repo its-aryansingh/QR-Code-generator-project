@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/auth";
 import { QRSecurityPanel, SecurityOptions } from "@/components/dashboard/QRSecurityPanel";
 import { ArrowLeft, Save, Trash2, QrCode, AlertCircle, ExternalLink } from "lucide-react";
 import { API_URL } from "@/lib/config";
+import { QrProof, styleFromCustomization } from "@/components/create/qr-proof";
+import { QrShareActions } from "@/components/qr/qr-share-actions";
 
 interface QRRecord {
   id: string;
@@ -16,6 +18,7 @@ interface QRRecord {
   is_active: boolean;
   short_code: string;
   short_url?: string | null;
+  customization?: Record<string, unknown> | null;
   scan_count: number;
   redirect_url?: string;
   expires_at?: string;
@@ -43,7 +46,6 @@ export default function QREditPage() {
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
-  const [preview, setPreview] = useState<string | null>(null);
 
   // Form state
   const [title, setTitle] = useState("");
@@ -81,25 +83,6 @@ export default function QREditPage() {
       .finally(() => setLoading(false));
   }, [id, accessToken, api, workspaceId]);
 
-  const loadPreview = useCallback(async () => {
-    if (!record || !accessToken) return;
-    // A dynamic code prints its short link; editing the destination doesn't change it.
-    const content = record.is_dynamic ? (record.short_url || record.content) : record.content;
-    try {
-      const res = await fetch(`${api}/qr/generate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ title, content, qr_type: record.qr_type, size: 300, is_dynamic: false }),
-      });
-      const data = await res.json();
-      if (data.success) setPreview(data.data.qr_base64);
-    } catch {}
-  }, [record, title, accessToken, api]);
-
-  useEffect(() => {
-    if (record) loadPreview();
-  }, [record?.id]);
-
   const handleSave = async () => {
     if (!record) return;
     setSaving(true);
@@ -123,7 +106,7 @@ export default function QREditPage() {
       if (data.success) {
         setSaved(true);
         setTimeout(() => setSaved(false), 3000);
-        loadPreview();
+        setRecord((current) => (current ? { ...current, ...data.data } : current));
       } else {
         setError(data.error ?? "Save failed");
       }
@@ -170,6 +153,9 @@ export default function QREditPage() {
   if (!record) return null;
 
   const shortUrl = record.short_url || `${appBase}/r/${record.short_code}`;
+  // What the printed code contains: the short link for tracked codes.
+  const printed = record.is_dynamic ? shortUrl : record.content;
+  const qrStyle = styleFromCustomization(record.customization);
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -262,24 +248,16 @@ export default function QREditPage() {
 
         {/* Right: preview */}
         <div className="sm:col-span-2 space-y-4">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 space-y-3">
-            <h2 className="text-sm font-semibold text-zinc-300">Preview</h2>
-            {preview ? (
-              <img src={preview} alt="QR code preview" className="w-full rounded-lg border border-zinc-800" />
-            ) : (
-              <div className="aspect-square bg-zinc-950 rounded-lg border border-zinc-800 flex items-center justify-center">
-                <div className="w-6 h-6 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
-              </div>
-            )}
-            {preview && (
-              <a
-                href={preview}
-                download={`${record.title || "qr-code"}.png`}
-                className="block text-center text-xs text-zinc-500 hover:text-zinc-300 py-1.5 border border-zinc-800 rounded-lg hover:bg-zinc-800"
-              >
-                Download PNG
-              </a>
-            )}
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+            <QrProof data={printed} style={qrStyle} label={`QR code for ${record.title || "this code"}`} />
+            <div className="mt-4 border-t border-zinc-800 pt-4">
+              <QrShareActions
+                data={printed}
+                style={qrStyle}
+                name={record.title || "qr-code"}
+                link={record.is_dynamic ? shortUrl : null}
+              />
+            </div>
           </div>
 
           {/* Stats */}

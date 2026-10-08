@@ -8,6 +8,8 @@ onto v3's plan ids: v1 starter -> pro, v1 pro -> business.
 
 from typing import Any
 
+from django.conf import settings
+
 PLANS = ("free", "pro", "business", "enterprise")
 
 _FEATURES_PRO = ["bulk", "webhooks", "campaigns"]
@@ -106,8 +108,13 @@ FEATURE_LABELS = {
 }
 
 
+def _effective_plan(plan: str | None) -> str:
+    """The plan whose limits apply: the top one while ALL_FEATURES_UNLOCKED is on."""
+    return "enterprise" if settings.ALL_FEATURES_UNLOCKED else plan or "free"
+
+
 def plan_entitlements(plan: str | None) -> dict[str, Any]:
-    return PLAN_ENTITLEMENTS.get(plan or "free", PLAN_ENTITLEMENTS["free"])
+    return PLAN_ENTITLEMENTS.get(_effective_plan(plan), PLAN_ENTITLEMENTS["free"])
 
 
 def limit_for(plan: str | None, key: str) -> int:
@@ -135,5 +142,5 @@ def entitlements_payload(plan: str | None) -> dict[str, Any]:
             }
             for name, label in FEATURE_LABELS.items()
         },
-        "api_daily_limit": API_DAILY_LIMITS.get(plan or "free", API_DAILY_LIMITS["free"]),
+        "api_daily_limit": API_DAILY_LIMITS.get(_effective_plan(plan), API_DAILY_LIMITS["free"]),
     }

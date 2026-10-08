@@ -41,6 +41,10 @@ class Settings(BaseSettings):
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
 
+    # Every plan gets every feature and the top limits while true. Set to
+    # false to enforce the plan table in apps/workspaces/entitlements.py.
+    ALL_FEATURES_UNLOCKED: bool = True
+
     # Hosts and domains
     APP_BASE_URL: str = "http://localhost:3000"
     API_PUBLIC_URL: str = "http://localhost:8080"

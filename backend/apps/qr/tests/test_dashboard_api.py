@@ -86,13 +86,25 @@ def test_new_account_lands_on_a_working_dashboard(alice: Api) -> None:
 
     ent = alice.ok("get", f"/workspaces/{alice.workspace_id}/entitlements")
     assert ent["role"] == "owner"
+    assert ent["plan"] == "free"
+    assert ent["usage"]["qr_codes"] == 0
+    # ALL_FEATURES_UNLOCKED (the default): every feature, the top limits.
+    assert all(feature["enabled"] for feature in ent["features"].values())
+    assert ent["limits"]["max_qr_codes"] == 1000000
+    assert ent["api_daily_limit"] == 10000
+
+
+@pytest.mark.django_db
+def test_plan_table_applies_when_features_are_locked(alice: Api, settings: Any) -> None:
+    settings.ALL_FEATURES_UNLOCKED = False
+    ent = alice.ok("get", f"/workspaces/{alice.workspace_id}/entitlements")
     assert ent["limits"]["max_qr_codes"] == 50
     assert ent["features"]["bulk"] == {
         "enabled": False,
         "label": "Bulk generation",
         "min_plan": "pro",
     }
-    assert ent["usage"]["qr_codes"] == 0
+    assert ent["api_daily_limit"] == 50
 
     overview = alice.ok("get", f"/workspaces/{alice.workspace_id}/overview?days=7")
     assert overview["stats"]["total_scans"] == 0
@@ -226,9 +238,10 @@ def test_other_users_cannot_see_or_change_a_workspace(alice: Api) -> None:
 
 
 @pytest.mark.django_db
-def test_plan_limits(alice: Api, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_plan_limits(alice: Api, monkeypatch: pytest.MonkeyPatch, settings: Any) -> None:
     from apps.workspaces import entitlements
 
+    settings.ALL_FEATURES_UNLOCKED = False
     monkeypatch.setitem(entitlements.PLAN_ENTITLEMENTS["free"], "max_qr_codes", 1)
     alice.create()
     response = alice.call(
@@ -242,6 +255,11 @@ def test_plan_limits(alice: Api, monkeypatch: pytest.MonkeyPatch) -> None:
     # Free plan: one workspace.
     response = alice.call("post", "/workspaces", {"name": "Second"})
     assert response.status_code == 402
+
+    # Unlocked, the same account can add a second workspace.
+    settings.ALL_FEATURES_UNLOCKED = True
+    created = alice.ok("post", "/workspaces", {"name": "Second"}, 201)
+    assert created["role"] == "owner"
 
 
 @pytest.mark.django_db
