@@ -21,6 +21,7 @@ COOKIE_SECURE = env.COOKIE_SECURE
 COOKIE_DOMAIN = env.COOKIE_DOMAIN
 # Public URL of the web app; OAuth redirect URIs are built from it.
 APP_BASE_URL = env.APP_BASE_URL.rstrip("/")
+ALL_FEATURES_UNLOCKED = env.ALL_FEATURES_UNLOCKED
 
 # Read through django.conf.settings by apps.accounts.tokens, apps.core.crypto,
 # apps.core.ratelimit and apps.core.net. Left undefined, each worker generated

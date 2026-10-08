@@ -49,11 +49,23 @@ async function load(): Promise<typeof QRCodeStyling> {
   return (await import("qr-code-styling")).default;
 }
 
-/** Save the code at print size. */
-export async function downloadQr(data: string, style: QrStyle, name: string, extension: "png" | "svg") {
-  const Styling = await load();
-  const qr = new Styling(qrOptions(data, style, 1024));
-  await qr.download({ name: name.replace(/[^\w-]+/g, "-").replace(/^-|-$/g, "") || "qr-code", extension });
+const DOT_STYLES: DotStyle[] = ["square", "rounded", "dots", "classy-rounded"];
+const CORNER_STYLES: CornerStyle[] = ["square", "extra-rounded", "dot"];
+
+/** The style a saved code was created with (its `customization`). */
+export function styleFromCustomization(c: Record<string, unknown> | null | undefined): QrStyle {
+  const pick = <T extends string>(value: unknown, allowed: T[], fallback: T): T =>
+    allowed.includes(value as T) ? (value as T) : fallback;
+  const hex = (value: unknown, fallback: string) =>
+    typeof value === "string" && /^#[0-9a-f]{3,8}$/i.test(value) ? value : fallback;
+  const logo = (c?.logo as { url?: unknown } | undefined)?.url;
+  return {
+    color: hex(c?.foreground_color, DEFAULT_STYLE.color),
+    background: c?.background_color === "transparent" ? "transparent" : hex(c?.background_color, DEFAULT_STYLE.background),
+    dots: pick(c?.body_style, DOT_STYLES, "square"),
+    corners: pick(c?.corner_style, CORNER_STYLES, "square"),
+    logo: typeof logo === "string" && logo.startsWith("data:image/") ? logo : null,
+  };
 }
 
 interface ProofProps {
@@ -92,14 +104,14 @@ export function QrProof({ data, style, placeholder = false, label, children }: P
   const transparent = style.background === "transparent";
 
   return (
-    <figure className="flex flex-col items-center">
-      <div className="relative p-5">
+    <figure className="flex w-full flex-col items-center">
+      <div className="relative w-full max-w-[320px] p-5">
         {/* Crop marks: this is a proof of what gets printed. */}
         {(["left-0 top-0", "right-0 top-0 rotate-90", "right-0 bottom-0 rotate-180", "left-0 bottom-0 -rotate-90"] as const).map((pos) => (
           <span key={pos} aria-hidden className={`pointer-events-none absolute h-3.5 w-3.5 border-l border-t border-zinc-500 ${pos}`} />
         ))}
         <div
-          className={`relative w-[240px] sm:w-[280px] aspect-square rounded-[6px] shadow-[0_1px_0_rgba(255,255,255,0.06),0_18px_40px_-18px_rgba(0,0,0,0.8)] transition-opacity duration-200 ${
+          className={`relative w-full aspect-square rounded-[6px] shadow-[0_1px_0_rgba(255,255,255,0.06),0_18px_40px_-18px_rgba(0,0,0,0.8)] transition-opacity duration-200 ${
             transparent ? "qr-checker" : "bg-white"
           } ${placeholder ? "opacity-25" : "opacity-100"}`}
         >

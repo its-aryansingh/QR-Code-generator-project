@@ -7,16 +7,17 @@
  */
 import Link from "next/link";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
-import { Check, ChevronDown, Copy, Download, ImagePlus, Loader2, Plus, X } from "lucide-react";
+import { Check, ChevronDown, Copy, ImagePlus, Loader2, Plus, X } from "lucide-react";
 
 import {
   DEFAULT_FIELDS, QR_TYPES, TRACKABLE, TYPE_BY_ID, buildContent, suggestName,
   type FieldDef, type Fields, type QrTypeId,
 } from "@/components/create/qr-types";
 import {
-  DEFAULT_STYLE, QrProof, QrThumb, downloadQr,
+  DEFAULT_STYLE, QrProof, QrThumb,
   type CornerStyle, type DotStyle, type QrStyle,
 } from "@/components/create/qr-proof";
+import { QrShareActions } from "@/components/qr/qr-share-actions";
 import { getContrastRatio } from "@/components/qr-scannability";
 import { ApiError, enterprise } from "@/lib/enterprise";
 import { useWorkspace, useWorkspaceStore } from "@/lib/workspace";
@@ -309,9 +310,13 @@ export default function CreateQRPage() {
               : "Fill in what it should open. Your code updates as you type."}
           </p>
         </div>
-        {typeof used === "number" && typeof limit === "number" && (
+        {typeof used === "number" && (
           <p className="text-[13px] text-zinc-500">
-            {used} of {limit} codes used{workspace ? ` in ${workspace.name}` : ""}
+            {/* A cap in the hundreds of thousands isn't worth showing. */}
+            {typeof limit === "number" && limit < 100000
+              ? `${used} of ${limit} codes used`
+              : `${used} ${used === 1 ? "code" : "codes"}`}
+            {workspace ? ` in ${workspace.name}` : ""}
           </p>
         )}
       </header>
@@ -633,22 +638,8 @@ export default function CreateQRPage() {
             </QrProof>
 
             {created ? (
-              <div className="mt-4 grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => downloadQr(proofData, style, fileName, "png")}
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-white text-[15px] font-semibold text-zinc-900 hover:bg-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
-                >
-                  <Download size={16} /> PNG
-                </button>
-                <button
-                  type="button"
-                  onClick={() => downloadQr(proofData, style, fileName, "svg")}
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-zinc-700 text-[15px] font-medium text-zinc-100 hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
-                >
-                  <Download size={16} /> SVG
-                </button>
-                <p className="col-span-2 mt-1 text-center text-[12px] text-zinc-500">SVG stays sharp at any print size.</p>
+              <div className="mt-5 border-t border-zinc-800/80 pt-5">
+                <QrShareActions data={proofData} style={style} name={fileName} link={shortLink} />
               </div>
             ) : (
               <div className="mt-4 hidden flex-col gap-2 lg:flex">
