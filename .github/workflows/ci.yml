@@ -78,6 +78,8 @@ jobs:
           EDGE_SHARED_SECRET: production-edge-shared-secret-32-chars-min
           SERIAL_MAC_KEY: production-serial-mac-key-32-bytes-min
           VERIFY_TOKEN_KEY: production-verify-token-key-32-bytes-min
+          DATABASE_URL: postgresql://qrit_app:qrit_test_password@localhost:5432/qrit
+          APP_BASE_URL: https://qrit.example.com
         run: cd backend && uv run python manage.py check --deploy --fail-level WARNING
 
   docker-build:
