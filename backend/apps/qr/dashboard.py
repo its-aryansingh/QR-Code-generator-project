@@ -12,6 +12,7 @@ Mapping onto the v3 model:
 
 import base64
 import io
+import re
 import secrets
 from datetime import datetime
 from typing import Any
@@ -53,6 +54,9 @@ CONTENT_TYPES = {
     "bitcoin": "text",
 }
 DYNAMIC_TYPES = {"url", "whatsapp"}
+# "https:", "mailto:", "tel:" ... but not "example.com:8080".
+HAS_SCHEME = re.compile(r"^[a-z][a-z0-9+-]*:", re.IGNORECASE)
+LOOKS_LIKE_HOST = re.compile(r"^(?:[a-z0-9-]+\.)+[a-z]{2,}$", re.IGNORECASE)
 MAX_CONTENT_LENGTH = 4096
 
 
@@ -93,6 +97,20 @@ def short_url(code: str | None) -> str | None:
 def is_web_url(value: str) -> bool:
     parsed = urlparse(value)
     return parsed.scheme in ("http", "https") and bool(parsed.netloc)
+
+
+def with_scheme(value: str) -> str:
+    """`example.com/menu` -> `https://example.com/menu`; anything else unchanged.
+
+    People type addresses the way browsers let them; the scheme is only
+    added to something that already looks like a host name.
+    """
+    if HAS_SCHEME.match(value) or any(ch.isspace() for ch in value):
+        return value
+    host = value.split("/")[0].split("?")[0].split(":")[0]
+    if LOOKS_LIKE_HOST.match(host):
+        return f"https://{value}"
+    return value
 
 
 def render_png_data_url(payload: str, size: int = 512, design: dict[str, Any] | None = None) -> str:
@@ -249,6 +267,8 @@ def create(workspace: Workspace, user: User, body: dict[str, Any]) -> QRCode:
     qr_type = str(body.get("qr_type") or "url").lower()
     content_type = CONTENT_TYPES.get(qr_type, "text")
     content = _clean_content(body.get("content"))
+    if content_type == "url":
+        content = with_scheme(content)
     wants_dynamic = bool(body.get("is_dynamic", True))
     dynamic = wants_dynamic and content_type in DYNAMIC_TYPES and is_web_url(content)
     if content_type == "url" and not is_web_url(content):
@@ -327,6 +347,8 @@ def update(qr: QRCode, user: User, body: dict[str, Any]) -> QRCode:
     new_destination = body.get("redirect_url") or body.get("content")
     if new_destination:
         content = _clean_content(new_destination)
+        if qr.mode == "dynamic" or qr.content_type == "url":
+            content = with_scheme(content)
         if qr.mode == "dynamic":
             if not is_web_url(content):
                 raise unprocessable(
