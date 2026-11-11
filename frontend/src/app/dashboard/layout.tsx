@@ -9,6 +9,7 @@ import { useAuthStore } from "@/lib/auth";
 import { useWorkspace, useWorkspaceStore } from "@/lib/workspace";
 import { cn } from "@/lib/utils";
 import { Avatar, Badge, RoleBadge } from "@/components/enterprise/ui";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import type { FeatureName, Role } from "@/types/enterprise";
 
 interface NavItem {
@@ -155,14 +156,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </svg>
           </div>
           {(!collapsed || mobile) && (
-            <span className="text-lg font-bold text-white">
+            <span className="text-lg font-bold text-zinc-50">
               QR<span className="text-zinc-500">it</span>
             </span>
           )}
           {mobile && (
             <button
               onClick={() => setMobileOpen(false)}
-              className="ml-auto rounded-lg p-2 text-zinc-400 hover:bg-zinc-800"
+              className="ml-auto flex size-11 items-center justify-center rounded-lg text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
               aria-label="Close navigation"
             >
               <svg className="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -179,7 +180,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               className="flex w-full items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900 px-2.5 py-2 text-left transition-colors hover:border-zinc-700"
             >
               <span
-                className="flex size-6 shrink-0 items-center justify-center rounded text-xs font-bold text-white"
+                className="flex size-6 shrink-0 items-center justify-center rounded text-xs font-bold text-zinc-50"
                 style={{ background: workspace?.brand_color ?? "#8B5CF6" }}
               >
                 {workspace?.name?.charAt(0).toUpperCase() ?? "W"}
@@ -215,7 +216,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     )}
                   >
                     <span
-                      className="flex size-6 shrink-0 items-center justify-center rounded text-xs font-bold text-white"
+                      className="flex size-6 shrink-0 items-center justify-center rounded text-xs font-bold text-zinc-50"
                       style={{ background: item.brand_color ?? "#8B5CF6" }}
                     >
                       {item.name.charAt(0).toUpperCase()}
@@ -265,14 +266,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     href={item.href}
                     title={collapsed && !mobile ? item.label : undefined}
                     className={cn(
-                      "group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors",
+                      "group flex items-center gap-2.5 rounded-lg px-2.5 text-sm transition-colors",
+                      mobile ? "min-h-11 py-2.5" : "py-2",
                       active
-                        ? "bg-zinc-800 font-medium text-white"
+                        ? "bg-zinc-800 font-medium text-zinc-50"
                         : "text-zinc-500 hover:bg-zinc-900 hover:text-zinc-200",
                       locked && !active && "opacity-60",
                     )}
                   >
-                    <span className={active ? "text-white" : "text-zinc-500 group-hover:text-zinc-300"}>
+                    <span className={active ? "text-zinc-50" : "text-zinc-500 group-hover:text-zinc-300"}>
                       {item.icon}
                     </span>
                     {(!collapsed || mobile) && (
@@ -299,6 +301,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </nav>
 
       <div className="border-t border-zinc-800/60 p-2.5">
+        {(!collapsed || mobile) && (
+          <div className="mb-2 flex items-center justify-between gap-2 px-2">
+            <span className="text-xs font-medium text-zinc-400">Theme</span>
+            <ThemeToggle />
+          </div>
+        )}
         <Link
           href="/dashboard/profile"
           className="flex items-center gap-2.5 rounded-lg px-2 py-2 transition-colors hover:bg-zinc-900"
@@ -315,7 +323,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </Link>
         <button
           onClick={handleLogout}
-          className="mt-0.5 flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-zinc-500 transition-colors hover:bg-red-500/10 hover:text-red-400"
+          className={cn(
+            "mt-0.5 flex w-full items-center gap-2.5 rounded-lg px-2.5 text-sm text-zinc-500 transition-colors hover:bg-red-500/10 hover:text-red-400",
+            mobile ? "min-h-11 py-2.5" : "py-2",
+          )}
         >
           <svg className="size-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.6} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -368,7 +379,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <div className="flex min-w-0 items-center gap-2 text-sm">
               <button
                 onClick={() => setMobileOpen(true)}
-                className="rounded-lg p-2 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200 lg:hidden"
+                className="-ml-1 flex size-11 shrink-0 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200 lg:hidden"
                 aria-label="Open navigation"
               >
                 <svg className="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -378,20 +389,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <span className="hidden truncate text-zinc-500 sm:inline">
                 {workspace?.name ?? "Personal"}
               </span>
-              <svg className="hidden size-3 shrink-0 text-zinc-700 sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="hidden size-3 shrink-0 text-zinc-600 sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
               <span className="truncate text-zinc-200">{currentLabel}</span>
             </div>
 
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+              <ThemeToggle className="hidden sm:inline-flex" />
+              <ThemeToggle variant="cycle" className="sm:hidden" />
               <Badge tone={PLAN_TONE[plan as keyof typeof PLAN_TONE] ?? "neutral"} className="hidden capitalize sm:inline-flex">
                 {plan}
               </Badge>
               {atLeast("editor") && (
                 <Link
                   href="/dashboard/create"
-                  className="rounded-lg bg-white px-3.5 py-1.5 text-sm font-medium text-zinc-950 transition-colors hover:bg-zinc-200"
+                  className="flex min-h-11 items-center rounded-lg bg-zinc-50 px-3.5 text-sm font-medium text-zinc-950 transition-colors hover:bg-zinc-200 sm:min-h-9"
                 >
                   + Create
                 </Link>
