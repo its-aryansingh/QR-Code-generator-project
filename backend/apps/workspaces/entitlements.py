@@ -10,6 +10,8 @@ from typing import Any
 
 from django.conf import settings
 
+from apps.core.errors import ApiError
+
 PLANS = ("free", "pro", "business", "enterprise")
 
 _FEATURES_PRO = ["bulk", "webhooks", "campaigns"]
@@ -126,6 +128,31 @@ def min_plan_for(feature: str) -> str:
         if feature in PLAN_ENTITLEMENTS[plan]["features"]:
             return plan
     return "enterprise"
+
+
+def require_feature(plan: str | None, feature: str) -> None:
+    """402 with the plan that unlocks `feature`, in the shape the dashboard's upgrade card reads."""
+    if feature in plan_entitlements(plan)["features"]:
+        return
+    needed = min_plan_for(feature)
+    raise ApiError(
+        status=402,
+        code="upgrade_required",
+        detail=f"{FEATURE_LABELS.get(feature, feature)} needs the {needed} plan",
+        extra={"required_plan": needed, "feature": feature},
+    )
+
+
+def require_capacity(plan: str | None, key: str, current: int, noun: str) -> None:
+    allowed = limit_for(plan, key)
+    if current < allowed:
+        return
+    raise ApiError(
+        status=402,
+        code="limit_reached",
+        detail=f"your plan allows {allowed} {noun}",
+        extra={"required_plan": "pro" if plan in (None, "free") else "enterprise"},
+    )
 
 
 def entitlements_payload(plan: str | None) -> dict[str, Any]:

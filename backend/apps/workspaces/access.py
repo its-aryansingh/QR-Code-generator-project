@@ -19,7 +19,7 @@ from rest_framework.response import Response
 
 from apps.accounts.models import User
 from apps.core.errors import ApiError, forbidden, not_found
-from apps.core.views.base import AuthenticatedAPIView
+from apps.core.views.base import AuthenticatedAPIView, PublicAPIView
 
 from .models import Workspace, WorkspaceMember
 
@@ -73,6 +73,53 @@ def ok(data: Any, status: int = 200) -> Response:
     return Response({"success": True, "data": data}, status=status)
 
 
+def body(request: Request) -> dict[str, Any]:
+    return request.data if isinstance(request.data, dict) else {}
+
+
+def page_params(request: Request, default_limit: int = 25) -> tuple[int, int]:
+    try:
+        page = max(1, int(request.query_params.get("page") or 1))
+        limit = min(100, max(1, int(request.query_params.get("limit") or default_limit)))
+    except ValueError:
+        raise ApiError(
+            status=422, code="invalid_page", detail="page and limit must be numbers"
+        ) from None
+    return page, limit
+
+
+def paginated(items: list[Any], total: int, page: int, limit: int) -> dict[str, Any]:
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "limit": limit,
+        "pages": (total + limit - 1) // limit,
+    }
+
+
+def user_summary(user: User | None) -> dict[str, Any] | None:
+    if user is None:
+        return None
+    return {
+        "id": str(user.id),
+        "email": str(user.email),
+        "name": user.name or None,
+        "avatar_url": user.avatar_url,
+    }
+
+
+def iso(value: Any) -> str | None:
+    return value.isoformat() if value else None
+
+
+def uuid_or_404(value: Any, what: str) -> UUID:
+    try:
+        return UUID(str(value))
+    except ValueError:
+        raise not_found(f"{what} not found") from None
+
+
 ENVELOPE = inline_serializer(
     "DashboardEnvelope",
     {"success": serializers.BooleanField(), "data": serializers.JSONField()},
@@ -111,3 +158,14 @@ class DashboardAPIView(AuthenticatedAPIView):
         if not isinstance(user, User):
             raise forbidden(code="unauthorized", detail="Authentication credentials required")
         return user
+
+
+class PublicDashboardAPIView(PublicAPIView):
+    """Unauthenticated endpoint the v1 pages call (invite preview, public lead page)."""
+
+    schema = DashboardSchema()
+
+    def handle_exception(self, exc: Exception) -> Response:
+        if isinstance(exc, ApiError):
+            exc.extra = {**exc.extra, "success": False, "error": exc.detail}
+        return super().handle_exception(exc)
