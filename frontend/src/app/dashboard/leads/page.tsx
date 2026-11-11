@@ -112,7 +112,7 @@ function Leads() {
       <Grid cols={3} className="mb-5">
         <StatCard label="Pages" value={formatNumber(rows.length)} />
         <StatCard label="Page views" value={formatNumber(totalViews)} />
-        <StatCard label="Conversion" value={`${conversion}%`} hint={`${formatNumber(totalLeads)} leads`} />
+        <StatCard label="Conversion" value={`${conversion}%`} hint={`${formatNumber(totalLeads)} ${totalLeads === 1 ? "lead" : "leads"}`} />
       </Grid>
 
       <Tabs
