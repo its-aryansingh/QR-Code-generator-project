@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useAuthStore } from "@/lib/auth";
 import { toast } from "sonner";
 import { API_URL } from "@/lib/config";
+import { safeJson } from "@/lib/http";
 
 interface QRRecord {
   id: string;
@@ -61,7 +62,7 @@ export function QRTable({ workspaceId, folderId, onSelect }: QRTableProps) {
       const res = await fetch(
         `${api}/qr/history?${params}`,
         { headers: { Authorization: `Bearer ${accessToken}` } }
-      ).then((r) => r.json());
+      ).then(safeJson);
 
       if (res.success) {
         setRecords(res.data?.items ?? []);

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useAuthStore } from "@/lib/auth";
 import { Copy, Check, Eye, EyeOff, RefreshCw, Lock, Terminal } from "lucide-react";
 import { API_URL } from "@/lib/config";
+import { safeJson } from "@/lib/http";
 
 interface APIKeyInfo {
   api_key: string;
@@ -35,7 +36,7 @@ export default function APIKeyPage() {
       const res = await fetch(`${api}/api/key`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (data.success) setKeyInfo(data.data);
     } catch {}
     finally { setLoading(false); }
@@ -58,7 +59,7 @@ export default function APIKeyPage() {
         method: "POST",
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (data.success) {
         setKeyInfo((prev) => prev ? { ...prev, api_key: data.data.api_key } : prev);
         setShowKey(true);

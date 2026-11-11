@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { API_URL } from "@/lib/config";
 import { MIN_PASSWORD_LENGTH } from "@/components/auth/password-strength";
+import { safeJson } from "@/lib/http";
 
 const inputCls = "w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500 transition-colors";
 const labelCls = "text-sm text-zinc-400 block mb-1.5 font-medium";
@@ -60,7 +61,7 @@ export default function ProfilePage() {
     const token = useAuthStore.getState().accessToken;
     if (!token) return;
     fetch(`${api}/user/profile`, { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => r.json())
+      .then(safeJson)
       .then((data) => {
         if (data.success) {
           const p = data.data;
@@ -85,7 +86,7 @@ export default function ProfilePage() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ name, company, avatar_url: avatarUrl }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (data.success) {
         setSaved(true);
         setTimeout(() => setSaved(false), 3000);
@@ -113,7 +114,7 @@ export default function ProfilePage() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ password: newPassword }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (data.success) {
         setPasswordSaved(true);
         setNewPassword("");
@@ -136,7 +137,7 @@ export default function ProfilePage() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ plan, billing_period: "monthly" }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (data.success && data.checkout_url) {
         window.location.href = data.checkout_url;
       }

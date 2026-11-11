@@ -5,6 +5,7 @@ import { useAuthStore } from "@/lib/auth";
 import { useWorkspace } from "@/lib/workspace";
 import { Check, Copy, ExternalLink, Zap, Plus } from "lucide-react";
 import { API_URL } from "@/lib/config";
+import { safeJson } from "@/lib/http";
 
 interface Webhook {
   id: string;
@@ -182,7 +183,7 @@ function IntegrationCard({ integration, workspaceId, existingWebhooks }: {
           secret: crypto.randomUUID().replace(/-/g, ""),
         }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (data.success) {
         setSaved(true);
         setWebhookUrl("");
@@ -331,7 +332,7 @@ export default function IntegrationsPage() {
     fetch(`${api}/workspaces/${wsId}/webhooks`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     })
-      .then((r) => r.json())
+      .then(safeJson)
       .then((d) => { if (d.success) setWebhooks(d.data?.webhooks || []); })
       .catch(() => {});
   }, [accessToken, api]);
@@ -340,7 +341,7 @@ export default function IntegrationsPage() {
     const wsId = activeWorkspaceId || "";
     if (!wsId) {
       fetch(`${api}/workspaces`, { headers: { Authorization: `Bearer ${accessToken}` } })
-        .then((r) => r.json())
+        .then(safeJson)
         .then((d) => {
           if (d.success && d.data?.length) {
             setWorkspaceId(d.data[0].id);

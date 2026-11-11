@@ -5,6 +5,7 @@ import JSZip from "jszip";
 import { useAuthStore } from "@/lib/auth";
 import { toast } from "sonner";
 import { API_URL } from "@/lib/config";
+import { safeJson } from "@/lib/http";
 
 interface PreviewRow {
   row: number;
@@ -128,13 +129,13 @@ export function BulkUpload({ workspaceId, onComplete }: BulkUploadProps) {
       clearInterval(ticker);
 
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
+        const body = await safeJson(res);
         toast.error(body.error || "Generation failed");
         setStage("preview");
         return;
       }
 
-      const data = await res.json();
+      const data = await safeJson(res);
       const results: { content: string; qr_base64: string; success: boolean }[] = data.results ?? [];
       const succeeded = results.filter((r) => r.success);
 

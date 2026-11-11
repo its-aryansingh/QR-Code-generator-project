@@ -13,6 +13,7 @@ import {
   PieChart, Pie, Cell
 } from "recharts";
 import { API_URL } from "@/lib/config";
+import { safeJson } from "@/lib/http";
 
 const inputCls = "w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2.5 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-violet-500 transition-colors";
 const labelCls = "block text-xs text-zinc-500 mb-1.5 font-medium";
@@ -79,7 +80,7 @@ export default function EditQRPage() {
         const res = await fetch(`${api}/workspaces/${workspaceId}/qr/${qrId}`, {
           headers: { Authorization: `Bearer ${accessToken}` },
         });
-        const data = await res.json();
+        const data = await safeJson(res);
         if (data.success) {
           const r = data.data;
           setRecord(r);
@@ -111,7 +112,7 @@ export default function EditQRPage() {
         const res = await fetch(`${api}/qr/${qrId}/analytics`, {
           headers: { Authorization: `Bearer ${accessToken}` },
         });
-        const data = await res.json();
+        const data = await safeJson(res);
         if (data.success) setAnalytics(data.data);
       } catch { /* analytics are optional */ }
     };
@@ -137,7 +138,7 @@ export default function EditQRPage() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
         body: JSON.stringify(body),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (data.success) {
         setSaved(true);
         setTimeout(() => setSaved(false), 3000);

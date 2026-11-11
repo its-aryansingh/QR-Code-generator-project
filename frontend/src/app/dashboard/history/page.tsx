@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useAuthStore } from "@/lib/auth";
 import { API_URL } from "@/lib/config";
+import { safeJson } from "@/lib/http";
 
 interface QRRecord {
   id: string;
@@ -44,7 +45,7 @@ export default function HistoryPage() {
       const res = await fetch(`${api}/qr/history?${params}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (data.success) {
         setRecords(data.data?.records ?? data.data ?? []);
         setTotal(data.total ?? data.data?.total ?? 0);

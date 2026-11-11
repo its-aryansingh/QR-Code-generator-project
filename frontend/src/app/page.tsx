@@ -12,6 +12,7 @@ import {
   CheckCircle2, BarChart3, Users, QrCode, ArrowRight,
   MonitorSmartphone, MapPin, Clock, ShieldCheck, ChevronDown, Sparkles, ChevronUp, Star, Quote
 } from "lucide-react";
+import { safeJson } from "@/lib/http";
 
 // builds the QR content string from the active form state
 
@@ -262,7 +263,7 @@ export default function HomePage() {
         },
         body: JSON.stringify(body),
       });
-      const data = await res.json().catch(() => ({}));
+      const data = await safeJson(res);
       if (!res.ok || !data.success) return;
       const serverImg = accessToken
         ? toQrDataUrl(data.data?.qr_base64)
@@ -298,7 +299,7 @@ export default function HomePage() {
       const res = await fetch(`${api}/qr/history?limit=50`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (data.success) setMyQRs(data.data?.records ?? data.data ?? []);
     } catch { /* silent */ } finally {
       setLoadingMyQRs(false);
@@ -325,7 +326,7 @@ export default function HomePage() {
           is_dynamic: isDynamicQR,
         }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (data.success) { setSaveSuccess(true); setTimeout(() => setSaveSuccess(false), 3000); }
     } catch { /* silent */ } finally {
       setSaving(false);

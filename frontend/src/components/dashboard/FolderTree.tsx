@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuthStore } from "@/lib/auth";
 import { toast } from "sonner";
 import { API_URL } from "@/lib/config";
+import { safeJson } from "@/lib/http";
 
 interface Folder {
   id: string;
@@ -146,7 +147,7 @@ export function FolderTree({ workspaceId, selectedFolderId, onSelectFolder }: Fo
     if (!workspaceId || !accessToken) return;
     const res = await fetch(`${api}/workspaces/${workspaceId}/folders`, {
       headers: { Authorization: `Bearer ${accessToken}` },
-    }).then((r) => r.json());
+    }).then(safeJson);
     if (res.success) setTree(buildTree(res.data ?? []));
   }, [workspaceId, accessToken]);
 
@@ -158,7 +159,7 @@ export function FolderTree({ workspaceId, selectedFolderId, onSelectFolder }: Fo
       method: "POST",
       headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
       body: JSON.stringify({ name: newName.trim(), color: newColor }),
-    }).then((r) => r.json());
+    }).then(safeJson);
 
     if (res.success) {
       fetchFolders();

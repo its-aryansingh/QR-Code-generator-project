@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuthStore } from "@/lib/auth";
 import Link from "next/link";
 import { API_URL } from "@/lib/config";
+import { safeJson } from "@/lib/http";
 
 interface DashboardStats {
     totalQR: number;
@@ -23,8 +24,8 @@ export default function DashboardOverview() {
 
         // Fetch stats
         Promise.all([
-            fetch(`${api}/analytics/summary`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
-            fetch(`${api}/qr/history?limit=5`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+            fetch(`${api}/analytics/summary`, { headers: { Authorization: `Bearer ${token}` } }).then(safeJson),
+            fetch(`${api}/qr/history?limit=5`, { headers: { Authorization: `Bearer ${token}` } }).then(safeJson),
         ]).then(([summaryRes, historyRes]) => {
             if (summaryRes.success) {
                 setStats({

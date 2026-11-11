@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useAuthStore } from "@/lib/auth";
 import { API_URL } from "@/lib/config";
+import { safeJson } from "@/lib/http";
 
 interface Workspace {
   id: string;
@@ -34,7 +35,7 @@ export function WorkspaceSwitcher({ onWorkspaceChange, compact = false }: Worksp
   useEffect(() => {
     if (!accessToken) return;
     fetch(`${api}/workspaces`, { headers: { Authorization: `Bearer ${accessToken}` } })
-      .then((r) => r.json())
+      .then(safeJson)
       .then((data) => {
         if (data.success && data.data?.length) {
           setWorkspaces(data.data);
@@ -72,7 +73,7 @@ export function WorkspaceSwitcher({ onWorkspaceChange, compact = false }: Worksp
         method: "POST",
         headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
         body: JSON.stringify({ name: newName.trim() }),
-      }).then((r) => r.json());
+      }).then(safeJson);
 
       if (res.success) {
         const ws = res.data as Workspace;

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { CheckCircle, AlertCircle } from "lucide-react";
 import { API_URL } from "@/lib/config";
+import { safeJson } from "@/lib/http";
 
 interface FormField {
   name: string;
@@ -49,7 +50,7 @@ export default function PublicLeadPage() {
   useEffect(() => {
     if (!slug) return;
     fetch(`${api}/pages/${slug}`)
-      .then((r) => r.json())
+      .then(safeJson)
       .then((d) => {
         if (d.success) {
           setPage(d.data);
@@ -96,7 +97,7 @@ export default function PublicLeadPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (res.ok && data.success) {
         setSubmitted(true);
         if (page.redirect_url) {

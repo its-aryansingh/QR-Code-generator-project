@@ -6,6 +6,7 @@ import { useAuthStore } from "@/lib/auth";
 import Link from "next/link";
 import { Users, Shield, Clock, Check, AlertCircle, LogIn } from "lucide-react";
 import { API_URL } from "@/lib/config";
+import { safeJson } from "@/lib/http";
 
 interface InviteInfo {
   workspace_name: string;
@@ -34,7 +35,7 @@ export default function InviteAcceptPage() {
     const fetchInvite = async () => {
       try {
         const res = await fetch(`${api}/public/invite/${token}`);
-        const data = await res.json();
+        const data = await safeJson(res);
         if (data.success) {
           const invitation = data.data;
           setInvite({
@@ -84,7 +85,7 @@ export default function InviteAcceptPage() {
         method: "POST",
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (data.success) {
         setAccepted(true);
         // Redirect to workspace after 2s

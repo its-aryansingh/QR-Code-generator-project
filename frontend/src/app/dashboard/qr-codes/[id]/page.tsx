@@ -8,6 +8,7 @@ import { ArrowLeft, Save, Trash2, QrCode, AlertCircle, ExternalLink } from "luci
 import { API_URL } from "@/lib/config";
 import { QrProof, styleFromCustomization } from "@/components/create/qr-proof";
 import { QrShareActions } from "@/components/qr/qr-share-actions";
+import { safeJson } from "@/lib/http";
 
 interface QRRecord {
   id: string;
@@ -61,7 +62,7 @@ export default function QREditPage() {
   useEffect(() => {
     if (!id || !accessToken) return;
     fetch(`${api}/workspaces/${workspaceId}/qr/${id}`, { headers: { Authorization: `Bearer ${accessToken}` } })
-      .then((r) => r.json())
+      .then(safeJson)
       .then((d) => {
         if (d.success) {
           const r: QRRecord = d.data;
@@ -102,7 +103,7 @@ export default function QREditPage() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
         body: JSON.stringify(body),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (data.success) {
         setSaved(true);
         setTimeout(() => setSaved(false), 3000);

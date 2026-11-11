@@ -5,6 +5,7 @@ import { API_URL } from "@/lib/api";
 import { CreateQRPanel } from "@/components/dashboard/CreateQRPanel";
 import { qrTypes, QRIcons } from "@/utils/qrConstants";
 import Link from "next/link";
+import { safeJson } from "@/lib/http";
 
 function buildContent(
   type: string,
@@ -188,7 +189,7 @@ export function QRTypeClient({ type }: { type: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: qrContent, qr_type: type, size: 200 }),
       });
-      const data = await res.json().catch(() => ({}));
+      const data = await safeJson(res);
       if (res.ok && data.success && data.qr_base64) {
         const serverImg = toQrDataUrl(data.qr_base64);
         if (serverImg) setQrImage(serverImg);

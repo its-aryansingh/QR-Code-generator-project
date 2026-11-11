@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/auth";
 import { API_URL } from "@/lib/config";
+import { safeJson } from "@/lib/http";
 
 const plans = [
     {
@@ -160,7 +161,7 @@ export default function PricingPage() {
                     billing_period: billingPeriod,
                 }),
             });
-            const data = await res.json();
+            const data = await safeJson(res);
             if (data.success && data.checkout_url) {
                 window.location.href = data.checkout_url;
             } else {

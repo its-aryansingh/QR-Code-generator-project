@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useAuthStore } from "@/lib/auth";
 import { BulkUpload } from "@/components/dashboard/BulkUpload";
 import { API_URL } from "@/lib/config";
+import { safeJson } from "@/lib/http";
 
 export default function BulkPage() {
   const { accessToken } = useAuthStore();
@@ -16,7 +17,7 @@ export default function BulkPage() {
     if (stored) { setWorkspaceId(stored); return; }
     if (!accessToken) return;
     fetch(`${api}/workspaces`, { headers: { Authorization: `Bearer ${accessToken}` } })
-      .then((r) => r.json())
+      .then(safeJson)
       .then((data) => {
         if (data.success && data.data?.length) {
           setWorkspaceId(data.data[0].id);

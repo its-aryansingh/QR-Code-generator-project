@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuthStore } from "@/lib/auth";
 import { API_URL } from "@/lib/config";
+import { safeJson } from "@/lib/http";
 
 export default function SettingsPage() {
     const [workspace, setWorkspace] = useState<any>(null);
@@ -19,7 +20,7 @@ export default function SettingsPage() {
     useEffect(() => {
         const token = useAuthStore.getState().accessToken;
         fetch(`${api}/workspaces`, { headers: { Authorization: `Bearer ${token}` } })
-            .then(r => r.json())
+            .then(safeJson)
             .then(data => {
                 if (data.success && data.data?.length > 0) {
                     setWorkspace(data.data[0]);
@@ -68,7 +69,7 @@ export default function SettingsPage() {
             headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
             body: JSON.stringify({ name: newWsName }),
         });
-        const data = await res.json();
+        const data = await safeJson(res);
         if (data.success) {
             setShowCreateWs(false);
             setNewWsName("");
