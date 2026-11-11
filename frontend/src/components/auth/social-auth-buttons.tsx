@@ -90,9 +90,9 @@ export function SocialAuthButtons({ mode = "login", next = "/dashboard" }: Socia
           type="button"
           onClick={() => go("google")}
           disabled={pending !== null}
-          className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl bg-white hover:bg-gray-50 text-gray-700 font-medium text-sm transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl bg-white hover:bg-[#f8f9fa] text-[#3c4043] font-medium text-sm transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {pending === "google" ? <LoadingSpinner className="text-gray-600" /> : <GoogleIcon />}
+          {pending === "google" ? <LoadingSpinner className="text-[#5f6368]" /> : <GoogleIcon />}
           {actionText} with Google
         </button>
       )}

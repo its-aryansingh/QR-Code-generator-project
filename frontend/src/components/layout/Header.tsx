@@ -54,7 +54,7 @@ export const Header: React.FC<HeaderProps> = ({ user, onOpenSettings }) => {
                         {/* Logo */}
                         <Link href="/" className="flex items-center gap-2.5 group" onClick={closeMobileNav}>
                             <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center transition-transform duration-200 group-hover:scale-105">
-                                <svg className="w-5 h-5 text-zinc-950" fill="currentColor" viewBox="0 0 24 24">
+                                <svg className="w-5 h-5 text-black" fill="currentColor" viewBox="0 0 24 24">
                                     <rect x="2" y="2" width="6" height="6" rx="0.5" />
                                     <rect x="4" y="4" width="2" height="2" fill="white" />
                                     <rect x="16" y="2" width="6" height="6" rx="0.5" />

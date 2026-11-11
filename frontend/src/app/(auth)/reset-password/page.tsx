@@ -66,7 +66,7 @@ function ResetPasswordForm() {
             <>
                 <div className="lg:hidden flex items-center gap-3 mb-8">
                     <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center">
-                        <svg className="w-6 h-6 text-zinc-950" fill="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-6 h-6 text-black" fill="currentColor" viewBox="0 0 24 24">
                             <rect x="2" y="2" width="6" height="6" rx="0.5" />
                             <rect x="4" y="4" width="2" height="2" fill="white" />
                             <rect x="16" y="2" width="6" height="6" rx="0.5" />
@@ -105,7 +105,7 @@ function ResetPasswordForm() {
             <>
                 <div className="lg:hidden flex items-center gap-3 mb-8">
                     <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center">
-                        <svg className="w-6 h-6 text-zinc-950" fill="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-6 h-6 text-black" fill="currentColor" viewBox="0 0 24 24">
                             <rect x="2" y="2" width="6" height="6" rx="0.5" />
                             <rect x="4" y="4" width="2" height="2" fill="white" />
                             <rect x="16" y="2" width="6" height="6" rx="0.5" />
@@ -141,7 +141,7 @@ function ResetPasswordForm() {
         <>
             <div className="lg:hidden flex items-center gap-3 mb-8">
                 <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center">
-                    <svg className="w-6 h-6 text-zinc-950" fill="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-6 h-6 text-black" fill="currentColor" viewBox="0 0 24 24">
                         <rect x="2" y="2" width="6" height="6" rx="0.5" />
                         <rect x="4" y="4" width="2" height="2" fill="white" />
                         <rect x="16" y="2" width="6" height="6" rx="0.5" />
