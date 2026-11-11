@@ -77,7 +77,7 @@ export function LogoUpload({ onLogoChange, className }: LogoUploadProps) {
                 <div className="flex items-center gap-3 p-3 bg-gray-800 rounded-lg border border-gray-700">
                     <img src={preview} alt="Logo preview" className="w-10 h-10 object-contain rounded" />
                     <div className="flex-1 min-w-0">
-                        <p className="text-sm text-white truncate">Logo added</p>
+                        <p className="text-sm text-zinc-50 truncate">Logo added</p>
                         <p className="text-xs text-gray-400">Click to change</p>
                     </div>
                     <button
@@ -100,7 +100,7 @@ export function LogoUpload({ onLogoChange, className }: LogoUploadProps) {
                         "flex items-center gap-3 p-3 rounded-lg border border-dashed cursor-pointer transition-all",
                         isDragging
                             ? "border-purple-500 bg-purple-500/10"
-                            : "border-white/10 hover:border-purple-500/50 bg-slate-800/50 hover:bg-slate-800"
+                            : "border-zinc-50/10 hover:border-purple-500/50 bg-slate-800/50 hover:bg-slate-800"
                     )}
                 >
                     <div className="w-10 h-10 rounded-lg bg-gray-700 flex items-center justify-center">
@@ -109,7 +109,7 @@ export function LogoUpload({ onLogoChange, className }: LogoUploadProps) {
                         </svg>
                     </div>
                     <div className="flex-1">
-                        <p className="text-sm text-white">Add logo to center</p>
+                        <p className="text-sm text-zinc-50">Add logo to center</p>
                         <p className="text-xs text-gray-400">PNG, JPG up to 2MB</p>
                     </div>
                 </label>

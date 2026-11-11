@@ -104,7 +104,7 @@ export function QrShareActions({ data, style, name, link }: Props) {
               type="button"
               disabled={busy !== null}
               onClick={() => run(f.id, () => exportQr(f.id, { data, style, size, name, link }))}
-              className={`${f.id === "png" ? "border-white bg-white text-zinc-900 hover:bg-zinc-200" : ""} ${btn} h-auto flex-col items-start gap-0 px-3 py-2 text-left`}
+              className={`${f.id === "png" ? "border-zinc-50 bg-zinc-50 text-zinc-900 hover:bg-zinc-200" : ""} ${btn} h-auto flex-col items-start gap-0 px-3 py-2 text-left`}
             >
               <span className="inline-flex items-center gap-1.5 text-[14px] font-semibold">
                 {busy === f.id ? <Loader2 size={14} className="animate-spin" /> : done === f.id ? <Check size={14} /> : <Download size={14} />}

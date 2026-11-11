@@ -39,7 +39,7 @@ export function AuthBrandPanel() {
 
         {/* Decorative QR code illustration */}
         <div className="absolute bottom-12 right-12 opacity-[0.06]">
-          <svg width="280" height="280" viewBox="0 0 280 280" fill="currentColor" className="text-white">
+          <svg width="280" height="280" viewBox="0 0 280 280" fill="currentColor" className="text-zinc-50">
             {/* Top-left finder pattern */}
             <rect x="10" y="10" width="70" height="70" rx="4" />
             <rect x="20" y="20" width="50" height="50" rx="2" fill="#09090b" />
@@ -94,11 +94,11 @@ export function AuthBrandPanel() {
               <rect x="20" y="16" width="2" height="6" />
             </svg>
           </div>
-          <span className="text-xl font-bold text-white tracking-tight">QRit</span>
+          <span className="text-xl font-bold text-zinc-50 tracking-tight">QRit</span>
         </div>
 
         {/* Headline */}
-        <h1 className="text-4xl xl:text-5xl font-bold text-white leading-tight mb-4">
+        <h1 className="text-4xl xl:text-5xl font-bold text-zinc-50 leading-tight mb-4">
           Create stunning
           <br />
           QR codes that
@@ -119,7 +119,7 @@ export function AuthBrandPanel() {
                 <feature.icon className="w-4.5 h-4.5 text-violet-400" />
               </div>
               <div>
-                <p className="text-white font-medium text-sm">{feature.title}</p>
+                <p className="text-zinc-50 font-medium text-sm">{feature.title}</p>
                 <p className="text-zinc-500 text-sm">{feature.description}</p>
               </div>
             </div>

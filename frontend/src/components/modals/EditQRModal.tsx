@@ -33,17 +33,17 @@ export const EditQRModal: React.FC<EditQRModalProps> = ({
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-            <div className="bg-[#1e1e2d] border border-white/10 rounded-2xl w-full max-w-md p-6 relative">
+            <div className="bg-zinc-800 border border-zinc-50/10 rounded-2xl w-full max-w-md p-6 relative">
                 <button
                     onClick={onClose}
-                    className="absolute top-4 right-4 text-slate-400 hover:text-white"
+                    className="absolute top-4 right-4 text-slate-400 hover:text-zinc-50"
                 >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </button>
 
-                <h3 className="text-xl font-bold text-white mb-6">Edit QR Code</h3>
+                <h3 className="text-xl font-bold text-zinc-50 mb-6">Edit QR Code</h3>
 
                 <div className="space-y-4">
                     <div>
@@ -52,7 +52,7 @@ export const EditQRModal: React.FC<EditQRModalProps> = ({
                             type="text"
                             value={formData.title}
                             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                            className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                            className="w-full bg-black/20 border border-zinc-50/10 rounded-xl px-4 py-3 text-zinc-50 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-violet-500/50"
                             placeholder="e.g., Marketing Campaign Q1"
                         />
                     </div>
@@ -64,7 +64,7 @@ export const EditQRModal: React.FC<EditQRModalProps> = ({
                                 type="url"
                                 value={formData.redirectURL}
                                 onChange={(e) => setFormData({ ...formData, redirectURL: e.target.value })}
-                                className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                                className="w-full bg-black/20 border border-zinc-50/10 rounded-xl px-4 py-3 text-zinc-50 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-violet-500/50"
                                 placeholder="https://example.com/new-dest"
                             />
                             <p className="text-xs text-slate-500 mt-2">
@@ -82,7 +82,7 @@ export const EditQRModal: React.FC<EditQRModalProps> = ({
                     <div className="flex gap-3 mt-6">
                         <button
                             onClick={onClose}
-                            className="flex-1 px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-medium transition-colors"
+                            className="flex-1 px-4 py-3 rounded-xl bg-zinc-50/5 hover:bg-zinc-50/10 text-slate-300 font-medium transition-colors"
                         >
                             Cancel
                         </button>

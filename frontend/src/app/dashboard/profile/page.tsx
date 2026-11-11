@@ -10,7 +10,7 @@ import { API_URL } from "@/lib/config";
 import { MIN_PASSWORD_LENGTH } from "@/components/auth/password-strength";
 import { safeJson } from "@/lib/http";
 
-const inputCls = "w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500 transition-colors";
+const inputCls = "w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2.5 text-sm text-zinc-50 placeholder:text-zinc-600 focus:outline-none focus:border-violet-500 transition-colors";
 const labelCls = "text-sm text-zinc-400 block mb-1.5 font-medium";
 
 interface UserProfile {
@@ -167,7 +167,7 @@ export default function ProfilePage() {
   return (
     <div className="max-w-2xl space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-white">Profile</h1>
+        <h1 className="text-2xl font-bold text-zinc-50">Profile</h1>
         <p className="text-zinc-500 mt-1">Manage your account settings and subscription</p>
       </div>
 
@@ -188,7 +188,7 @@ export default function ProfilePage() {
             {name ? name[0].toUpperCase() : profile?.email?.[0]?.toUpperCase() || "?"}
           </div>
           <div>
-            <p className="text-white font-semibold">{name || profile?.email}</p>
+            <p className="text-zinc-50 font-semibold">{name || profile?.email}</p>
             <p className="text-sm text-zinc-500">{profile?.email}</p>
             <p className="text-xs text-zinc-600 mt-1">Joined {profile?.created_at ? new Date(profile.created_at).toLocaleDateString() : ""}</p>
           </div>
@@ -223,7 +223,7 @@ export default function ProfilePage() {
 
         <div className="flex items-center gap-3">
           <button onClick={handleSave} disabled={saving}
-            className="px-5 py-2 bg-white text-zinc-950 text-sm font-medium rounded-lg hover:bg-zinc-200 transition-colors disabled:opacity-50 flex items-center gap-2">
+            className="px-5 py-2 bg-zinc-50 text-zinc-950 text-sm font-medium rounded-lg hover:bg-zinc-200 transition-colors disabled:opacity-50 flex items-center gap-2">
             {saving ? <div className="w-4 h-4 border-2 border-zinc-950 border-t-transparent rounded-full animate-spin" /> : <Save size={14} />}
             Save Profile
           </button>
@@ -331,7 +331,7 @@ export default function ProfilePage() {
                 className={inputCls + " font-mono text-xs"}
               />
               <button onClick={() => setShowApiKey(!showApiKey)}
-                className="shrink-0 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-400 hover:text-white transition-colors text-sm">
+                className="shrink-0 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-400 hover:text-zinc-50 transition-colors text-sm">
                 {showApiKey ? <EyeOff size={14} /> : <Eye size={14} />}
               </button>
             </div>

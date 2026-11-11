@@ -29,7 +29,7 @@ export function PageHeader({
     <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div className="min-w-0">
         {breadcrumb && <div className="mb-1.5 text-xs text-zinc-500">{breadcrumb}</div>}
-        <h1 className="truncate text-2xl font-semibold tracking-tight text-white">{title}</h1>
+        <h1 className="truncate text-2xl font-semibold tracking-tight text-zinc-50">{title}</h1>
         {description && <p className="mt-1 max-w-2xl text-sm text-zinc-400">{description}</p>}
       </div>
       {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
@@ -110,7 +110,7 @@ export function StatCard({
         <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">{label}</p>
         {icon && <span className="text-zinc-600">{icon}</span>}
       </div>
-      <p className="mt-2 text-2xl font-semibold tabular-nums text-white">{value}</p>
+      <p className="mt-2 text-2xl font-semibold tabular-nums text-zinc-50">{value}</p>
       <div className="mt-1 flex items-center gap-2">
         {typeof delta === "number" && <DeltaPill value={delta} />}
         {hint && <span className="truncate text-xs text-zinc-500">{hint}</span>}
@@ -214,7 +214,7 @@ export function StatusDot({ active, label }: { active: boolean; label?: string }
 type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "outline";
 
 const BUTTON_STYLES: Record<ButtonVariant, string> = {
-  primary: "bg-white text-zinc-950 hover:bg-zinc-200",
+  primary: "bg-zinc-50 text-zinc-950 hover:bg-zinc-200",
   secondary: "bg-zinc-800 text-zinc-100 hover:bg-zinc-700",
   ghost: "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100",
   danger: "bg-red-600 text-white hover:bg-red-500",
@@ -300,7 +300,7 @@ export function Field({
 }
 
 const CONTROL =
-  "w-full rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 " +
+  "w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 " +
   "placeholder:text-zinc-600 outline-none transition-colors focus:border-violet-500/60 " +
   "focus:ring-1 focus:ring-violet-500/30 disabled:opacity-50";
 
@@ -583,7 +583,7 @@ export function Modal({
       >
         <header className="flex items-start justify-between gap-4 border-b border-zinc-800 px-5 py-4">
           <div className="min-w-0">
-            <h2 className="text-base font-semibold text-white">{title}</h2>
+            <h2 className="text-base font-semibold text-zinc-50">{title}</h2>
             {description && <p className="mt-0.5 text-sm text-zinc-500">{description}</p>}
           </div>
           <button
@@ -743,7 +743,7 @@ export function DataTable<T extends { id: string }>({
               {columns.map((column, index) => (
                 <td key={column.key} className={cn("px-3 py-2.5 text-zinc-300", column.className)}>
                   {index === 0 && rowHref ? (
-                    <Link href={rowHref(row)} className="block hover:text-white">
+                    <Link href={rowHref(row)} className="block hover:text-zinc-50">
                       {column.cell(row)}
                     </Link>
                   ) : (
@@ -903,7 +903,7 @@ export function Tabs({
             "-mb-px shrink-0 border-b-2 px-3.5 py-2.5 text-sm font-medium transition-colors",
             tab.disabled && "cursor-not-allowed opacity-40",
             active === tab.id
-              ? "border-violet-500 text-white"
+              ? "border-violet-500 text-zinc-50"
               : "border-transparent text-zinc-500 hover:text-zinc-200",
           )}
         >

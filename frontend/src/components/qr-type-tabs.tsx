@@ -99,7 +99,7 @@ interface QRTypeTabsProps {
 
 export function QRTypeTabs({ selectedType, onSelectType }: QRTypeTabsProps) {
     return (
-        <div className="flex overflow-x-auto scrollbar-hide gap-1 pb-2 border-b border-white/10">
+        <div className="flex overflow-x-auto scrollbar-hide gap-1 pb-2 border-b border-zinc-50/10">
             {qrTabTypes.map((type) => (
                 <button
                     key={type.id}
@@ -107,8 +107,8 @@ export function QRTypeTabs({ selectedType, onSelectType }: QRTypeTabsProps) {
                     className={cn(
                         "flex flex-col items-center justify-center px-4 py-3 min-w-[70px] rounded-t-lg transition-all duration-300",
                         selectedType === type.id
-                            ? "bg-gradient-to-r from-cyan-500/20 to-purple-500/20 text-white border-b-2 border-purple-500"
-                            : "text-slate-400 hover:text-white hover:bg-slate-800/50"
+                            ? "bg-gradient-to-r from-cyan-500/20 to-purple-500/20 text-zinc-50 border-b-2 border-purple-500"
+                            : "text-slate-400 hover:text-zinc-50 hover:bg-slate-800/50"
                     )}
                 >
                     <div className={cn(

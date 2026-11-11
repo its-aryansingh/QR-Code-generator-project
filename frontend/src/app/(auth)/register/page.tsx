@@ -86,12 +86,12 @@ export default function RegisterPage() {
                         <rect x="20" y="16" width="2" height="6" />
                     </svg>
                 </div>
-                <span className="text-xl font-bold text-white tracking-tight">QRit</span>
+                <span className="text-xl font-bold text-zinc-50 tracking-tight">QRit</span>
             </div>
 
             {/* Header */}
             <div className="mb-8">
-                <h1 className="text-3xl font-bold text-white mb-2">Create your account</h1>
+                <h1 className="text-3xl font-bold text-zinc-50 mb-2">Create your account</h1>
                 <p className="text-zinc-400">
                     Start generating QR codes in seconds — free forever
                 </p>

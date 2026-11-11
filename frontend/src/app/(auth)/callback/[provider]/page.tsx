@@ -119,7 +119,7 @@ function OAuthCallback() {
         <AlertCircle className="h-6 w-6 text-red-400" />
       </div>
       <div>
-        <h1 className="mb-2 text-2xl font-bold text-white">{status.title}</h1>
+        <h1 className="mb-2 text-2xl font-bold text-zinc-50">{status.title}</h1>
         <p className="text-zinc-400">{status.message}</p>
       </div>
       <Link

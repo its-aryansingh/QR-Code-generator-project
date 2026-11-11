@@ -224,7 +224,7 @@ export function FolderTree({ workspaceId, selectedFolderId, onSelectFolder }: Fo
               <button
                 key={c}
                 onClick={() => setNewColor(c)}
-                className={`w-5 h-5 rounded-sm transition-transform ${newColor === c ? "scale-125 ring-2 ring-white/30" : ""}`}
+                className={`w-5 h-5 rounded-sm transition-transform ${newColor === c ? "scale-125 ring-2 ring-zinc-50/30" : ""}`}
                 style={{ backgroundColor: c }}
               />
             ))}

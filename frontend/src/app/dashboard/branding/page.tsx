@@ -206,7 +206,7 @@ function BrandPreview({ form }: { form: BrandForm }) {
             // eslint-disable-next-line @next/next/no-img-element
             <img src={form.brand_logo} alt="Logo preview" className="size-8 rounded object-cover" />
           ) : (
-            <div className="flex size-8 items-center justify-center rounded text-sm font-bold text-white" style={{ backgroundColor: color }}>
+            <div className="flex size-8 items-center justify-center rounded text-sm font-bold text-zinc-50" style={{ backgroundColor: color }}>
               Q
             </div>
           )}

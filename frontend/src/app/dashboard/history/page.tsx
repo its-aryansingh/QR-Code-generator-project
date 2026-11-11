@@ -70,7 +70,7 @@ export default function HistoryPage() {
         </div>
         <Link
           href="/dashboard/create"
-          className="flex items-center gap-1.5 px-4 py-2 bg-white text-zinc-950 text-sm font-semibold rounded-xl hover:bg-zinc-100 transition-colors"
+          className="flex items-center gap-1.5 px-4 py-2 bg-zinc-50 text-zinc-950 text-sm font-semibold rounded-xl hover:bg-zinc-100 transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />

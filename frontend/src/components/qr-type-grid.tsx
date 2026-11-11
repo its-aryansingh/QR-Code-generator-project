@@ -201,7 +201,7 @@ export function QRTypeGrid({ selectedType, onSelectType, showPremiumTypes = true
                         "hover:scale-[1.02] active:scale-[0.98]",
                         selectedType === type.id
                             ? "bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border-purple-500/50 shadow-lg shadow-purple-500/10"
-                            : "bg-slate-800/50 border-white/10 hover:border-white/20 hover:bg-slate-800",
+                            : "bg-slate-800/50 border-zinc-50/10 hover:border-zinc-50/20 hover:bg-slate-800",
                         type.isPremium && "ring-1 ring-amber-500/30"
                     )}
                 >
@@ -220,13 +220,13 @@ export function QRTypeGrid({ selectedType, onSelectType, showPremiumTypes = true
                             icon={type.icon}
                             className={cn(
                                 "w-5 h-5 stroke-2",
-                                selectedType === type.id ? "text-white" : "text-slate-300"
+                                selectedType === type.id ? "text-zinc-50" : "text-slate-300"
                             )}
                         />
                     </div>
                     <span className={cn(
                         "text-sm font-medium text-center",
-                        selectedType === type.id ? "text-white" : "text-slate-300"
+                        selectedType === type.id ? "text-zinc-50" : "text-slate-300"
                     )}>
                         {type.name}
                     </span>

@@ -174,7 +174,7 @@ export default function EditQRPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <button onClick={() => router.back()} className="p-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors">
+          <button onClick={() => router.back()} className="p-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-zinc-50 transition-colors">
             <ArrowLeft size={16} />
           </button>
           <div>
@@ -220,7 +220,7 @@ export default function EditQRPage() {
                   <input value={redirectUrl} onChange={(e) => setRedirectUrl(e.target.value)} placeholder="https://example.com" className={inputCls} />
                   {redirectUrl && (
                     <a href={redirectUrl} target="_blank" rel="noopener noreferrer"
-                      className="shrink-0 p-2.5 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-400 hover:text-white transition-colors">
+                      className="shrink-0 p-2.5 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-400 hover:text-zinc-50 transition-colors">
                       <ExternalLink size={16} />
                     </a>
                   )}
@@ -381,7 +381,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 function StatCard({ label, value }: { label: string; value: number | string }) {
   return (
     <div className="bg-zinc-800/50 rounded-lg p-3 text-center">
-      <p className="text-lg font-bold text-white">{typeof value === "number" ? value.toLocaleString() : value}</p>
+      <p className="text-lg font-bold text-zinc-50">{typeof value === "number" ? value.toLocaleString() : value}</p>
       <p className="text-[10px] text-zinc-500 mt-0.5">{label}</p>
     </div>
   );

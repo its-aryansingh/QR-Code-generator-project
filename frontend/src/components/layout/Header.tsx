@@ -95,14 +95,14 @@ export const Header: React.FC<HeaderProps> = ({ user, onOpenSettings }) => {
                                         {user ? (
                                             <>
                                                 <div className="text-right hidden sm:block">
-                                                    <p className="text-sm font-medium text-zinc-200 group-hover:text-white transition-colors">{user.name || "User"}</p>
+                                                    <p className="text-sm font-medium text-zinc-200 group-hover:text-zinc-50 transition-colors">{user.name || "User"}</p>
                                                     <p className="text-xs text-zinc-500 capitalize">{user.plan} Plan</p>
                                                 </div>
                                                 <div className="w-9 h-9 rounded-full bg-violet-600 flex items-center justify-center overflow-hidden ring-2 ring-zinc-800">
                                                     {user.avatar_url ? (
                                                         <img src={user.avatar_url} alt={user.name} className="w-full h-full object-cover" />
                                                     ) : (
-                                                        <span className="text-white font-semibold text-sm">
+                                                        <span className="text-zinc-50 font-semibold text-sm">
                                                             {(user.name || user.email || "U")[0].toUpperCase()}
                                                         </span>
                                                     )}
@@ -110,7 +110,7 @@ export const Header: React.FC<HeaderProps> = ({ user, onOpenSettings }) => {
                                             </>
                                         ) : (
                                             <div className="w-9 h-9 rounded-full bg-violet-600 flex items-center justify-center ring-2 ring-zinc-800">
-                                                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <svg className="w-5 h-5 text-zinc-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                                 </svg>
                                             </div>
@@ -154,7 +154,7 @@ export const Header: React.FC<HeaderProps> = ({ user, onOpenSettings }) => {
                                     </Link>
                                     <Link
                                         href="/register"
-                                        className="px-5 py-2 bg-white text-zinc-900 rounded-lg text-sm font-semibold hover:bg-zinc-200 transition-all duration-200"
+                                        className="px-5 py-2 bg-zinc-50 text-zinc-900 rounded-lg text-sm font-semibold hover:bg-zinc-200 transition-all duration-200"
                                     >
                                         Get Started
                                     </Link>
@@ -169,7 +169,7 @@ export const Header: React.FC<HeaderProps> = ({ user, onOpenSettings }) => {
                                     {user.avatar_url ? (
                                         <img src={user.avatar_url} alt={user.name} className="w-full h-full object-cover" />
                                     ) : (
-                                        <span className="text-white font-semibold text-xs">
+                                        <span className="text-zinc-50 font-semibold text-xs">
                                             {(user.name || user.email || "U")[0].toUpperCase()}
                                         </span>
                                     )}
@@ -297,7 +297,7 @@ export const Header: React.FC<HeaderProps> = ({ user, onOpenSettings }) => {
                                     <Link
                                         href="/register"
                                         onClick={closeMobileNav}
-                                        className="flex items-center justify-center w-full py-3 rounded-xl bg-white text-zinc-900 hover:bg-zinc-200 transition-colors font-semibold text-sm"
+                                        className="flex items-center justify-center w-full py-3 rounded-xl bg-zinc-50 text-zinc-900 hover:bg-zinc-200 transition-colors font-semibold text-sm"
                                     >
                                         Get Started Free
                                     </Link>

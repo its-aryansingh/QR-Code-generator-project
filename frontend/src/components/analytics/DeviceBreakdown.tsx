@@ -13,8 +13,8 @@ export function DeviceBreakdown({ deviceData, osData, browserData }: DeviceBreak
         if (!data || data.length === 0) return null;
 
         return (
-            <div className="bg-[#12121a] border border-white/10 rounded-xl p-4 flex flex-col h-[300px]">
-                <h3 className="text-md font-semibold text-white mb-2">{title}</h3>
+            <div className="bg-zinc-900 border border-zinc-50/10 rounded-xl p-4 flex flex-col h-[300px]">
+                <h3 className="text-md font-semibold text-zinc-50 mb-2">{title}</h3>
                 <div className="flex-1 w-full relative">
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
@@ -33,8 +33,8 @@ export function DeviceBreakdown({ deviceData, osData, browserData }: DeviceBreak
                                 ))}
                             </Pie>
                             <Tooltip
-                                contentStyle={{ backgroundColor: "#1e1e2e", border: "1px solid #334155", borderRadius: "8px" }}
-                                itemStyle={{ color: "#e2e8f0" }}
+                                contentStyle={{ backgroundColor: "var(--color-zinc-900)", border: "1px solid var(--color-zinc-800)", borderRadius: "8px" }}
+                                itemStyle={{ color: "var(--color-zinc-200)" }}
                             />
                             <Legend
                                 layout="horizontal"
@@ -46,7 +46,7 @@ export function DeviceBreakdown({ deviceData, osData, browserData }: DeviceBreak
                     </ResponsiveContainer>
                     {/* Total Count in Center */}
                     <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-[60%] text-center pointer-events-none">
-                        <div className="text-2xl font-bold text-white">
+                        <div className="text-2xl font-bold text-zinc-50">
                             {data.reduce((acc, item) => acc + item.count, 0)}
                         </div>
                         <div className="text-xs text-slate-400 uppercase tracking-wider">Total</div>

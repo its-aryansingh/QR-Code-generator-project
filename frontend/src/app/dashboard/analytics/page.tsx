@@ -177,7 +177,7 @@ function Analytics() {
                       <li key={row.id}>
                         <Link
                           href={`/dashboard/qr-codes/${row.id}`}
-                          className="flex items-center gap-3 py-2.5 transition-colors hover:text-white"
+                          className="flex items-center gap-3 py-2.5 transition-colors hover:text-zinc-50"
                         >
                           <span className="w-5 shrink-0 text-xs tabular-nums text-zinc-600">
                             {index + 1}
@@ -235,7 +235,7 @@ function Analytics() {
                             {formatRelative(scan.scanned_at)}
                           </td>
                           <td className="max-w-[220px] px-2 py-2.5">
-                            <Link href={`/dashboard/qr-codes/${scan.qr_id}`} className="block truncate text-zinc-200 hover:text-white">
+                            <Link href={`/dashboard/qr-codes/${scan.qr_id}`} className="block truncate text-zinc-200 hover:text-zinc-50">
                               {scan.qr_title || "Untitled"}
                             </Link>
                           </td>

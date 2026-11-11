@@ -49,7 +49,7 @@ export default function ForgotPasswordPage() {
                             <rect x="20" y="16" width="2" height="6" />
                         </svg>
                     </div>
-                    <span className="text-xl font-bold text-white tracking-tight">QRit</span>
+                    <span className="text-xl font-bold text-zinc-50 tracking-tight">QRit</span>
                 </div>
 
                 {/* Success State */}
@@ -57,11 +57,11 @@ export default function ForgotPasswordPage() {
                     <div className="w-16 h-16 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center mx-auto mb-6">
                         <Mail className="w-8 h-8 text-violet-400" />
                     </div>
-                    <h1 className="text-3xl font-bold text-white mb-3">Check your email</h1>
+                    <h1 className="text-3xl font-bold text-zinc-50 mb-3">Check your email</h1>
                     <p className="text-zinc-400 mb-2">
                         We sent a password reset link to
                     </p>
-                    <p className="text-white font-medium mb-6">{email}</p>
+                    <p className="text-zinc-50 font-medium mb-6">{email}</p>
                     <p className="text-zinc-500 text-sm mb-8">
                         Didn't receive the email? Check your spam folder, or{" "}
                         <button
@@ -102,12 +102,12 @@ export default function ForgotPasswordPage() {
                         <rect x="20" y="16" width="2" height="6" />
                     </svg>
                 </div>
-                <span className="text-xl font-bold text-white tracking-tight">QRit</span>
+                <span className="text-xl font-bold text-zinc-50 tracking-tight">QRit</span>
             </div>
 
             {/* Header */}
             <div className="mb-8">
-                <h1 className="text-3xl font-bold text-white mb-2">Forgot password?</h1>
+                <h1 className="text-3xl font-bold text-zinc-50 mb-2">Forgot password?</h1>
                 <p className="text-zinc-400">
                     No worries, we'll send you a reset link
                 </p>

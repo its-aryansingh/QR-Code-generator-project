@@ -57,10 +57,10 @@ export const TrackQRPanel: React.FC<TrackQRPanelProps> = ({
                 </div>
             ) : !startedTrackingCode ? (
                 <div className="text-center py-10">
-                    <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <div className="w-16 h-16 bg-zinc-50/5 rounded-full flex items-center justify-center mx-auto mb-4">
                         <span className="text-3xl">📊</span>
                     </div>
-                    <h3 className="text-lg font-medium text-white mb-2">Start Tracking</h3>
+                    <h3 className="text-lg font-medium text-zinc-50 mb-2">Start Tracking</h3>
                     <p className="text-sm text-slate-400 max-w-xs mx-auto mb-6">
                         Generate a Dynamic QR code to see real-time scan analytics here.
                     </p>
@@ -84,7 +84,7 @@ export const TrackQRPanel: React.FC<TrackQRPanelProps> = ({
                             <span className="text-sm text-emerald-300">Live Tracking Active</span>
                         </div>
                         <span className="text-xs text-slate-400">
-                            Code: <span className="font-mono text-white">{startedTrackingCode}</span>
+                            Code: <span className="font-mono text-zinc-50">{startedTrackingCode}</span>
                         </span>
                     </div>
 

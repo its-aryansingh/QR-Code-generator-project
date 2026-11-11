@@ -59,7 +59,7 @@ const PhoneInput = ({
                     value={selectedCountry}
                     onChange={(e) => handleCountryChange(e.target.value)}
                     aria-label="Country calling code"
-                    className="w-24 px-2 py-3.5 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20 transition-all duration-300 appearance-none cursor-pointer"
+                    className="w-24 px-2 py-3.5 bg-zinc-50/5 border border-zinc-50/10 rounded-xl text-zinc-50 focus:outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20 transition-all duration-300 appearance-none cursor-pointer"
                 >
                     {countryCodes.map((c) => (
                         <option key={c.country} value={c.country} className="bg-zinc-900 text-zinc-100">
@@ -72,7 +72,7 @@ const PhoneInput = ({
                     value={number}
                     onChange={(e) => handleNumberChange(e.target.value)}
                     placeholder={placeholder}
-                    className="flex-1 px-4 py-3.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20 transition-all duration-300"
+                    className="flex-1 px-4 py-3.5 bg-zinc-50/5 border border-zinc-50/10 rounded-xl text-zinc-50 placeholder:text-slate-500 focus:outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20 transition-all duration-300"
                 />
             </div>
         </div>
@@ -144,7 +144,7 @@ export const CreateQRPanel: React.FC<CreateQRPanelProps> = ({
     multiLinkData,
     setMultiLinkData,
 }) => {
-    const inputClass = "w-full px-4 py-3.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20 transition-all duration-300";
+    const inputClass = "w-full px-4 py-3.5 bg-zinc-50/5 border border-zinc-50/10 rounded-xl text-zinc-50 placeholder:text-slate-500 focus:outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20 transition-all duration-300";
 
     return (
         <div className="space-y-5">
@@ -466,13 +466,13 @@ export const CreateQRPanel: React.FC<CreateQRPanelProps> = ({
                             onChange={(e) => setSocialData({ ...socialData, platform: e.target.value })}
                             className={inputClass}
                         >
-                            <option value="instagram" className="bg-[#12121a] text-white">Instagram</option>
-                            <option value="twitter" className="bg-[#12121a] text-white">Twitter/X</option>
-                            <option value="facebook" className="bg-[#12121a] text-white">Facebook</option>
-                            <option value="linkedin" className="bg-[#12121a] text-white">LinkedIn</option>
-                            <option value="tiktok" className="bg-[#12121a] text-white">TikTok</option>
-                            <option value="youtube" className="bg-[#12121a] text-white">YouTube</option>
-                            <option value="custom" className="bg-[#12121a] text-white">Custom URL</option>
+                            <option value="instagram" className="bg-zinc-900 text-zinc-50">Instagram</option>
+                            <option value="twitter" className="bg-zinc-900 text-zinc-50">Twitter/X</option>
+                            <option value="facebook" className="bg-zinc-900 text-zinc-50">Facebook</option>
+                            <option value="linkedin" className="bg-zinc-900 text-zinc-50">LinkedIn</option>
+                            <option value="tiktok" className="bg-zinc-900 text-zinc-50">TikTok</option>
+                            <option value="youtube" className="bg-zinc-900 text-zinc-50">YouTube</option>
+                            <option value="custom" className="bg-zinc-900 text-zinc-50">Custom URL</option>
                         </select>
                     </div>
                     <div>

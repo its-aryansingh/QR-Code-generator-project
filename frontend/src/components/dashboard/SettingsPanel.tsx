@@ -62,8 +62,8 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
     return (
         <div className="max-w-2xl mx-auto space-y-8">
-            <div className="bg-[#1e1e2d] border border-white/10 rounded-2xl p-8">
-                <h2 className="text-2xl font-bold text-white mb-6">Account Settings</h2>
+            <div className="bg-zinc-800 border border-zinc-50/10 rounded-2xl p-8">
+                <h2 className="text-2xl font-bold text-zinc-50 mb-6">Account Settings</h2>
 
                 <form onSubmit={handleUpdateProfile} className="space-y-6">
                     {/* Profile Info */}
@@ -76,7 +76,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                                     type="email"
                                     value={user?.email || ""}
                                     disabled
-                                    className="w-full bg-black/20 border border-white/5 rounded-xl px-4 py-3 text-slate-500 cursor-not-allowed"
+                                    className="w-full bg-black/20 border border-zinc-50/5 rounded-xl px-4 py-3 text-slate-500 cursor-not-allowed"
                                 />
                             </div>
                             <div>
@@ -86,14 +86,14 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                                     name="name"
                                     value={formData.name}
                                     onChange={handleChange}
-                                    className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-violet-500/50"
+                                    className="w-full bg-black/20 border border-zinc-50/10 rounded-xl px-4 py-3 text-zinc-50 focus:outline-none focus:border-violet-500/50"
                                     placeholder="Your Name"
                                 />
                             </div>
                         </div>
                     </div>
 
-                    <div className="h-px bg-white/5 my-6"></div>
+                    <div className="h-px bg-zinc-50/5 my-6"></div>
 
                     {/* Password Change */}
                     <div className="space-y-4">
@@ -108,7 +108,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                                     name="newPassword"
                                     value={formData.newPassword}
                                     onChange={handleChange}
-                                    className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-violet-500/50"
+                                    className="w-full bg-black/20 border border-zinc-50/10 rounded-xl px-4 py-3 text-zinc-50 focus:outline-none focus:border-violet-500/50"
                                     placeholder="New Password (min 8 chars)"
                                 />
                             </div>
@@ -119,7 +119,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                                     name="confirmPassword"
                                     value={formData.confirmPassword}
                                     onChange={handleChange}
-                                    className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-violet-500/50"
+                                    className="w-full bg-black/20 border border-zinc-50/10 rounded-xl px-4 py-3 text-zinc-50 focus:outline-none focus:border-violet-500/50"
                                     placeholder="Confirm New Password"
                                 />
                             </div>
@@ -139,11 +139,11 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             </div>
 
             {/* Subscription Info (Read Only) */}
-            <div className="bg-[#1e1e2d] border border-white/10 rounded-2xl p-8">
-                <h3 className="text-lg font-medium text-white mb-4">Subscription Plan</h3>
-                <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/5">
+            <div className="bg-zinc-800 border border-zinc-50/10 rounded-2xl p-8">
+                <h3 className="text-lg font-medium text-zinc-50 mb-4">Subscription Plan</h3>
+                <div className="flex items-center justify-between p-4 bg-zinc-50/5 rounded-xl border border-zinc-50/5">
                     <div>
-                        <p className="text-white font-medium capitalize">{user?.plan || "Free"} Plan</p>
+                        <p className="text-zinc-50 font-medium capitalize">{user?.plan || "Free"} Plan</p>
                         <p className="text-sm text-slate-500">
                             {user?.plan === "free" ? "Upgrade to unlock more features." : "Thanks for being a pro user!"}
                         </p>

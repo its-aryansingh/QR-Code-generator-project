@@ -220,14 +220,14 @@ export function QRTypeClient({ type }: { type: string }) {
   return (
     <div className="grid lg:grid-cols-[1fr_340px] gap-6 max-w-5xl mx-auto my-8 relative z-10 text-left">
       <div className="space-y-5">
-        <div className="p-5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
+        <div className="p-5 rounded-2xl bg-zinc-50/5 border border-zinc-50/10 backdrop-blur-sm">
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-zinc-50/10 flex items-center justify-center">
                 {QRIcons[type]}
               </div>
               <div>
-                <h2 className="text-sm font-semibold text-white">
+                <h2 className="text-sm font-semibold text-zinc-50">
                   {typeInfo?.name}
                 </h2>
                 <p className="text-xs text-slate-500">
@@ -272,11 +272,11 @@ export function QRTypeClient({ type }: { type: string }) {
       </div>
 
       <div className="lg:sticky lg:top-24 lg:self-start space-y-4">
-        <div className="p-6 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm flex flex-col items-center gap-5">
+        <div className="p-6 rounded-2xl bg-zinc-50/5 border border-zinc-50/10 backdrop-blur-sm flex flex-col items-center gap-5">
           <h2 className="self-start text-xs font-semibold text-slate-500 uppercase tracking-widest">
             Live Preview
           </h2>
-          <div className="w-56 h-56 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden">
+          <div className="w-56 h-56 rounded-2xl bg-zinc-50/5 border border-zinc-50/10 flex items-center justify-center overflow-hidden">
             {generating ? (
               <div className="flex flex-col items-center gap-3">
                 <div className="w-10 h-10 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
@@ -297,7 +297,7 @@ export function QRTypeClient({ type }: { type: string }) {
             <div className="w-full space-y-2">
               <button
                 onClick={handleDownload}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-sm font-medium text-slate-200 hover:text-white transition-all"
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-zinc-50/10 hover:bg-zinc-50/15 border border-zinc-50/10 text-sm font-medium text-slate-200 hover:text-zinc-50 transition-all"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />

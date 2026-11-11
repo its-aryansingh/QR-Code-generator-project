@@ -79,13 +79,13 @@ function ResetPasswordForm() {
                             <rect x="20" y="16" width="2" height="6" />
                         </svg>
                     </div>
-                    <span className="text-xl font-bold text-white tracking-tight">QRit</span>
+                    <span className="text-xl font-bold text-zinc-50 tracking-tight">QRit</span>
                 </div>
                 <div className="text-center">
                     <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto mb-6">
                         <CheckCircle2 className="w-8 h-8 text-emerald-400" />
                     </div>
-                    <h1 className="text-3xl font-bold text-white mb-3">Password reset!</h1>
+                    <h1 className="text-3xl font-bold text-zinc-50 mb-3">Password reset!</h1>
                     <p className="text-zinc-400 mb-6">
                         Your password has been changed successfully. Redirecting you to sign in...
                     </p>
@@ -118,13 +118,13 @@ function ResetPasswordForm() {
                             <rect x="20" y="16" width="2" height="6" />
                         </svg>
                     </div>
-                    <span className="text-xl font-bold text-white tracking-tight">QRit</span>
+                    <span className="text-xl font-bold text-zinc-50 tracking-tight">QRit</span>
                 </div>
                 <div className="text-center">
                     <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto mb-6">
                         <XCircle className="w-8 h-8 text-red-400" />
                     </div>
-                    <h1 className="text-3xl font-bold text-white mb-3">Invalid reset link</h1>
+                    <h1 className="text-3xl font-bold text-zinc-50 mb-3">Invalid reset link</h1>
                     <p className="text-zinc-400 mb-6">{error}</p>
                     <Link
                         href="/forgot-password"
@@ -154,11 +154,11 @@ function ResetPasswordForm() {
                         <rect x="20" y="16" width="2" height="6" />
                     </svg>
                 </div>
-                <span className="text-xl font-bold text-white tracking-tight">QRit</span>
+                <span className="text-xl font-bold text-zinc-50 tracking-tight">QRit</span>
             </div>
 
             <div className="mb-8">
-                <h1 className="text-3xl font-bold text-white mb-2">Set new password</h1>
+                <h1 className="text-3xl font-bold text-zinc-50 mb-2">Set new password</h1>
                 <p className="text-zinc-400">
                     Your new password must be different from previously used passwords
                 </p>

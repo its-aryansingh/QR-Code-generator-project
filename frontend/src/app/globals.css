@@ -160,3 +160,243 @@
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: none; }
 }
+
+/* ------------------------------------------------------------------ themes
+ * Components are written with dark-first palette classes (bg-zinc-950,
+ * text-zinc-400, text-violet-400...). Rather than doubling every class with a
+ * light variant, the light theme remaps the palette: neutrals invert, accent
+ * tints (50-400, 800-950) swap ends so light-on-dark text becomes dark-on-light,
+ * and the solid accents (500-700) used for buttons stay as they are. White is
+ * left alone so QR previews and text on coloured buttons stay white.
+ */
+.dark {
+  --color-zinc-500: #8e8e98;
+  --color-zinc-600: #7b7b85;
+  --color-zinc-700: #5c5c66;
+  --color-neutral-500: #8e8e98;
+  --color-neutral-600: #7b7b85;
+  --color-neutral-700: #5c5c66;
+  --color-gray-500: #8e8e98;
+  --color-gray-600: #7b7b85;
+  --color-gray-700: #5c5c66;
+  --color-stone-500: #8e8e98;
+  --color-stone-600: #7b7b85;
+  --color-stone-700: #5c5c66;
+  --color-slate-500: #8a94a6;
+  --color-slate-600: #76808f;
+  --color-slate-700: #576173;
+}
+
+html:not(.dark) {
+  color-scheme: light;
+  --color-slate-950: #fafafa;
+  --color-slate-900: #ffffff;
+  --color-slate-800: #e4e4e7;
+  --color-slate-700: #8f8f97;
+  --color-slate-600: #71717a;
+  --color-slate-500: #5f5f68;
+  --color-slate-400: #52525b;
+  --color-slate-300: #3f3f46;
+  --color-slate-200: #27272a;
+  --color-slate-100: #18181b;
+  --color-slate-50: #09090b;
+  --color-gray-950: #fafafa;
+  --color-gray-900: #ffffff;
+  --color-gray-800: #e4e4e7;
+  --color-gray-700: #8f8f97;
+  --color-gray-600: #71717a;
+  --color-gray-500: #5f5f68;
+  --color-gray-400: #52525b;
+  --color-gray-300: #3f3f46;
+  --color-gray-200: #27272a;
+  --color-gray-100: #18181b;
+  --color-gray-50: #09090b;
+  --color-zinc-950: #fafafa;
+  --color-zinc-900: #ffffff;
+  --color-zinc-800: #e4e4e7;
+  --color-zinc-700: #8f8f97;
+  --color-zinc-600: #71717a;
+  --color-zinc-500: #5f5f68;
+  --color-zinc-400: #52525b;
+  --color-zinc-300: #3f3f46;
+  --color-zinc-200: #27272a;
+  --color-zinc-100: #18181b;
+  --color-zinc-50: #09090b;
+  --color-neutral-950: #fafafa;
+  --color-neutral-900: #ffffff;
+  --color-neutral-800: #e4e4e7;
+  --color-neutral-700: #8f8f97;
+  --color-neutral-600: #71717a;
+  --color-neutral-500: #5f5f68;
+  --color-neutral-400: #52525b;
+  --color-neutral-300: #3f3f46;
+  --color-neutral-200: #27272a;
+  --color-neutral-100: #18181b;
+  --color-neutral-50: #09090b;
+  --color-stone-950: #fafafa;
+  --color-stone-900: #ffffff;
+  --color-stone-800: #e4e4e7;
+  --color-stone-700: #8f8f97;
+  --color-stone-600: #71717a;
+  --color-stone-500: #5f5f68;
+  --color-stone-400: #52525b;
+  --color-stone-300: #3f3f46;
+  --color-stone-200: #27272a;
+  --color-stone-100: #18181b;
+  --color-stone-50: #09090b;
+  --color-red-950: oklch(97.1% 0.013 17.38);
+  --color-red-900: oklch(93.6% 0.032 17.717);
+  --color-red-800: oklch(88.5% 0.062 18.334);
+  --color-red-400: oklch(50.5% 0.213 27.518);
+  --color-red-300: oklch(44.4% 0.177 26.899);
+  --color-red-200: oklch(39.6% 0.141 25.723);
+  --color-red-100: oklch(39.6% 0.141 25.723);
+  --color-red-50: oklch(25.8% 0.092 26.042);
+  --color-orange-950: oklch(98% 0.016 73.684);
+  --color-orange-900: oklch(95.4% 0.038 75.164);
+  --color-orange-800: oklch(90.1% 0.076 70.697);
+  --color-orange-400: oklch(55.3% 0.195 38.402);
+  --color-orange-300: oklch(47% 0.157 37.304);
+  --color-orange-200: oklch(40.8% 0.123 38.172);
+  --color-orange-100: oklch(40.8% 0.123 38.172);
+  --color-orange-50: oklch(26.6% 0.079 36.259);
+  --color-amber-950: oklch(98.7% 0.022 95.277);
+  --color-amber-900: oklch(96.2% 0.059 95.617);
+  --color-amber-800: oklch(92.4% 0.12 95.746);
+  --color-amber-400: oklch(55.5% 0.163 48.998);
+  --color-amber-300: oklch(47.3% 0.137 46.201);
+  --color-amber-200: oklch(41.4% 0.112 45.904);
+  --color-amber-100: oklch(41.4% 0.112 45.904);
+  --color-amber-50: oklch(27.9% 0.077 45.635);
+  --color-yellow-950: oklch(98.7% 0.026 102.212);
+  --color-yellow-900: oklch(97.3% 0.071 103.193);
+  --color-yellow-800: oklch(94.5% 0.129 101.54);
+  --color-yellow-400: oklch(55.4% 0.135 66.442);
+  --color-yellow-300: oklch(47.6% 0.114 61.907);
+  --color-yellow-200: oklch(42.1% 0.095 57.708);
+  --color-yellow-100: oklch(42.1% 0.095 57.708);
+  --color-yellow-50: oklch(28.6% 0.066 53.813);
+  --color-lime-950: oklch(98.6% 0.031 120.757);
+  --color-lime-900: oklch(96.7% 0.067 122.328);
+  --color-lime-800: oklch(93.8% 0.127 124.321);
+  --color-lime-400: oklch(53.2% 0.157 131.589);
+  --color-lime-300: oklch(45.3% 0.124 130.933);
+  --color-lime-200: oklch(40.5% 0.101 131.063);
+  --color-lime-100: oklch(40.5% 0.101 131.063);
+  --color-lime-50: oklch(27.4% 0.072 132.109);
+  --color-green-950: oklch(98.2% 0.018 155.826);
+  --color-green-900: oklch(96.2% 0.044 156.743);
+  --color-green-800: oklch(92.5% 0.084 155.995);
+  --color-green-400: oklch(52.7% 0.154 150.069);
+  --color-green-300: oklch(44.8% 0.119 151.328);
+  --color-green-200: oklch(39.3% 0.095 152.535);
+  --color-green-100: oklch(39.3% 0.095 152.535);
+  --color-green-50: oklch(26.6% 0.065 152.934);
+  --color-emerald-950: oklch(97.9% 0.021 166.113);
+  --color-emerald-900: oklch(95% 0.052 163.051);
+  --color-emerald-800: oklch(90.5% 0.093 164.15);
+  --color-emerald-400: oklch(50.8% 0.118 165.612);
+  --color-emerald-300: oklch(43.2% 0.095 166.913);
+  --color-emerald-200: oklch(37.8% 0.077 168.94);
+  --color-emerald-100: oklch(37.8% 0.077 168.94);
+  --color-emerald-50: oklch(26.2% 0.051 172.552);
+  --color-teal-950: oklch(98.4% 0.014 180.72);
+  --color-teal-900: oklch(95.3% 0.051 180.801);
+  --color-teal-800: oklch(91% 0.096 180.426);
+  --color-teal-400: oklch(51.1% 0.096 186.391);
+  --color-teal-300: oklch(43.7% 0.078 188.216);
+  --color-teal-200: oklch(38.6% 0.063 188.416);
+  --color-teal-100: oklch(38.6% 0.063 188.416);
+  --color-teal-50: oklch(27.7% 0.046 192.524);
+  --color-cyan-950: oklch(98.4% 0.019 200.873);
+  --color-cyan-900: oklch(95.6% 0.045 203.388);
+  --color-cyan-800: oklch(91.7% 0.08 205.041);
+  --color-cyan-400: oklch(52% 0.105 223.128);
+  --color-cyan-300: oklch(45% 0.085 224.283);
+  --color-cyan-200: oklch(39.8% 0.07 227.392);
+  --color-cyan-100: oklch(39.8% 0.07 227.392);
+  --color-cyan-50: oklch(30.2% 0.056 229.695);
+  --color-sky-950: oklch(97.7% 0.013 236.62);
+  --color-sky-900: oklch(95.1% 0.026 236.824);
+  --color-sky-800: oklch(90.1% 0.058 230.902);
+  --color-sky-400: oklch(50% 0.134 242.749);
+  --color-sky-300: oklch(44.3% 0.11 240.79);
+  --color-sky-200: oklch(39.1% 0.09 240.876);
+  --color-sky-100: oklch(39.1% 0.09 240.876);
+  --color-sky-50: oklch(29.3% 0.066 243.157);
+  --color-blue-950: oklch(97% 0.014 254.604);
+  --color-blue-900: oklch(93.2% 0.032 255.585);
+  --color-blue-800: oklch(88.2% 0.059 254.128);
+  --color-blue-400: oklch(48.8% 0.243 264.376);
+  --color-blue-300: oklch(42.4% 0.199 265.638);
+  --color-blue-200: oklch(37.9% 0.146 265.522);
+  --color-blue-100: oklch(37.9% 0.146 265.522);
+  --color-blue-50: oklch(28.2% 0.091 267.935);
+  --color-indigo-950: oklch(96.2% 0.018 272.314);
+  --color-indigo-900: oklch(93% 0.034 272.788);
+  --color-indigo-800: oklch(87% 0.065 274.039);
+  --color-indigo-400: oklch(45.7% 0.24 277.023);
+  --color-indigo-300: oklch(39.8% 0.195 277.366);
+  --color-indigo-200: oklch(35.9% 0.144 278.697);
+  --color-indigo-100: oklch(35.9% 0.144 278.697);
+  --color-indigo-50: oklch(25.7% 0.09 281.288);
+  --color-violet-950: oklch(96.9% 0.016 293.756);
+  --color-violet-900: oklch(94.3% 0.029 294.588);
+  --color-violet-800: oklch(89.4% 0.057 293.283);
+  --color-violet-400: oklch(49.1% 0.27 292.581);
+  --color-violet-300: oklch(43.2% 0.232 292.759);
+  --color-violet-200: oklch(38% 0.189 293.745);
+  --color-violet-100: oklch(38% 0.189 293.745);
+  --color-violet-50: oklch(28.3% 0.141 291.089);
+  --color-purple-950: oklch(97.7% 0.014 308.299);
+  --color-purple-900: oklch(94.6% 0.033 307.174);
+  --color-purple-800: oklch(90.2% 0.063 306.703);
+  --color-purple-400: oklch(49.6% 0.265 301.924);
+  --color-purple-300: oklch(43.8% 0.218 303.724);
+  --color-purple-200: oklch(38.1% 0.176 304.987);
+  --color-purple-100: oklch(38.1% 0.176 304.987);
+  --color-purple-50: oklch(29.1% 0.149 302.717);
+  --color-fuchsia-950: oklch(97.7% 0.017 320.058);
+  --color-fuchsia-900: oklch(95.2% 0.037 318.852);
+  --color-fuchsia-800: oklch(90.3% 0.076 319.62);
+  --color-fuchsia-400: oklch(51.8% 0.253 323.949);
+  --color-fuchsia-300: oklch(45.2% 0.211 324.591);
+  --color-fuchsia-200: oklch(40.1% 0.17 325.612);
+  --color-fuchsia-100: oklch(40.1% 0.17 325.612);
+  --color-fuchsia-50: oklch(29.3% 0.136 325.661);
+  --color-pink-950: oklch(97.1% 0.014 343.198);
+  --color-pink-900: oklch(94.8% 0.028 342.258);
+  --color-pink-800: oklch(89.9% 0.061 343.231);
+  --color-pink-400: oklch(52.5% 0.223 3.958);
+  --color-pink-300: oklch(45.9% 0.187 3.815);
+  --color-pink-200: oklch(40.8% 0.153 2.432);
+  --color-pink-100: oklch(40.8% 0.153 2.432);
+  --color-pink-50: oklch(28.4% 0.109 3.907);
+  --color-rose-950: oklch(96.9% 0.015 12.422);
+  --color-rose-900: oklch(94.1% 0.03 12.58);
+  --color-rose-800: oklch(89.2% 0.058 10.001);
+  --color-rose-400: oklch(51.4% 0.222 16.935);
+  --color-rose-300: oklch(45.5% 0.188 13.697);
+  --color-rose-200: oklch(41% 0.159 10.272);
+  --color-rose-100: oklch(41% 0.159 10.272);
+  --color-rose-50: oklch(27.1% 0.105 12.094);
+}
+
+.dark {
+  color-scheme: dark;
+}
+
+/* Keyboard users always see where focus is, in both themes. */
+:where(a, button, input, select, textarea, summary, [role="button"], [tabindex]):focus-visible {
+  outline: 2px solid var(--color-violet-500);
+  outline-offset: 2px;
+}
+
+/* iOS zooms into any field with text under 16px; keep phones at 16px. */
+@media (max-width: 639px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}

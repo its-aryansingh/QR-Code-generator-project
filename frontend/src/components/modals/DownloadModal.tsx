@@ -106,8 +106,8 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between p-4 border-b border-zinc-800">
-          <h2 className="text-lg font-bold text-white">Download QR Code</h2>
-          <button onClick={onClose} className="p-1 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors">
+          <h2 className="text-lg font-bold text-zinc-50">Download QR Code</h2>
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-zinc-50 transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -187,7 +187,7 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({
             <button
               onClick={handleDownload}
               disabled={downloading || (!qrImage && format === 'png')}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-white text-zinc-900 hover:bg-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-all"
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-zinc-50 text-zinc-900 hover:bg-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-all"
             >
               {downloading ? (
                 <div className="w-4 h-4 border-2 border-zinc-900 border-t-transparent rounded-full animate-spin" />

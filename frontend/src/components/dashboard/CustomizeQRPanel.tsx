@@ -84,7 +84,7 @@ export const CustomizeQRPanel: React.FC<CustomizeQRPanelProps> = ({
     return (
         <div className="space-y-5">
             {/* Design Tabs */}
-            <div className="flex gap-1 p-1 rounded-lg bg-white/5">
+            <div className="flex gap-1 p-1 rounded-lg bg-zinc-50/5">
                 {[
                     { id: "templates", label: "Templates", icon: "✨" },
                     { id: "shape", label: "Shape", icon: "⬛" },
@@ -97,7 +97,7 @@ export const CustomizeQRPanel: React.FC<CustomizeQRPanelProps> = ({
                         onClick={() => setDesignTab(tab.id)}
                         className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-md text-xs font-medium transition-all ${designTab === tab.id
                             ? "bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white"
-                            : "text-zinc-500 hover:text-white hover:bg-white/5"
+                            : "text-zinc-500 hover:text-white hover:bg-zinc-50/5"
                             }`}
                     >
                         <span>{tab.icon}</span>
@@ -128,9 +128,9 @@ export const CustomizeQRPanel: React.FC<CustomizeQRPanelProps> = ({
                                         if (tpl.gradient) { setUseGradient(true); setGradientStart(tpl.gradient[0]); setGradientEnd(tpl.gradient[1]); }
                                         else setUseGradient(false);
                                     }}
-                                    className="flex flex-col items-center gap-1.5 p-2.5 rounded-xl border border-white/10 hover:border-violet-500/50 hover:bg-white/5 transition-all"
+                                    className="flex flex-col items-center gap-1.5 p-2.5 rounded-xl border border-zinc-50/10 hover:border-violet-500/50 hover:bg-zinc-50/5 transition-all"
                                 >
-                                    <div className="w-8 h-8 rounded-lg border border-white/20" style={{ backgroundColor: tpl.color }} />
+                                    <div className="w-8 h-8 rounded-lg border border-zinc-50/20" style={{ backgroundColor: tpl.color }} />
                                     <span className="text-[10px] text-zinc-500">{tpl.name}</span>
                                 </button>
                             ))}
@@ -154,7 +154,7 @@ export const CustomizeQRPanel: React.FC<CustomizeQRPanelProps> = ({
                                         if (tpl.gradient) { setUseGradient(true); setGradientStart(tpl.gradient[0]); setGradientEnd(tpl.gradient[1]); }
                                         else setUseGradient(false);
                                     }}
-                                    className="flex flex-col items-center gap-1.5 p-2.5 rounded-xl border border-white/10 hover:border-violet-500/50 hover:bg-white/5 transition-all"
+                                    className="flex flex-col items-center gap-1.5 p-2.5 rounded-xl border border-zinc-50/10 hover:border-violet-500/50 hover:bg-zinc-50/5 transition-all"
                                 >
                                     <div className="w-8 h-8 rounded-lg" style={tpl.gradient ? { background: `linear-gradient(135deg, ${tpl.gradient[0]}, ${tpl.gradient[1]})` } : { backgroundColor: tpl.color }} />
                                     <span className="text-[10px] text-zinc-500">{tpl.name}</span>
@@ -180,7 +180,7 @@ export const CustomizeQRPanel: React.FC<CustomizeQRPanelProps> = ({
                                         if (tpl.gradient) { setUseGradient(true); setGradientStart(tpl.gradient[0]); setGradientEnd(tpl.gradient[1]); }
                                         else setUseGradient(false);
                                     }}
-                                    className="flex flex-col items-center gap-1.5 p-2.5 rounded-xl border border-white/10 hover:border-violet-500/50 hover:bg-white/5 transition-all"
+                                    className="flex flex-col items-center gap-1.5 p-2.5 rounded-xl border border-zinc-50/10 hover:border-violet-500/50 hover:bg-zinc-50/5 transition-all"
                                 >
                                     <div className="w-8 h-8 rounded-lg" style={tpl.gradient ? { background: `linear-gradient(135deg, ${tpl.gradient[0]}, ${tpl.gradient[1]})` } : { backgroundColor: tpl.color }} />
                                     <span className="text-[10px] text-zinc-500">{tpl.name}</span>
@@ -206,7 +206,7 @@ export const CustomizeQRPanel: React.FC<CustomizeQRPanelProps> = ({
                                         if (tpl.gradient) { setUseGradient(true); setGradientStart(tpl.gradient[0]); setGradientEnd(tpl.gradient[1]); }
                                         else setUseGradient(false);
                                     }}
-                                    className="flex flex-col items-center gap-1.5 p-2.5 rounded-xl border border-white/10 hover:border-violet-500/50 hover:bg-white/5 transition-all"
+                                    className="flex flex-col items-center gap-1.5 p-2.5 rounded-xl border border-zinc-50/10 hover:border-violet-500/50 hover:bg-zinc-50/5 transition-all"
                                 >
                                     <div className="w-8 h-8 rounded-lg" style={tpl.gradient ? { background: `linear-gradient(135deg, ${tpl.gradient[0]}, ${tpl.gradient[1]})` } : { backgroundColor: tpl.color }} />
                                     <span className="text-[10px] text-zinc-500">{tpl.name}</span>
@@ -232,7 +232,7 @@ export const CustomizeQRPanel: React.FC<CustomizeQRPanelProps> = ({
                                         if (tpl.gradient) { setUseGradient(true); setGradientStart(tpl.gradient[0]); setGradientEnd(tpl.gradient[1]); }
                                         else setUseGradient(false);
                                     }}
-                                    className="flex flex-col items-center gap-1.5 p-2.5 rounded-xl border border-white/10 hover:border-violet-500/50 hover:bg-white/5 transition-all"
+                                    className="flex flex-col items-center gap-1.5 p-2.5 rounded-xl border border-zinc-50/10 hover:border-violet-500/50 hover:bg-zinc-50/5 transition-all"
                                 >
                                     <div className="w-8 h-8 rounded-lg" style={tpl.gradient ? { background: `linear-gradient(135deg, ${tpl.gradient[0]}, ${tpl.gradient[1]})` } : { backgroundColor: tpl.color }} />
                                     <span className="text-[10px] text-zinc-500">{tpl.name}</span>
@@ -258,7 +258,7 @@ export const CustomizeQRPanel: React.FC<CustomizeQRPanelProps> = ({
                                         if (tpl.gradient) { setUseGradient(true); setGradientStart(tpl.gradient[0]); setGradientEnd(tpl.gradient[1]); }
                                         else setUseGradient(false);
                                     }}
-                                    className="flex flex-col items-center gap-1.5 p-2.5 rounded-xl border border-white/10 hover:border-violet-500/50 hover:bg-white/5 transition-all"
+                                    className="flex flex-col items-center gap-1.5 p-2.5 rounded-xl border border-zinc-50/10 hover:border-violet-500/50 hover:bg-zinc-50/5 transition-all"
                                 >
                                     <div className="w-8 h-8 rounded-lg" style={tpl.gradient ? { background: `linear-gradient(135deg, ${tpl.gradient[0]}, ${tpl.gradient[1]})` } : { backgroundColor: tpl.color }} />
                                     <span className="text-[10px] text-zinc-500">{tpl.name}</span>
@@ -294,7 +294,7 @@ export const CustomizeQRPanel: React.FC<CustomizeQRPanelProps> = ({
                                 onClick={() => setSelectedFrame(frame.id)}
                                 className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all ${selectedFrame === frame.id
                                     ? "border-violet-500 bg-violet-500/10"
-                                    : "border-white/10 hover:border-white/20 bg-white/5"
+                                    : "border-zinc-50/10 hover:border-zinc-50/20 bg-zinc-50/5"
                                     }`}
                             >
                                 <span className="text-2xl">{frame.preview}</span>
@@ -331,7 +331,7 @@ export const CustomizeQRPanel: React.FC<CustomizeQRPanelProps> = ({
                                     onClick={() => setSelectedDotStyle(style.id)}
                                     className={`flex flex-col items-center gap-1.5 p-2 rounded-lg border transition-all ${selectedDotStyle === style.id
                                         ? "border-violet-500 bg-violet-500/10 text-violet-300"
-                                        : "border-white/10 hover:border-white/20 text-zinc-500"
+                                        : "border-zinc-50/10 hover:border-zinc-50/20 text-zinc-500"
                                         }`}
                                 >
                                     <span className="text-lg">{style.preview}</span>
@@ -360,7 +360,7 @@ export const CustomizeQRPanel: React.FC<CustomizeQRPanelProps> = ({
                                     onClick={() => setSelectedCornerStyle(style.id)}
                                     className={`flex flex-col items-center gap-1.5 p-2 rounded-lg border transition-all ${selectedCornerStyle === style.id
                                         ? "border-violet-500 bg-violet-500/10 text-violet-300"
-                                        : "border-white/10 hover:border-white/20 text-zinc-500"
+                                        : "border-zinc-50/10 hover:border-zinc-50/20 text-zinc-500"
                                         }`}
                                 >
                                     <span>{style.preview}</span>
@@ -386,7 +386,7 @@ export const CustomizeQRPanel: React.FC<CustomizeQRPanelProps> = ({
                                     onClick={() => setEyeInnerStyle(style.id)}
                                     className={`flex flex-col items-center gap-1 p-2 rounded-lg border transition-all ${eyeInnerStyle === style.id
                                         ? "border-violet-500 bg-violet-500/10 text-violet-300"
-                                        : "border-white/10 hover:border-white/20 text-zinc-500"
+                                        : "border-zinc-50/10 hover:border-zinc-50/20 text-zinc-500"
                                         }`}
                                 >
                                     <span>{style.preview}</span>
@@ -408,7 +408,7 @@ export const CustomizeQRPanel: React.FC<CustomizeQRPanelProps> = ({
                             max="50"
                             value={quietZone}
                             onChange={(e) => setQuietZone(Number(e.target.value))}
-                            className="w-full h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-violet-500"
+                            className="w-full h-1.5 bg-zinc-50/10 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-violet-500"
                         />
                         <div className="flex justify-between text-[10px] text-zinc-600 mt-1">
                             <span>None</span>
@@ -431,8 +431,8 @@ export const CustomizeQRPanel: React.FC<CustomizeQRPanelProps> = ({
                                     key={level.id}
                                     onClick={() => setErrorLevel(level.id)}
                                     className={`p-2 rounded-lg border text-center transition-all ${errorLevel === level.id
-                                        ? "border-violet-500 bg-violet-500/10 text-white"
-                                        : "border-white/10 hover:border-white/20 text-zinc-500"
+                                        ? "border-violet-500 bg-violet-500/10 text-zinc-50"
+                                        : "border-zinc-50/10 hover:border-zinc-50/20 text-zinc-500"
                                         }`}
                                 >
                                     <div className="text-lg font-bold">{level.id}</div>
@@ -451,14 +451,14 @@ export const CustomizeQRPanel: React.FC<CustomizeQRPanelProps> = ({
                         <div className="flex items-center justify-between mb-3">
                             <label className="text-sm text-zinc-400">QR Code Color</label>
                             <div className="flex items-center gap-2">
-                                <span className={`text-xs ${!useGradient ? "text-white" : "text-zinc-600"}`}>Solid</span>
+                                <span className={`text-xs ${!useGradient ? "text-zinc-50" : "text-zinc-600"}`}>Solid</span>
                                 <button
                                     onClick={() => setUseGradient(!useGradient)}
                                     className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${useGradient ? "bg-violet-600" : "bg-slate-600"}`}
                                 >
                                     <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${useGradient ? "translate-x-4.5" : "translate-x-1"}`} />
                                 </button>
-                                <span className={`text-xs ${useGradient ? "text-white" : "text-zinc-600"}`}>Gradient</span>
+                                <span className={`text-xs ${useGradient ? "text-zinc-50" : "text-zinc-600"}`}>Gradient</span>
                             </div>
                         </div>
 
@@ -469,13 +469,13 @@ export const CustomizeQRPanel: React.FC<CustomizeQRPanelProps> = ({
                                         type="color"
                                         value={qrColor}
                                         onChange={(e) => setQrColor(e.target.value)}
-                                        className="w-14 h-14 rounded-xl cursor-pointer border-2 border-white/10"
+                                        className="w-14 h-14 rounded-xl cursor-pointer border-2 border-zinc-50/10"
                                     />
                                     <input
                                         type="text"
                                         value={qrColor}
                                         onChange={(e) => setQrColor(e.target.value)}
-                                        className="flex-1 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm font-mono"
+                                        className="flex-1 px-4 py-3 bg-zinc-50/5 border border-zinc-50/10 rounded-xl text-zinc-50 text-sm font-mono"
                                     />
                                 </div>
                                 <div className="flex gap-2 mt-3 overflow-x-auto pb-2">
@@ -500,13 +500,13 @@ export const CustomizeQRPanel: React.FC<CustomizeQRPanelProps> = ({
                                                 type="color"
                                                 value={gradientStart}
                                                 onChange={(e) => setGradientStart(e.target.value)}
-                                                className="w-10 h-10 rounded-lg cursor-pointer border-2 border-white/10"
+                                                className="w-10 h-10 rounded-lg cursor-pointer border-2 border-zinc-50/10"
                                             />
                                             <input
                                                 type="text"
                                                 value={gradientStart}
                                                 onChange={(e) => setGradientStart(e.target.value)}
-                                                className="w-full px-2 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-xs font-mono"
+                                                className="w-full px-2 py-2 bg-zinc-50/5 border border-zinc-50/10 rounded-lg text-zinc-50 text-xs font-mono"
                                             />
                                         </div>
                                     </div>
@@ -517,13 +517,13 @@ export const CustomizeQRPanel: React.FC<CustomizeQRPanelProps> = ({
                                                 type="color"
                                                 value={gradientEnd}
                                                 onChange={(e) => setGradientEnd(e.target.value)}
-                                                className="w-10 h-10 rounded-lg cursor-pointer border-2 border-white/10"
+                                                className="w-10 h-10 rounded-lg cursor-pointer border-2 border-zinc-50/10"
                                             />
                                             <input
                                                 type="text"
                                                 value={gradientEnd}
                                                 onChange={(e) => setGradientEnd(e.target.value)}
-                                                className="w-full px-2 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-xs font-mono"
+                                                className="w-full px-2 py-2 bg-zinc-50/5 border border-zinc-50/10 rounded-lg text-zinc-50 text-xs font-mono"
                                             />
                                         </div>
                                     </div>
@@ -534,13 +534,13 @@ export const CustomizeQRPanel: React.FC<CustomizeQRPanelProps> = ({
                                     <div className="flex gap-2">
                                         <button
                                             onClick={() => setGradientType("linear")}
-                                            className={`flex-1 py-1.5 rounded-lg text-xs border ${gradientType === "linear" ? "bg-violet-500/20 border-violet-500 text-white" : "bg-white/5 border-white/10 text-zinc-500"}`}
+                                            className={`flex-1 py-1.5 rounded-lg text-xs border ${gradientType === "linear" ? "bg-violet-500/20 border-violet-500 text-zinc-50" : "bg-zinc-50/5 border-zinc-50/10 text-zinc-500"}`}
                                         >
                                             Linear
                                         </button>
                                         <button
                                             onClick={() => setGradientType("radial")}
-                                            className={`flex-1 py-1.5 rounded-lg text-xs border ${gradientType === "radial" ? "bg-violet-500/20 border-violet-500 text-white" : "bg-white/5 border-white/10 text-zinc-500"}`}
+                                            className={`flex-1 py-1.5 rounded-lg text-xs border ${gradientType === "radial" ? "bg-violet-500/20 border-violet-500 text-zinc-50" : "bg-zinc-50/5 border-zinc-50/10 text-zinc-500"}`}
                                         >
                                             Radial
                                         </button>
@@ -559,7 +559,7 @@ export const CustomizeQRPanel: React.FC<CustomizeQRPanelProps> = ({
                                             max="360"
                                             value={gradientRotation}
                                             onChange={(e) => setGradientRotation(Number(e.target.value))}
-                                            className="w-full h-1 bg-white/10 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white"
+                                            className="w-full h-1 bg-zinc-50/10 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white"
                                         />
                                     </div>
                                 )}
@@ -584,7 +584,7 @@ export const CustomizeQRPanel: React.FC<CustomizeQRPanelProps> = ({
                                         <button
                                             key={preset.name}
                                             onClick={() => { setGradientStart(preset.start); setGradientEnd(preset.end); }}
-                                            className="flex flex-col items-center gap-1 p-1.5 rounded-lg border border-white/10 hover:border-violet-500/50 transition-all"
+                                            className="flex flex-col items-center gap-1 p-1.5 rounded-lg border border-zinc-50/10 hover:border-violet-500/50 transition-all"
                                         >
                                             <div className="w-full h-5 rounded" style={{ background: `linear-gradient(135deg, ${preset.start}, ${preset.end})` }} />
                                             <span className="text-[8px] text-zinc-500">{preset.name}</span>
@@ -602,13 +602,13 @@ export const CustomizeQRPanel: React.FC<CustomizeQRPanelProps> = ({
                                 type="color"
                                 value={bgColor}
                                 onChange={(e) => setBgColor(e.target.value)}
-                                className="w-14 h-14 rounded-xl cursor-pointer border-2 border-white/10"
+                                className="w-14 h-14 rounded-xl cursor-pointer border-2 border-zinc-50/10"
                             />
                             <input
                                 type="text"
                                 value={bgColor}
                                 onChange={(e) => setBgColor(e.target.value)}
-                                className="flex-1 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm font-mono"
+                                className="flex-1 px-4 py-3 bg-zinc-50/5 border border-zinc-50/10 rounded-xl text-zinc-50 text-sm font-mono"
                             />
                         </div>
                         {/* Background Presets */}
@@ -617,7 +617,7 @@ export const CustomizeQRPanel: React.FC<CustomizeQRPanelProps> = ({
                                 <button
                                     key={color}
                                     onClick={() => setBgColor(color)}
-                                    className={`w-8 h-8 rounded-lg border-2 transition-transform hover:scale-110 ${bgColor === color ? "border-violet-400 scale-110" : "border-white/20"
+                                    className={`w-8 h-8 rounded-lg border-2 transition-transform hover:scale-110 ${bgColor === color ? "border-violet-400 scale-110" : "border-zinc-50/20"
                                         }`}
                                     style={{ backgroundColor: color }}
                                 />
@@ -647,22 +647,22 @@ export const CustomizeQRPanel: React.FC<CustomizeQRPanelProps> = ({
                     />
                     <label
                         htmlFor="logo-upload"
-                        className="flex flex-col items-center justify-center p-6 rounded-xl border-2 border-dashed border-white/10 hover:border-violet-500/50 cursor-pointer transition-all hover:bg-violet-500/5"
+                        className="flex flex-col items-center justify-center p-6 rounded-xl border-2 border-dashed border-zinc-50/10 hover:border-violet-500/50 cursor-pointer transition-all hover:bg-violet-500/5"
                     >
                         {logoFile ? (
                             <>
                                 <img src={logoFile} alt="Logo" className="w-16 h-16 rounded-xl object-contain bg-white p-2 mb-2" />
-                                <p className="text-sm text-white">Logo uploaded</p>
+                                <p className="text-sm text-zinc-50">Logo uploaded</p>
                                 <p className="text-xs text-zinc-600">Click to change</p>
                             </>
                         ) : (
                             <>
-                                <div className="w-14 h-14 rounded-xl bg-white/5 flex items-center justify-center mb-2">
+                                <div className="w-14 h-14 rounded-xl bg-zinc-50/5 flex items-center justify-center mb-2">
                                     <svg className="w-7 h-7 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                     </svg>
                                 </div>
-                                <p className="text-sm text-white">Drop logo here or click to upload</p>
+                                <p className="text-sm text-zinc-50">Drop logo here or click to upload</p>
                                 <p className="text-xs text-zinc-600 mt-1">PNG, JPG, SVG up to 2MB</p>
                             </>
                         )}
@@ -683,7 +683,7 @@ export const CustomizeQRPanel: React.FC<CustomizeQRPanelProps> = ({
                                     step="0.01"
                                     value={logoSize}
                                     onChange={(e) => setLogoSize(Number(e.target.value))}
-                                    className="w-full h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-violet-500"
+                                    className="w-full h-1.5 bg-zinc-50/10 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-violet-500"
                                 />
                             </div>
                             <div>
@@ -697,7 +697,7 @@ export const CustomizeQRPanel: React.FC<CustomizeQRPanelProps> = ({
                                     max="20"
                                     value={logoMargin}
                                     onChange={(e) => setLogoMargin(Number(e.target.value))}
-                                    className="w-full h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-violet-500"
+                                    className="w-full h-1.5 bg-zinc-50/10 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-violet-500"
                                 />
                             </div>
                             <button
@@ -742,7 +742,7 @@ export const CustomizeQRPanel: React.FC<CustomizeQRPanelProps> = ({
                                             setLogoFile(canvas.toDataURL());
                                         }
                                     }}
-                                    className="flex flex-col items-center gap-1 p-2 rounded-lg border border-white/10 hover:border-violet-500/50 hover:bg-white/5 transition-all"
+                                    className="flex flex-col items-center gap-1 p-2 rounded-lg border border-zinc-50/10 hover:border-violet-500/50 hover:bg-zinc-50/5 transition-all"
                                 >
                                     <span className="text-xl">{brand.emoji}</span>
                                     <span className="text-[7px] text-zinc-500">{brand.name}</span>
@@ -763,9 +763,9 @@ export const CustomizeQRPanel: React.FC<CustomizeQRPanelProps> = ({
                     <p className="text-sm text-slate-400">Customize your QR code background</p>
 
                     {/* Transparent Background */}
-                    <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-zinc-50/5 border border-zinc-50/10">
                         <div>
-                            <p className="text-sm text-white">Transparent Background</p>
+                            <p className="text-sm text-zinc-50">Transparent Background</p>
                             <p className="text-xs text-slate-500">Remove background color</p>
                         </div>
                         <button
@@ -785,13 +785,13 @@ export const CustomizeQRPanel: React.FC<CustomizeQRPanelProps> = ({
                                     type="color"
                                     value={bgColor}
                                     onChange={(e) => setBgColor(e.target.value)}
-                                    className="w-12 h-12 rounded-xl cursor-pointer border-2 border-white/10"
+                                    className="w-12 h-12 rounded-xl cursor-pointer border-2 border-zinc-50/10"
                                 />
                                 <input
                                     type="text"
                                     value={bgColor}
                                     onChange={(e) => setBgColor(e.target.value)}
-                                    className="flex-1 px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm font-mono"
+                                    className="flex-1 px-3 py-2.5 bg-zinc-50/5 border border-zinc-50/10 rounded-xl text-zinc-50 text-sm font-mono"
                                 />
                             </div>
                             <div className="flex gap-2 mt-2 overflow-x-auto pb-1">
@@ -799,7 +799,7 @@ export const CustomizeQRPanel: React.FC<CustomizeQRPanelProps> = ({
                                     <button
                                         key={color}
                                         onClick={() => setBgColor(color)}
-                                        className={`w-7 h-7 rounded-lg border-2 transition-transform hover:scale-110 flex-shrink-0 ${bgColor === color ? "border-violet-400 scale-110" : "border-white/20"}`}
+                                        className={`w-7 h-7 rounded-lg border-2 transition-transform hover:scale-110 flex-shrink-0 ${bgColor === color ? "border-violet-400 scale-110" : "border-zinc-50/20"}`}
                                         style={{ backgroundColor: color }}
                                     />
                                 ))}
@@ -826,22 +826,22 @@ export const CustomizeQRPanel: React.FC<CustomizeQRPanelProps> = ({
                         />
                         <label
                             htmlFor="bg-image-upload"
-                            className="flex flex-col items-center justify-center p-6 rounded-xl border-2 border-dashed border-white/10 hover:border-violet-500/50 cursor-pointer transition-all hover:bg-violet-500/5"
+                            className="flex flex-col items-center justify-center p-6 rounded-xl border-2 border-dashed border-zinc-50/10 hover:border-violet-500/50 cursor-pointer transition-all hover:bg-violet-500/5"
                         >
                             {bgImage ? (
                                 <>
                                     <div className="w-full h-32 rounded-lg bg-cover bg-center mb-2" style={{ backgroundImage: `url(${bgImage})` }} />
-                                    <p className="text-sm text-white">Image uploaded</p>
+                                    <p className="text-sm text-zinc-50">Image uploaded</p>
                                     <p className="text-xs text-slate-500">Click to change</p>
                                 </>
                             ) : (
                                 <>
-                                    <div className="w-14 h-14 rounded-xl bg-white/5 flex items-center justify-center mb-2">
+                                    <div className="w-14 h-14 rounded-xl bg-zinc-50/5 flex items-center justify-center mb-2">
                                         <svg className="w-7 h-7 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                         </svg>
                                     </div>
-                                    <p className="text-sm text-white">Upload Background</p>
+                                    <p className="text-sm text-zinc-50">Upload Background</p>
                                 </>
                             )}
                         </label>
