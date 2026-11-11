@@ -76,13 +76,17 @@ export function useMutation<Args extends unknown[], Result>(
   const [error, setError] = React.useState<string | null>(null);
   const optionsRef = React.useRef(options);
   optionsRef.current = options;
+  // `run` is stable, so it must call the latest `action`: the first render's
+  // closure would submit the form state from when the page mounted.
+  const actionRef = React.useRef(action);
+  actionRef.current = action;
 
   const run = React.useCallback(
     async (...args: Args): Promise<Result | null> => {
       setBusy(true);
       setError(null);
       try {
-        const result = await action(...args);
+        const result = await actionRef.current(...args);
         optionsRef.current.onSuccess?.(result);
         return result;
       } catch (cause) {
