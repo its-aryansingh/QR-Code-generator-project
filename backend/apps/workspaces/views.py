@@ -13,6 +13,7 @@ from rest_framework.response import Response
 from apps.access.models import RoleBinding
 from apps.accounts.services import _unique_slug
 from apps.analytics.models import ScanEvent
+from apps.audit.record import record
 from apps.core.errors import ApiError, unprocessable
 from apps.qr.dashboard import folder_in
 from apps.qr.models import Campaign, Folder, QRCode
@@ -119,6 +120,7 @@ class WorkspaceListView(DashboardAPIView):
                     scope_type="workspace",
                     created_by=user,
                 )
+            record(request, ws, "create", "workspace", ws.id, {"name": ws.name})
         return ok(serialize_workspace(ws, "owner"), status=201)
 
 
@@ -156,7 +158,7 @@ class WorkspaceEntitlementsView(DashboardAPIView):
         )
 
 
-def _days(request: Request, plan: str) -> int:
+def range_days(request: Request, plan: str) -> int:
     try:
         days = int(request.query_params.get("days") or 30)
     except ValueError:
@@ -164,7 +166,7 @@ def _days(request: Request, plan: str) -> int:
     return max(1, min(days, limit_for(plan, "analytics_retention_days") or 30))
 
 
-def _delta(current: int, previous: int) -> float:
+def percent_delta(current: int, previous: int) -> float:
     if previous == 0:
         return 100.0 if current else 0.0
     return round((current - previous) / previous * 100, 1)
@@ -173,7 +175,7 @@ def _delta(current: int, previous: int) -> float:
 class WorkspaceOverviewView(DashboardAPIView):
     def get(self, request: Request, ws: str) -> Response:
         workspace, _ = workspace_for(self.user(request), ws)
-        days = _days(request, workspace.plan_id)
+        days = range_days(request, workspace.plan_id)
         now = timezone.now()
         since = now - timedelta(days=days)
         before = since - timedelta(days=days)
@@ -225,7 +227,7 @@ class WorkspaceOverviewView(DashboardAPIView):
                     "active_qr_codes": codes.filter(status="active").count(),
                     "dynamic_qr_codes": codes.filter(mode="dynamic").count(),
                     "total_scans": total,
-                    "scans_delta": _delta(total, previous),
+                    "scans_delta": percent_delta(total, previous),
                     "unique_visitors": window.values("visitor_hash").distinct().count(),
                     "active_campaigns": Campaign.objects.filter(
                         workspace=workspace, status__in=["active", "scheduled"]
@@ -299,7 +301,9 @@ class WorkspaceFoldersView(DashboardAPIView):
                 code="folder_exists",
                 detail="a folder with this name already exists here",
             )
-        folder = Folder.objects.create(workspace=workspace, parent=parent, name=name)
+        with transaction.atomic():
+            folder = Folder.objects.create(workspace=workspace, parent=parent, name=name)
+            record(request, workspace, "create", "folder", folder.id, {"name": name})
         return ok(
             {
                 "id": str(folder.id),
@@ -316,27 +320,4 @@ class WorkspaceFoldersView(DashboardAPIView):
                 "created_at": folder.created_at.isoformat(),
             },
             status=201,
-        )
-
-
-class WorkspaceCampaignsView(DashboardAPIView):
-    """Read-only list so pages that fetch campaigns don't fail."""
-
-    def get(self, request: Request, ws: str) -> Response:
-        workspace, _ = workspace_for(self.user(request), ws)
-        return ok(
-            [
-                {
-                    "id": str(c.id),
-                    "workspace_id": str(workspace.id),
-                    "name": c.name,
-                    "status": c.status,
-                    "starts_at": c.starts_at.isoformat() if c.starts_at else None,
-                    "ends_at": c.ends_at.isoformat() if c.ends_at else None,
-                    "goal_scans": c.goal_scans,
-                    "utm": c.utm,
-                    "created_at": c.created_at.isoformat(),
-                }
-                for c in Campaign.objects.filter(workspace=workspace).order_by("-created_at")
-            ]
         )

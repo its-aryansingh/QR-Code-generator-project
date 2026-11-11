@@ -3,11 +3,13 @@
 from typing import Any
 from uuid import UUID
 
+from django.db import transaction
 from django.db.models import Count, Prefetch, Q, QuerySet, Sum
 from django.utils import timezone
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+from apps.audit.record import record
 from apps.core.errors import not_found, unprocessable
 from apps.workspaces.access import (
     DashboardAPIView,
@@ -160,8 +162,14 @@ class WorkspaceQRListView(DashboardAPIView):
     def post(self, request: Request, ws: str) -> Response:
         user = self.user(request)
         workspace, _ = workspace_for(user, ws, min_role="editor")
-        qr = dashboard.create(workspace, user, _body(request))
-        return ok(_created(qr), status=201)
+        return ok(_created(_create(request, workspace, user, _body(request))), status=201)
+
+
+def _create(request: Request, workspace: Workspace, user: Any, data: dict[str, Any]) -> QRCode:
+    with transaction.atomic():
+        qr = dashboard.create(workspace, user, data)
+        record(request, workspace, "create", "qr_code", qr.id, {"name": qr.name})
+    return qr
 
 
 def _created(qr: QRCode) -> dict[str, Any]:
@@ -183,13 +191,26 @@ def _detail(user: Any, qr_id: str, ws: str | None) -> Response:
 
 def _edit(request: Request, user: Any, qr_id: str, ws: str | None) -> Response:
     qr = _qr_for(user, qr_id, ws, min_role="editor")
-    return ok(dashboard.serialize(dashboard.update(qr, user, _body(request))))
+    data = _body(request)
+    with transaction.atomic():
+        qr = dashboard.update(qr, user, data)
+        record(
+            request,
+            qr.workspace,
+            "update",
+            "qr_code",
+            qr.id,
+            {"name": qr.name, "fields": sorted(data)},
+        )
+    return ok(dashboard.serialize(qr))
 
 
-def _delete(user: Any, qr_id: str, ws: str | None) -> Response:
+def _delete(request: Request, user: Any, qr_id: str, ws: str | None) -> Response:
     qr = _qr_for(user, qr_id, ws, min_role="editor")
     qr.deleted_at = timezone.now()
-    qr.save(update_fields=["deleted_at"])
+    with transaction.atomic():
+        qr.save(update_fields=["deleted_at"])
+        record(request, qr.workspace, "delete", "qr_code", qr.id, {"name": qr.name})
     return ok({"message": "QR code deleted"})
 
 
@@ -201,7 +222,7 @@ class WorkspaceQRDetailView(DashboardAPIView):
         return _edit(request, self.user(request), qr_id, ws)
 
     def delete(self, request: Request, ws: str, qr_id: str) -> Response:
-        return _delete(self.user(request), qr_id, ws)
+        return _delete(request, self.user(request), qr_id, ws)
 
 
 class QRDetailView(DashboardAPIView):
@@ -214,7 +235,7 @@ class QRDetailView(DashboardAPIView):
         return _edit(request, self.user(request), qr_id, None)
 
     def delete(self, request: Request, qr_id: str) -> Response:
-        return _delete(self.user(request), qr_id, None)
+        return _delete(request, self.user(request), qr_id, None)
 
 
 class QRToggleView(DashboardAPIView):
@@ -222,7 +243,16 @@ class QRToggleView(DashboardAPIView):
         qr = _qr_for(self.user(request), qr_id, min_role="editor")
         qr.status = "paused" if qr.status == "active" else "active"
         qr.updated_at = timezone.now()
-        qr.save(update_fields=["status", "updated_at"])
+        with transaction.atomic():
+            qr.save(update_fields=["status", "updated_at"])
+            record(
+                request,
+                qr.workspace,
+                "update",
+                "qr_code",
+                qr.id,
+                {"name": qr.name, "fields": ["status"], "status": qr.status},
+            )
         return ok(dashboard.serialize(qr))
 
 
@@ -238,8 +268,7 @@ class QRGenerateView(DashboardAPIView):
         body = _body(request)
         if body.get("workspace_id"):
             workspace, _ = workspace_for(user, body["workspace_id"], min_role="editor")
-            qr = dashboard.create(workspace, user, body)
-            return ok(_created(qr), status=201)
+            return ok(_created(_create(request, workspace, user, body)), status=201)
         content = str(body.get("content") or "").strip()
         if not content:
             raise unprocessable(code="content_required", detail="content is required")
@@ -285,20 +314,32 @@ class WorkspaceQRBulkView(DashboardAPIView):
                 continue
         rows = QRCode.objects.filter(workspace=workspace, deleted_at__isnull=True, id__in=ids)
         now = timezone.now()
-        if action in ("activate", "deactivate"):
-            affected = rows.update(
-                status="active" if action == "activate" else "paused", updated_at=now
+        with transaction.atomic():
+            affected = _bulk(workspace, rows, action, body, now)
+            record(
+                request,
+                workspace,
+                "delete" if action == "delete" else "update",
+                "qr_code",
+                None,
+                {"bulk": action, "affected": affected, "fields": [action]},
             )
-        elif action == "move":
-            folder = dashboard.folder_in(workspace, body.get("folder_id"))
-            affected = rows.update(folder=folder, updated_at=now)
-        elif action in ("tag", "untag"):
-            affected = 0
-            for qr in rows:
-                dashboard.set_tags(
-                    qr, body.get("tags"), mode="add" if action == "tag" else "remove"
-                )
-                affected += 1
-        else:
-            affected = rows.update(deleted_at=now)
         return ok({"action": action, "affected": affected})
+
+
+def _bulk(
+    workspace: Workspace, rows: QuerySet[QRCode], action: str, body: dict[str, Any], now: Any
+) -> int:
+    if action in ("activate", "deactivate"):
+        return rows.update(status="active" if action == "activate" else "paused", updated_at=now)
+    if action == "move":
+        return rows.update(
+            folder=dashboard.folder_in(workspace, body.get("folder_id")), updated_at=now
+        )
+    if action in ("tag", "untag"):
+        affected = 0
+        for qr in rows:
+            dashboard.set_tags(qr, body.get("tags"), mode="add" if action == "tag" else "remove")
+            affected += 1
+        return affected
+    return rows.update(deleted_at=now)
