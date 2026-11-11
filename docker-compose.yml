@@ -67,7 +67,7 @@ services:
       API_PUBLIC_URL: http://localhost:8080
       SHORT_DOMAIN: localhost:8090
       DJANGO_SECRET_KEY: local-dev-secret-key-at-least-50-characters-long-safe-to-commit
-      APP_ENCRYPTION_KEY: ZGV2ZWxvcG1lbnQtZW5jcnlwdGlvbi1rZXktMzJieXRlcw==
+      APP_ENCRYPTION_KEY: bG9jYWwtZGV2LWVuY3J5cHRpb24ta2V5LTMyYnl0ZXM=
       SCAN_SALT_SECRET: local-dev-scan-salt-secret-32-bytes-minimum
       EDGE_SHARED_SECRET: local-dev-edge-shared-secret-32-chars-min
       SERIAL_MAC_KEY: local-dev-serial-mac-key-32-bytes-minimum
@@ -95,7 +95,7 @@ services:
       APP_BASE_URL: http://localhost:3000
       SHORT_DOMAIN: localhost:8090
       DJANGO_SECRET_KEY: local-dev-secret-key-at-least-50-characters-long-safe-to-commit
-      APP_ENCRYPTION_KEY: ZGV2ZWxvcG1lbnQtZW5jcnlwdGlvbi1rZXktMzJieXRlcw==
+      APP_ENCRYPTION_KEY: bG9jYWwtZGV2LWVuY3J5cHRpb24ta2V5LTMyYnl0ZXM=
       SCAN_SALT_SECRET: local-dev-scan-salt-secret-32-bytes-minimum
       EDGE_SHARED_SECRET: local-dev-edge-shared-secret-32-chars-min
       SERIAL_MAC_KEY: local-dev-serial-mac-key-32-bytes-minimum
@@ -119,7 +119,7 @@ services:
       DATABASE_UNPOOLED_URL: postgresql://qrit:qrit_dev_password@postgres:5432/qrit
       REDIS_URL: redis://redis:6379/0
       DJANGO_SECRET_KEY: local-dev-secret-key-at-least-50-characters-long-safe-to-commit
-      APP_ENCRYPTION_KEY: ZGV2ZWxvcG1lbnQtZW5jcnlwdGlvbi1rZXktMzJieXRlcw==
+      APP_ENCRYPTION_KEY: bG9jYWwtZGV2LWVuY3J5cHRpb24ta2V5LTMyYnl0ZXM=
       SCAN_SALT_SECRET: local-dev-scan-salt-secret-32-bytes-minimum
       EDGE_SHARED_SECRET: local-dev-edge-shared-secret-32-chars-min
       SERIAL_MAC_KEY: local-dev-serial-mac-key-32-bytes-minimum
@@ -143,7 +143,7 @@ services:
       DATABASE_UNPOOLED_URL: postgresql://qrit:qrit_dev_password@postgres:5432/qrit
       REDIS_URL: redis://redis:6379/0
       DJANGO_SECRET_KEY: local-dev-secret-key-at-least-50-characters-long-safe-to-commit
-      APP_ENCRYPTION_KEY: ZGV2ZWxvcG1lbnQtZW5jcnlwdGlvbi1rZXktMzJieXRlcw==
+      APP_ENCRYPTION_KEY: bG9jYWwtZGV2LWVuY3J5cHRpb24ta2V5LTMyYnl0ZXM=
       SCAN_SALT_SECRET: local-dev-scan-salt-secret-32-bytes-minimum
       EDGE_SHARED_SECRET: local-dev-edge-shared-secret-32-chars-min
       SERIAL_MAC_KEY: local-dev-serial-mac-key-32-bytes-minimum

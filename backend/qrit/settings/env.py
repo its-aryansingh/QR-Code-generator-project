@@ -66,7 +66,7 @@ class Settings(BaseSettings):
     )
     JWT_KEY_ID: str = "dev-key-1"
     JWT_PREVIOUS_PUBLIC_KEYS: str = "[]"
-    APP_ENCRYPTION_KEY: str = "ZGV2ZWxvcG1lbnQtZW5jcnlwdGlvbi1rZXktMzJieXRlcw=="
+    APP_ENCRYPTION_KEY: str = "bG9jYWwtZGV2LWVuY3J5cHRpb24ta2V5LTMyYnl0ZXM="
     SCAN_SALT_SECRET: str = "local-scan-salt-secret-32-bytes-minimum"
     COOKIE_SECURE: bool = False
     COOKIE_DOMAIN: str = ""
