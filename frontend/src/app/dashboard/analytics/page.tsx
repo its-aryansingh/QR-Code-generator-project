@@ -48,7 +48,7 @@ function Analytics() {
               ))}
             </Select>
             {can("exports") && (
-              <Btn variant="outline" loading={exportCsv.busy} onClick={() => exportCsv.run()}>
+              <Btn variant="outline" loading={exportCsv.busy} onClick={() => exportCsv.run()} disabled={!data}>
                 Export CSV
               </Btn>
             )}
