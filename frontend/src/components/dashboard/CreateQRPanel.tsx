@@ -15,8 +15,10 @@ const PhoneInput = ({
     placeholder?: string,
     label?: string
 }) => {
-    const [selectedCode, setSelectedCode] = useState("+91");
+    // Selection is by ISO country, not dial code: +1 is both the US and Canada.
+    const [selectedCountry, setSelectedCountry] = useState("IN");
     const [number, setNumber] = useState("");
+    const selectedCode = countryCodes.find((c) => c.country === selectedCountry)?.code ?? "+91";
 
     useEffect(() => {
         if (!value) {
@@ -24,19 +26,23 @@ const PhoneInput = ({
             return;
         }
 
-        const foundCode = countryCodes.find(c => value.trim().startsWith(c.code));
-        if (foundCode) {
-            setSelectedCode(foundCode.code);
-            setNumber(value.slice(foundCode.code.length).trim());
+        const trimmed = value.trim();
+        const matches = countryCodes.filter((c) => trimmed.startsWith(c.code));
+        if (matches.length > 0) {
+            const longest = Math.max(...matches.map((c) => c.code.length));
+            const best = matches.filter((c) => c.code.length === longest);
+            setSelectedCountry((current) =>
+                best.some((c) => c.country === current) ? current : best[0].country,
+            );
+            setNumber(trimmed.slice(longest).trim());
         } else {
-            // Fallback: try to keep existing value in number if it doesnt match formatting
-            // or if it's just a raw number without code.
             setNumber(value);
         }
     }, [value]);
 
-    const handleCodeChange = (code: string) => {
-        setSelectedCode(code);
+    const handleCountryChange = (country: string) => {
+        setSelectedCountry(country);
+        const code = countryCodes.find((c) => c.country === country)?.code ?? selectedCode;
         onChange(`${code} ${number}`);
     };
 
@@ -50,12 +56,13 @@ const PhoneInput = ({
             {label && <label className="block text-sm font-medium text-slate-300 mb-2">{label}</label>}
             <div className="flex gap-2">
                 <select
-                    value={selectedCode}
-                    onChange={(e) => handleCodeChange(e.target.value)}
+                    value={selectedCountry}
+                    onChange={(e) => handleCountryChange(e.target.value)}
+                    aria-label="Country calling code"
                     className="w-24 px-2 py-3.5 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20 transition-all duration-300 appearance-none cursor-pointer"
                 >
                     {countryCodes.map((c) => (
-                        <option key={c.code} value={c.code} className="bg-[#12121a] text-white">
+                        <option key={c.country} value={c.country} className="bg-zinc-900 text-zinc-100">
                             {c.code} ({c.country})
                         </option>
                     ))}
