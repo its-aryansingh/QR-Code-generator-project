@@ -151,7 +151,7 @@ function Campaigns() {
 
       <div className="mb-4 flex flex-col gap-2 sm:flex-row">
         <SearchInput value={search} onChange={setSearch} placeholder="Search campaigns…" className="sm:max-w-xs sm:flex-1" />
-        <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="sm:w-44">
+        <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="sm:w-44" aria-label="Filter by status">
           <option value="">Any status</option>
           {STATUSES.map((status) => (
             <option key={status} value={status} className="capitalize">{status}</option>

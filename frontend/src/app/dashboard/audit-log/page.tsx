@@ -137,7 +137,7 @@ function AuditLog() {
             className="lg:max-w-sm lg:flex-1"
           />
           <div className="flex flex-wrap gap-2">
-            <Select value={action} onChange={(e) => { setAction(e.target.value); setPage(1); }} className="w-auto min-w-32">
+            <Select value={action} aria-label="Filter by action" onChange={(e) => { setAction(e.target.value); setPage(1); }} className="w-auto min-w-32">
               <option value="">Any action</option>
               {(data?.actions ?? []).map((value) => (
                 <option key={value} value={value} className="capitalize">
@@ -145,7 +145,7 @@ function AuditLog() {
                 </option>
               ))}
             </Select>
-            <Select value={resource} onChange={(e) => { setResource(e.target.value); setPage(1); }} className="w-auto min-w-32">
+            <Select value={resource} aria-label="Filter by resource" onChange={(e) => { setResource(e.target.value); setPage(1); }} className="w-auto min-w-32">
               <option value="">Any resource</option>
               {(data?.resources ?? []).map((value) => (
                 <option key={value} value={value} className="capitalize">
@@ -153,7 +153,7 @@ function AuditLog() {
                 </option>
               ))}
             </Select>
-            <Select value={days} onChange={(e) => { setDays(e.target.value); setPage(1); }} className="w-auto min-w-32">
+            <Select value={days} aria-label="Time range" onChange={(e) => { setDays(e.target.value); setPage(1); }} className="w-auto min-w-32">
               <option value="">All time</option>
               <option value="1">Last 24 hours</option>
               <option value="7">Last 7 days</option>

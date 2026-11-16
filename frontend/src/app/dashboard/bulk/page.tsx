@@ -58,7 +58,7 @@ export default function BulkPage() {
             { label: "Max file size", value: "5 MB" },
           ].map((item) => (
             <div key={item.label} className="bg-zinc-900 border border-zinc-800 rounded-lg p-3">
-              <p className="text-[10px] font-semibold text-zinc-600 uppercase tracking-wider mb-1">{item.label}</p>
+              <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-1">{item.label}</p>
               <p className="text-xs text-zinc-400">{item.value}</p>
             </div>
           ))}

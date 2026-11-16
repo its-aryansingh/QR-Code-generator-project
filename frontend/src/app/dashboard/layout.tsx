@@ -297,7 +297,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       active
                         ? "bg-zinc-800 font-medium text-zinc-50"
                         : "text-zinc-500 hover:bg-zinc-900 hover:text-zinc-200",
-                      locked && !active && "opacity-60",
+                      locked && !active && "text-zinc-600",
                     )}
                   >
                     <span className={active ? "text-zinc-50" : "text-zinc-500 group-hover:text-zinc-300"}>

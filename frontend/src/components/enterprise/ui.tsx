@@ -267,6 +267,9 @@ export function Spinner({ className }: { className?: string }) {
 
 /* ------------------------------------------------------------------ inputs */
 
+/** Lets the control inside a Field pick up the id its <label> points at. */
+const FieldControlId = React.createContext<string | undefined>(undefined);
+
 export function Field({
   label,
   hint,
@@ -282,15 +285,16 @@ export function Field({
   children: React.ReactNode;
   className?: string;
 }) {
+  const controlId = React.useId();
   return (
     <div className={cn("space-y-1.5", className)}>
       {label && (
-        <label className="block text-xs font-medium text-zinc-300">
+        <label htmlFor={controlId} className="block text-xs font-medium text-zinc-300">
           {label}
           {required && <span className="ml-0.5 text-red-400">*</span>}
         </label>
       )}
-      {children}
+      <FieldControlId.Provider value={controlId}>{children}</FieldControlId.Provider>
       {error ? (
         <p className="text-xs text-red-400">{error}</p>
       ) : (
@@ -309,14 +313,28 @@ export function TextInput({
   className,
   ...props
 }: React.InputHTMLAttributes<HTMLInputElement>) {
-  return <input {...props} className={cn(CONTROL, className)} />;
+  const fieldId = React.useContext(FieldControlId);
+  return (
+    <input
+      {...props}
+      id={props.id ?? fieldId}
+      className={cn(CONTROL, "min-h-11 sm:min-h-0", className)}
+    />
+  );
 }
 
 export function TextArea({
   className,
   ...props
 }: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <textarea {...props} className={cn(CONTROL, "min-h-24 resize-y", className)} />;
+  const fieldId = React.useContext(FieldControlId);
+  return (
+    <textarea
+      {...props}
+      id={props.id ?? fieldId}
+      className={cn(CONTROL, "min-h-24 resize-y", className)}
+    />
+  );
 }
 
 export function Select({
@@ -324,8 +342,13 @@ export function Select({
   children,
   ...props
 }: React.SelectHTMLAttributes<HTMLSelectElement>) {
+  const fieldId = React.useContext(FieldControlId);
   return (
-    <select {...props} className={cn(CONTROL, "appearance-none pr-8", className)}>
+    <select
+      {...props}
+      id={props.id ?? fieldId}
+      className={cn(CONTROL, "min-h-11 appearance-none pr-8 sm:min-h-0", className)}
+    >
       {children}
     </select>
   );
@@ -406,7 +429,7 @@ export function SearchInput({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         aria-label={placeholder}
-        className={cn(CONTROL, "pl-9", value && "pr-11 sm:pr-9")}
+        className={cn(CONTROL, "min-h-11 pl-9 sm:min-h-0", value && "pr-11 sm:pr-9")}
       />
       {value && (
         <button

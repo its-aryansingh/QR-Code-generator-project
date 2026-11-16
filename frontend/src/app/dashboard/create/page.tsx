@@ -401,7 +401,7 @@ export default function CreateQRPage() {
                       role="radio"
                       aria-checked={active}
                       onClick={() => pickType(id)}
-                      className={`inline-flex h-9 items-center gap-2 rounded-full border px-3.5 text-[14px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 ${
+                      className={`inline-flex h-11 items-center gap-2 rounded-full border px-3.5 sm:h-9 text-[14px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 ${
                         active
                           ? "border-violet-500/60 bg-violet-500/15 text-violet-100"
                           : "border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
@@ -574,7 +574,7 @@ export default function CreateQRPage() {
                 type="button"
                 aria-expanded={moreOpen}
                 onClick={() => setMoreOpen((o) => !o)}
-                className="inline-flex items-center gap-1.5 text-[14px] font-medium text-zinc-300 hover:text-zinc-100"
+                className="min-h-11 sm:min-h-0 inline-flex items-center gap-1.5 text-[14px] font-medium text-zinc-300 hover:text-zinc-100"
               >
                 <ChevronDown size={16} className={`transition-transform motion-reduce:transition-none ${moreOpen ? "rotate-180" : ""}`} />
                 More options
@@ -687,7 +687,7 @@ function Segmented({
   value, options, onChange,
 }: { value: string; options: { id: string; label: string }[]; onChange: (id: string) => void }) {
   return (
-    <div role="radiogroup" className="inline-flex h-8 rounded-lg border border-zinc-800 p-0.5">
+    <div role="radiogroup" className="inline-flex h-12 rounded-lg border border-zinc-800 p-0.5 sm:h-8">
       {options.map((o) => (
         <button
           key={o.id}

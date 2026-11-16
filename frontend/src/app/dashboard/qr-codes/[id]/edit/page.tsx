@@ -220,6 +220,7 @@ export default function EditQRPage() {
                   <input value={redirectUrl} onChange={(e) => setRedirectUrl(e.target.value)} placeholder="https://example.com" className={inputCls} />
                   {redirectUrl && (
                     <a href={redirectUrl} target="_blank" rel="noopener noreferrer"
+                      aria-label="Open destination in a new tab" title="Open destination"
                       className="shrink-0 p-2.5 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-400 hover:text-zinc-50 transition-colors">
                       <ExternalLink size={16} />
                     </a>

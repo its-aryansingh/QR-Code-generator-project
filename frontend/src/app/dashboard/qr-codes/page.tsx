@@ -236,6 +236,7 @@ function QRCodes() {
           <div className="flex flex-wrap gap-2">
             <Select
               value={folderId}
+              aria-label="Folder"
               onChange={(e) => { setFolderId(e.target.value); setPage(1); }}
               className="w-auto min-w-36"
             >
@@ -247,6 +248,7 @@ function QRCodes() {
             {can("campaigns") && (
               <Select
                 value={campaignId}
+                aria-label="Campaign"
                 onChange={(e) => { setCampaignId(e.target.value); setPage(1); }}
                 className="w-auto min-w-36"
               >
@@ -258,6 +260,7 @@ function QRCodes() {
             )}
             <Select
               value={type}
+              aria-label="Type"
               onChange={(e) => { setType(e.target.value); setPage(1); }}
               className="w-auto min-w-28"
             >
@@ -270,6 +273,7 @@ function QRCodes() {
             </Select>
             <Select
               value={status}
+              aria-label="Status"
               onChange={(e) => { setStatus(e.target.value); setPage(1); }}
               className="w-auto min-w-28"
             >
@@ -278,7 +282,7 @@ function QRCodes() {
               <option value="inactive">Paused</option>
               <option value="expired">Expired</option>
             </Select>
-            <Select value={sort} onChange={(e) => setSort(e.target.value)} className="w-auto min-w-36">
+            <Select value={sort} aria-label="Sort by" onChange={(e) => setSort(e.target.value)} className="w-auto min-w-36">
               {SORTS.map((option) => (
                 <option key={option.value} value={option.value}>{option.label}</option>
               ))}
@@ -385,7 +389,7 @@ function QRCodes() {
           </>
         }
       >
-        <Select value={moveTarget} onChange={(e) => setMoveTarget(e.target.value)}>
+        <Select value={moveTarget} aria-label="Destination folder" onChange={(e) => setMoveTarget(e.target.value)}>
           <option value="">No folder (top level)</option>
           {folderOptions.map((folder) => (
             <option key={folder.id} value={folder.id}>{folder.label}</option>

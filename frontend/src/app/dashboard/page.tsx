@@ -40,7 +40,7 @@ function Overview() {
         description="Everything happening across this workspace right now."
         actions={
           <>
-            <Select value={days} onChange={(e) => setDays(Number(e.target.value))} className="w-36">
+            <Select value={days} onChange={(e) => setDays(Number(e.target.value))} className="w-36" aria-label="Time range">
               {RANGES.map((value) => (
                 <option key={value} value={value}>Last {value} days</option>
               ))}
@@ -108,7 +108,7 @@ function Overview() {
               title="Top performers"
               description="Most scanned codes, all time"
               actions={
-                <Link href="/dashboard/qr-codes" className="text-xs text-zinc-400 hover:text-zinc-200">
+                <Link href="/dashboard/qr-codes" className="inline-flex min-h-11 items-center text-xs text-zinc-400 hover:text-zinc-200 sm:min-h-0">
                   View all
                 </Link>
               }
@@ -134,7 +134,7 @@ function Overview() {
               description="The newest codes in this workspace"
               actions={
                 atLeast("editor") ? (
-                  <Link href="/dashboard/create" className="text-xs text-zinc-400 hover:text-zinc-200">
+                  <Link href="/dashboard/create" className="inline-flex min-h-11 items-center text-xs text-zinc-400 hover:text-zinc-200 sm:min-h-0">
                     New code
                   </Link>
                 ) : undefined
@@ -195,7 +195,7 @@ function Overview() {
               </div>
               <div className="flex items-center justify-between pt-1">
                 <StatusDot active label={`Workspace ${workspace?.slug ?? ""}`} />
-                <Link href="/pricing" className="text-xs text-violet-400 hover:text-violet-300">
+                <Link href="/pricing" className="inline-flex min-h-11 items-center text-xs text-violet-400 hover:text-violet-300 sm:min-h-0">
                   Compare plans
                 </Link>
               </div>

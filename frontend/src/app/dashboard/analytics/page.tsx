@@ -42,7 +42,7 @@ function Analytics() {
         description="Scan performance across every code in this workspace."
         actions={
           <>
-            <Select value={days} onChange={(e) => setDays(Number(e.target.value))} className="w-40">
+            <Select value={days} onChange={(e) => setDays(Number(e.target.value))} className="w-40" aria-label="Time range">
               {RANGES.filter((value) => value <= retention || value === 7).map((value) => (
                 <option key={value} value={value}>Last {value} days</option>
               ))}

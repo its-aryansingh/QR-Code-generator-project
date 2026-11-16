@@ -102,7 +102,7 @@ export default function APIKeyPage() {
           <p className="text-sm text-zinc-500 mb-6">API access is available on Pro and Enterprise plans.</p>
           <a
             href="/dashboard/settings"
-            className="inline-flex items-center px-5 py-2.5 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-lg transition-colors"
+            className="min-h-11 sm:min-h-0 inline-flex items-center px-5 py-2.5 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-lg transition-colors"
           >
             Upgrade Plan
           </a>
