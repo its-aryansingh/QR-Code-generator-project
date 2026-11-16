@@ -78,6 +78,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [mobileOpen, setMobileOpen] = useState(false);
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const switcherRef = useRef<HTMLDivElement>(null);
+  const mobileSwitcherRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (hydrated && !isAuthenticated) {
@@ -100,12 +101,30 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   useEffect(() => {
     if (!switcherOpen) return;
+    // Both sidebars are mounted (one is display:none), so a tap inside the
+    // drawer's switcher must not count as outside the desktop one.
     const onClick = (event: MouseEvent) => {
-      if (!switcherRef.current?.contains(event.target as Node)) setSwitcherOpen(false);
+      const target = event.target as Node;
+      const inside = [switcherRef, mobileSwitcherRef].some((ref) => ref.current?.contains(target));
+      if (!inside) setSwitcherOpen(false);
     };
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
   }, [switcherOpen]);
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = previous;
+    };
+  }, [mobileOpen]);
 
   const handleLogout = () => {
     logout();
@@ -141,7 +160,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     );
   }
 
-  const Sidebar = ({ mobile = false }: { mobile?: boolean }) => (
+  // A render function, not a component: a component declared here would be a
+  // new type on every render and remount, dropping keyboard focus.
+  const renderSidebar = (mobile: boolean) => (
     <>
       <div className="border-b border-zinc-800/60 p-3">
         <div className="flex items-center gap-2.5 px-1">
@@ -174,9 +195,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
 
         {(!collapsed || mobile) && (
-          <div className="relative mt-3" ref={mobile ? undefined : switcherRef}>
+          <div className="relative mt-3" ref={mobile ? mobileSwitcherRef : switcherRef}>
             <button
               onClick={() => setSwitcherOpen((open) => !open)}
+              aria-expanded={switcherOpen}
               className="flex w-full items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900 px-2.5 py-2 text-left transition-colors hover:border-zinc-700"
             >
               <span
@@ -212,6 +234,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     }}
                     className={cn(
                       "flex w-full items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-zinc-800",
+                      mobile && "min-h-11",
                       workspace?.id === item.id && "bg-zinc-800/70",
                     )}
                   >
@@ -234,7 +257,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <div className="mt-1 border-t border-zinc-800 pt-1">
                   <Link
                     href="/dashboard/settings"
-                    className="flex items-center gap-2 px-3 py-2 text-sm text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
+                    className={cn(
+                      "flex items-center gap-2 px-3 py-2 text-sm text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200",
+                      mobile && "min-h-11",
+                    )}
                   >
                     <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v12m6-6H6" />
@@ -356,10 +382,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex min-h-screen bg-zinc-950">
       {mobileOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
+        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Navigation">
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
-          <aside className="absolute inset-y-0 left-0 flex w-72 flex-col overflow-y-auto border-r border-zinc-800/60 bg-zinc-950 shadow-2xl">
-            <Sidebar mobile />
+          <aside className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col overflow-y-auto border-r border-zinc-800/60 bg-zinc-950 shadow-2xl">
+            {renderSidebar(true)}
           </aside>
         </div>
       )}
@@ -370,7 +396,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           collapsed ? "w-16" : "w-64",
         )}
       >
-        <Sidebar />
+        {renderSidebar(false)}
       </aside>
 
       <main className="min-w-0 flex-1">
