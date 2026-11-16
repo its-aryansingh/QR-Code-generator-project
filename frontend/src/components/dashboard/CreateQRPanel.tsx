@@ -201,7 +201,7 @@ export const CreateQRPanel: React.FC<CreateQRPanelProps> = ({
                             className={inputClass}
                         />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <div>
                             <PhoneInput
                                 value={vcardData.phone}
@@ -230,7 +230,7 @@ export const CreateQRPanel: React.FC<CreateQRPanelProps> = ({
                             className={inputClass}
                         />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <div>
                             <label className="block text-sm font-medium text-slate-300 mb-2">Job Title</label>
                             <input
@@ -365,7 +365,7 @@ export const CreateQRPanel: React.FC<CreateQRPanelProps> = ({
             {/* Location Form */}
             {selectedType === "location" && (
                 <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500 ease-out">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <div>
                             <label className="block text-sm font-medium text-slate-300 mb-2">Latitude *</label>
                             <input
@@ -423,7 +423,7 @@ export const CreateQRPanel: React.FC<CreateQRPanelProps> = ({
                             className={inputClass}
                         />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <div>
                             <label className="block text-sm font-medium text-slate-300 mb-2">Start Date/Time *</label>
                             <input
@@ -501,7 +501,7 @@ export const CreateQRPanel: React.FC<CreateQRPanelProps> = ({
                             className={inputClass}
                         />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <div>
                             <label className="block text-sm font-medium text-slate-300 mb-2">Amount (BTC)</label>
                             <input
@@ -550,7 +550,7 @@ export const CreateQRPanel: React.FC<CreateQRPanelProps> = ({
                             className={inputClass}
                         />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <div>
                             <label className="block text-sm font-medium text-slate-300 mb-2">Amount (₹)</label>
                             <input
@@ -706,7 +706,7 @@ export const CreateQRPanel: React.FC<CreateQRPanelProps> = ({
                             className={inputClass}
                         />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <div>
                             <label className="block text-sm font-medium text-slate-300 mb-2">Website</label>
                             <input

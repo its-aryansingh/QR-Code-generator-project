@@ -110,7 +110,7 @@ export default function SettingsPage() {
             {/* Plan Info */}
             <div className="bg-zinc-900/50 border border-zinc-800/60 rounded-xl p-6 space-y-4">
                 <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wider">Plan & Limits</h2>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                     <div className="bg-zinc-800/50 rounded-lg p-4 text-center">
                         <p className="text-2xl font-bold text-zinc-50">{workspace?.max_qr_codes || 50}</p>
                         <p className="text-xs text-zinc-500 mt-1">Max QR Codes</p>
