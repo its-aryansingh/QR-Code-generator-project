@@ -247,8 +247,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm text-zinc-200">{item.name}</span>
                       <span className="block text-[11px] text-zinc-500">
-                        {(item.qr_count ?? 0).toLocaleString()} codes ·{" "}
-                        {(item.member_count ?? 0).toLocaleString()} members
+                        {(item.qr_count ?? 0).toLocaleString()} {item.qr_count === 1 ? "code" : "codes"} ·{" "}
+                        {(item.member_count ?? 0).toLocaleString()} {item.member_count === 1 ? "member" : "members"}
                       </span>
                     </span>
                     {item.role && <RoleBadge role={item.role} />}
