@@ -174,7 +174,7 @@ export default function EditQRPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <button onClick={() => router.back()} className="p-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-zinc-50 transition-colors">
+          <button onClick={() => router.back()} aria-label="Back" title="Back" className="flex size-11 items-center justify-center rounded-lg bg-zinc-800 text-zinc-400 transition-colors hover:bg-zinc-700 hover:text-zinc-50 sm:size-9">
             <ArrowLeft size={16} />
           </button>
           <div>

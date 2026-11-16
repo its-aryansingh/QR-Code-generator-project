@@ -36,6 +36,7 @@ export const EditQRModal: React.FC<EditQRModalProps> = ({
             <div className="bg-zinc-800 border border-zinc-50/10 rounded-2xl w-full max-w-md p-6 relative">
                 <button
                     onClick={onClose}
+                    aria-label="Close"
                     className="absolute top-4 right-4 text-slate-400 hover:text-zinc-50"
                 >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -165,7 +165,9 @@ export default function QREditPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => router.back()}
-            className="p-2 text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 rounded-lg"
+            aria-label="Back"
+            title="Back"
+            className="flex size-11 items-center justify-center rounded-lg text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200 sm:size-9"
           >
             <ArrowLeft size={18} />
           </button>

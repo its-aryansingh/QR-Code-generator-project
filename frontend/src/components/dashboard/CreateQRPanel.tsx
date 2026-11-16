@@ -647,7 +647,9 @@ export const CreateQRPanel: React.FC<CreateQRPanelProps> = ({
                                             const newPhones = mecardData.phones.filter((_: any, idx: number) => idx !== i);
                                             setMecardData({ ...mecardData, phones: newPhones });
                                         }}
-                                        className="px-3 py-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all text-sm"
+                                        aria-label={`Remove phone ${i + 1}`}
+                                        title="Remove phone"
+                                        className="min-h-11 min-w-11 px-3 py-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all text-sm sm:min-h-0 sm:min-w-0"
                                     >✕</button>
                                 )}
                             </div>
@@ -683,7 +685,9 @@ export const CreateQRPanel: React.FC<CreateQRPanelProps> = ({
                                             const newEmails = mecardData.emails.filter((_: any, idx: number) => idx !== i);
                                             setMecardData({ ...mecardData, emails: newEmails });
                                         }}
-                                        className="px-3 py-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all text-sm"
+                                        aria-label={`Remove email ${i + 1}`}
+                                        title="Remove email"
+                                        className="min-h-11 min-w-11 px-3 py-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all text-sm sm:min-h-0 sm:min-w-0"
                                     >✕</button>
                                 )}
                             </div>
@@ -763,7 +767,9 @@ export const CreateQRPanel: React.FC<CreateQRPanelProps> = ({
                                 <button
                                     type="button"
                                     onClick={() => setMultiLinkData(multiLinkData.filter((_, idx) => idx !== i))}
-                                    className="px-3 py-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all text-sm mt-0.5"
+                                    aria-label={`Remove link ${i + 1}`}
+                                    title="Remove link"
+                                    className="min-h-11 min-w-11 px-3 py-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all text-sm mt-0.5 sm:min-h-0 sm:min-w-0"
                                 >✕</button>
                             )}
                         </div>

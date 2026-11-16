@@ -154,6 +154,7 @@ export function QRSecurityPanel({ value, onChange }: Props) {
                   <button
                     type="button"
                     onClick={() => removeGeo(code)}
+                    aria-label={`Remove ${code}`}
                     className="hover:text-zinc-50"
                   >
                     ×

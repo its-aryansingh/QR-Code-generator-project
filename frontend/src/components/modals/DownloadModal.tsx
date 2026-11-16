@@ -107,7 +107,7 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({
       >
         <div className="flex items-center justify-between p-4 border-b border-zinc-800">
           <h2 className="text-lg font-bold text-zinc-50">Download QR Code</h2>
-          <button onClick={onClose} className="p-1 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-zinc-50 transition-colors">
+          <button onClick={onClose} aria-label="Close" className="p-1 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-zinc-50 transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>

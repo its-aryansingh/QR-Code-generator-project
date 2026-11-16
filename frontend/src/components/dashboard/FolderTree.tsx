@@ -65,6 +65,8 @@ function FolderNode({
         {hasChildren && (
           <button
             onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
+            aria-label={expanded ? `Collapse ${folder.name}` : `Expand ${folder.name}`}
+            aria-expanded={expanded}
             className="w-4 h-4 flex items-center justify-center text-zinc-600 hover:text-zinc-400 flex-shrink-0"
           >
             <svg className={`w-3 h-3 transition-transform ${expanded ? "rotate-90" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
