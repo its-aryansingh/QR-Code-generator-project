@@ -35,12 +35,12 @@ export const MyQRPanel: React.FC<MyQRPanelProps> = ({
         <div className="space-y-6">
             <div className="flex items-center justify-between mb-4">
                 <div>
-                    <h2 className="text-xl font-bold text-white">My QR Codes</h2>
+                    <h2 className="text-xl font-bold text-zinc-50">My QR Codes</h2>
                     <p className="text-sm text-slate-400">Manage your generated codes</p>
                 </div>
                 <button
                     onClick={fetchMyQRs}
-                    className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+                    className="p-2 rounded-lg bg-zinc-50/5 hover:bg-zinc-50/10 text-slate-400 hover:text-zinc-50 transition-colors"
                     title="Refresh"
                 >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -54,13 +54,13 @@ export const MyQRPanel: React.FC<MyQRPanelProps> = ({
                     <div className="w-8 h-8 border-4 border-violet-500 border-t-transparent rounded-full animate-spin"></div>
                 </div>
             ) : myQRs.length === 0 ? (
-                <div className="text-center py-12 rounded-2xl bg-white/5 border border-white/10 border-dashed">
-                    <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="text-center py-12 rounded-2xl bg-zinc-50/5 border border-zinc-50/10 border-dashed">
+                    <div className="w-16 h-16 bg-zinc-50/5 rounded-full flex items-center justify-center mx-auto mb-4">
                         <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
                     </div>
-                    <h3 className="text-lg font-medium text-white mb-2">No QR Codes Yet</h3>
+                    <h3 className="text-lg font-medium text-zinc-50 mb-2">No QR Codes Yet</h3>
                     <p className="text-slate-400 mb-6 max-w-xs mx-auto">
                         Generate your first QR code to see it here.
                     </p>
@@ -74,15 +74,15 @@ export const MyQRPanel: React.FC<MyQRPanelProps> = ({
             ) : (
                 <div className="grid gap-4">
                     {myQRs.map((qr) => (
-                        <div key={qr.id} className="p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all flex items-center justify-between group">
+                        <div key={qr.id} className="p-4 rounded-xl bg-zinc-50/5 border border-zinc-50/10 hover:bg-zinc-50/10 transition-all flex items-center justify-between group">
                             <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 bg-white/10 rounded-lg p-2 text-white flex items-center justify-center">
+                                <div className="w-12 h-12 bg-zinc-50/10 rounded-lg p-2 text-zinc-50 flex items-center justify-center">
                                     {QRIcons[qr.qr_type] || QRIcons["url"]}
                                 </div>
                                 <div>
-                                    <h4 className="text-white font-medium truncate max-w-[200px]">{qr.title || qr.content || "Untitled QR"}</h4>
+                                    <h4 className="text-zinc-50 font-medium truncate max-w-[200px]">{qr.title || qr.content || "Untitled QR"}</h4>
                                     <div className="flex items-center gap-2 text-xs text-slate-400 mt-1">
-                                        <span className="uppercase bg-white/10 px-1.5 py-0.5 rounded text-[10px]">{qr.qr_type}</span>
+                                        <span className="uppercase bg-zinc-50/10 px-1.5 py-0.5 rounded text-[10px]">{qr.qr_type}</span>
                                         <span>•</span>
                                         <span>{new Date(qr.created_at).toLocaleDateString()}</span>
                                         {qr.is_dynamic && <span className="text-emerald-400 bg-emerald-400/10 px-1.5 py-0.5 rounded text-[10px]">Dynamic</span>}
@@ -92,7 +92,7 @@ export const MyQRPanel: React.FC<MyQRPanelProps> = ({
 
                             <div className="flex items-center gap-3">
                                 <div className="text-right mr-2 hidden sm:block">
-                                    <div className="text-white font-bold">{qr.scan_count || 0}</div>
+                                    <div className="text-zinc-50 font-bold">{qr.scan_count || 0}</div>
                                     <div className="text-[10px] text-slate-500 uppercase">Scans</div>
                                 </div>
                                 <button

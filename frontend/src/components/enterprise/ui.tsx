@@ -29,7 +29,7 @@ export function PageHeader({
     <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div className="min-w-0">
         {breadcrumb && <div className="mb-1.5 text-xs text-zinc-500">{breadcrumb}</div>}
-        <h1 className="truncate text-2xl font-semibold tracking-tight text-white">{title}</h1>
+        <h1 className="truncate text-2xl font-semibold tracking-tight text-zinc-50">{title}</h1>
         {description && <p className="mt-1 max-w-2xl text-sm text-zinc-400">{description}</p>}
       </div>
       {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
@@ -57,12 +57,12 @@ export function Panel({
       className={cn("rounded-xl border border-zinc-800/70 bg-zinc-900/40", className)}
     >
       {(title || actions) && (
-        <header className="flex items-start justify-between gap-4 border-b border-zinc-800/70 px-5 py-4">
+        <header className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3 border-b border-zinc-800/70 px-5 py-4">
           <div className="min-w-0">
             {title && <h2 className="text-sm font-semibold text-zinc-100">{title}</h2>}
             {description && <p className="mt-0.5 text-xs text-zinc-500">{description}</p>}
           </div>
-          {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
+          {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
         </header>
       )}
       <div className={cn("p-5", bodyClassName)}>{children}</div>
@@ -110,7 +110,7 @@ export function StatCard({
         <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">{label}</p>
         {icon && <span className="text-zinc-600">{icon}</span>}
       </div>
-      <p className="mt-2 text-2xl font-semibold tabular-nums text-white">{value}</p>
+      <p className="mt-2 text-2xl font-semibold tabular-nums text-zinc-50">{value}</p>
       <div className="mt-1 flex items-center gap-2">
         {typeof delta === "number" && <DeltaPill value={delta} />}
         {hint && <span className="truncate text-xs text-zinc-500">{hint}</span>}
@@ -214,7 +214,7 @@ export function StatusDot({ active, label }: { active: boolean; label?: string }
 type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "outline";
 
 const BUTTON_STYLES: Record<ButtonVariant, string> = {
-  primary: "bg-white text-zinc-950 hover:bg-zinc-200",
+  primary: "bg-zinc-50 text-zinc-950 hover:bg-zinc-200",
   secondary: "bg-zinc-800 text-zinc-100 hover:bg-zinc-700",
   ghost: "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100",
   danger: "bg-red-600 text-white hover:bg-red-500",
@@ -240,6 +240,7 @@ export function Btn({
       className={cn(
         "inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition-colors",
         "disabled:cursor-not-allowed disabled:opacity-50",
+        "min-h-11 sm:min-h-0",
         size === "sm" ? "px-2.5 py-1.5 text-xs" : "px-3.5 py-2 text-sm",
         BUTTON_STYLES[variant],
         className,
@@ -266,6 +267,9 @@ export function Spinner({ className }: { className?: string }) {
 
 /* ------------------------------------------------------------------ inputs */
 
+/** Lets the control inside a Field pick up the id its <label> points at. */
+const FieldControlId = React.createContext<string | undefined>(undefined);
+
 export function Field({
   label,
   hint,
@@ -281,15 +285,16 @@ export function Field({
   children: React.ReactNode;
   className?: string;
 }) {
+  const controlId = React.useId();
   return (
     <div className={cn("space-y-1.5", className)}>
       {label && (
-        <label className="block text-xs font-medium text-zinc-300">
+        <label htmlFor={controlId} className="block text-xs font-medium text-zinc-300">
           {label}
           {required && <span className="ml-0.5 text-red-400">*</span>}
         </label>
       )}
-      {children}
+      <FieldControlId.Provider value={controlId}>{children}</FieldControlId.Provider>
       {error ? (
         <p className="text-xs text-red-400">{error}</p>
       ) : (
@@ -300,7 +305,7 @@ export function Field({
 }
 
 const CONTROL =
-  "w-full rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 " +
+  "w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 " +
   "placeholder:text-zinc-600 outline-none transition-colors focus:border-violet-500/60 " +
   "focus:ring-1 focus:ring-violet-500/30 disabled:opacity-50";
 
@@ -308,14 +313,28 @@ export function TextInput({
   className,
   ...props
 }: React.InputHTMLAttributes<HTMLInputElement>) {
-  return <input {...props} className={cn(CONTROL, className)} />;
+  const fieldId = React.useContext(FieldControlId);
+  return (
+    <input
+      {...props}
+      id={props.id ?? fieldId}
+      className={cn(CONTROL, "min-h-11 sm:min-h-0", className)}
+    />
+  );
 }
 
 export function TextArea({
   className,
   ...props
 }: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <textarea {...props} className={cn(CONTROL, "min-h-24 resize-y", className)} />;
+  const fieldId = React.useContext(FieldControlId);
+  return (
+    <textarea
+      {...props}
+      id={props.id ?? fieldId}
+      className={cn(CONTROL, "min-h-24 resize-y", className)}
+    />
+  );
 }
 
 export function Select({
@@ -323,8 +342,13 @@ export function Select({
   children,
   ...props
 }: React.SelectHTMLAttributes<HTMLSelectElement>) {
+  const fieldId = React.useContext(FieldControlId);
   return (
-    <select {...props} className={cn(CONTROL, "appearance-none pr-8", className)}>
+    <select
+      {...props}
+      id={props.id ?? fieldId}
+      className={cn(CONTROL, "min-h-11 appearance-none pr-8 sm:min-h-0", className)}
+    >
       {children}
     </select>
   );
@@ -354,6 +378,7 @@ export function Toggle({
         type="button"
         role="switch"
         aria-checked={checked}
+        aria-label={label}
         disabled={disabled}
         onClick={() => !disabled && onChange(!checked)}
         className={cn(
@@ -403,12 +428,13 @@ export function SearchInput({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className={cn(CONTROL, "pl-9")}
+        aria-label={placeholder}
+        className={cn(CONTROL, "min-h-11 pl-9 sm:min-h-0", value && "pr-11 sm:pr-9")}
       />
       {value && (
         <button
           onClick={() => onChange("")}
-          className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-zinc-600 hover:text-zinc-300"
+          className="absolute right-0 top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded-lg text-zinc-500 hover:text-zinc-300 sm:right-0.5 sm:size-8"
           aria-label="Clear search"
         >
           <svg className="size-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -567,28 +593,35 @@ export function Modal({
     };
   }, [open, onClose]);
 
-  if (!open) return null;
-  const widths = { sm: "max-w-sm", md: "max-w-lg", lg: "max-w-2xl" };
+  const titleId = React.useId();
 
+  if (!open) return null;
+  const widths = { sm: "sm:max-w-sm", md: "sm:max-w-lg", lg: "sm:max-w-2xl" };
+
+  // Phones get a full-screen sheet: the body scrolls and the footer stays on
+  // screen above the home indicator, so Cancel/Create are never pushed out of
+  // reach by a long form or the on-screen keyboard.
   return (
-    <div className="fixed inset-0 z-[100] flex items-end justify-center overflow-y-auto p-0 sm:items-center sm:p-4">
+    <div className="fixed inset-0 z-[100] flex justify-center sm:items-center sm:p-4">
       <div className="fixed inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
       <div
         role="dialog"
         aria-modal="true"
+        aria-labelledby={titleId}
         className={cn(
-          "relative w-full rounded-t-2xl border border-zinc-800 bg-zinc-900 shadow-2xl sm:rounded-2xl",
+          "relative flex h-dvh w-full flex-col bg-zinc-900 shadow-2xl",
+          "sm:h-auto sm:max-h-[calc(100dvh-2rem)] sm:rounded-2xl sm:border sm:border-zinc-800",
           widths[width],
         )}
       >
-        <header className="flex items-start justify-between gap-4 border-b border-zinc-800 px-5 py-4">
-          <div className="min-w-0">
-            <h2 className="text-base font-semibold text-white">{title}</h2>
+        <header className="flex shrink-0 items-start justify-between gap-4 border-b border-zinc-800 py-3 pl-5 pr-3 sm:py-4 sm:pr-4">
+          <div className="min-w-0 pt-2 sm:pt-0">
+            <h2 id={titleId} className="text-base font-semibold text-zinc-50">{title}</h2>
             {description && <p className="mt-0.5 text-sm text-zinc-500">{description}</p>}
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
+            className="flex size-11 shrink-0 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-200 sm:-mt-1 sm:size-8"
             aria-label="Close"
           >
             <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -596,9 +629,9 @@ export function Modal({
             </svg>
           </button>
         </header>
-        <div className="max-h-[70vh] overflow-y-auto px-5 py-4">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">{children}</div>
         {footer && (
-          <footer className="flex items-center justify-end gap-2 border-t border-zinc-800 px-5 py-3.5">
+          <footer className="flex shrink-0 items-center justify-end gap-2 border-t border-zinc-800 px-5 pb-[max(0.875rem,env(safe-area-inset-bottom))] pt-3.5 *:flex-1 sm:pb-3.5 sm:*:flex-none">
             {footer}
           </footer>
         )}
@@ -743,7 +776,7 @@ export function DataTable<T extends { id: string }>({
               {columns.map((column, index) => (
                 <td key={column.key} className={cn("px-3 py-2.5 text-zinc-300", column.className)}>
                   {index === 0 && rowHref ? (
-                    <Link href={rowHref(row)} className="block hover:text-white">
+                    <Link href={rowHref(row)} className="block hover:text-zinc-50">
                       {column.cell(row)}
                     </Link>
                   ) : (
@@ -772,7 +805,7 @@ export function Pagination({
 }) {
   if (pages <= 1) return null;
   return (
-    <div className="mt-3 flex items-center justify-between text-xs text-zinc-500">
+    <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-500">
       <span>
         Page {page} of {pages} · {total.toLocaleString()} total
       </span>
@@ -823,7 +856,7 @@ export function CopyButton({
     <button
       onClick={copy}
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-colors",
+        "inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-colors sm:min-h-0",
         copied ? "text-emerald-400" : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200",
         className,
       )}
@@ -900,10 +933,10 @@ export function Tabs({
           disabled={tab.disabled}
           onClick={() => onChange(tab.id)}
           className={cn(
-            "-mb-px shrink-0 border-b-2 px-3.5 py-2.5 text-sm font-medium transition-colors",
+            "-mb-px min-h-11 shrink-0 border-b-2 px-3.5 py-2.5 text-sm font-medium transition-colors sm:min-h-0",
             tab.disabled && "cursor-not-allowed opacity-40",
             active === tab.id
-              ? "border-violet-500 text-white"
+              ? "border-violet-500 text-zinc-50"
               : "border-transparent text-zinc-500 hover:text-zinc-200",
           )}
         >

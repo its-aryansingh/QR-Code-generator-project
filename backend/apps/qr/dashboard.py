@@ -32,7 +32,7 @@ from apps.core.errors import ApiError, unprocessable
 from apps.workspaces.entitlements import limit_for
 from apps.workspaces.models import Workspace
 
-from .models import Domain, Folder, QRCode, QRCodeTag, QRVersion, Tag
+from .models import Campaign, Domain, Folder, QRCode, QRCodeTag, QRVersion, Tag
 
 # Crockford base32 without I, L, O, U (reference/go-v2/internal/shortcode).
 SHORT_CODE_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
@@ -252,6 +252,17 @@ def folder_in(workspace: Workspace, folder_id: Any) -> Folder | None:
         ) from None
 
 
+def campaign_in(workspace: Workspace, campaign_id: Any) -> Campaign | None:
+    if not campaign_id:
+        return None
+    try:
+        return Campaign.objects.get(id=UUID(str(campaign_id)), workspace=workspace)
+    except (ValueError, Campaign.DoesNotExist):
+        raise unprocessable(
+            code="invalid_campaign", detail="campaign not found in this workspace"
+        ) from None
+
+
 def create(workspace: Workspace, user: User, body: dict[str, Any]) -> QRCode:
     """Create a QR code from the dashboard's create-page body."""
     in_use = QRCode.objects.filter(workspace=workspace, deleted_at__isnull=True).count()
@@ -381,6 +392,9 @@ def update(qr: QRCode, user: User, body: dict[str, Any]) -> QRCode:
         password = str(body.get("password") or "")
         qr.password_hash = make_password(password) if password else None
         fields.append("password_hash")
+    if "campaign_id" in body:
+        qr.campaign = campaign_in(qr.workspace, body.get("campaign_id"))
+        fields.append("campaign")
     if "tags" in body:
         set_tags(qr, body.get("tags"))
     qr.updated_at = timezone.now()

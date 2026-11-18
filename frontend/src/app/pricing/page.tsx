@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/auth";
 import { API_URL } from "@/lib/config";
+import { safeJson } from "@/lib/http";
 
 const plans = [
     {
@@ -160,7 +161,7 @@ export default function PricingPage() {
                     billing_period: billingPeriod,
                 }),
             });
-            const data = await res.json();
+            const data = await safeJson(res);
             if (data.success && data.checkout_url) {
                 window.location.href = data.checkout_url;
             } else {
@@ -192,15 +193,15 @@ export default function PricingPage() {
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
             {/* Header */}
-            <header className="border-b border-white/10 bg-slate-900/50 backdrop-blur-xl sticky top-0 z-50">
+            <header className="border-b border-zinc-50/10 bg-slate-900/50 backdrop-blur-xl sticky top-0 z-50">
                 <div className="container mx-auto px-4 py-4 flex items-center justify-between">
                     <Link href="/" className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent">
                         QRit
                     </Link>
                     <nav className="hidden md:flex items-center gap-6">
-                        <Link href="/" className="text-slate-300 hover:text-white transition-colors">Generator</Link>
-                        <Link href="/pricing" className="text-white font-medium">Pricing</Link>
-                        <Link href="/login" className="text-slate-300 hover:text-white transition-colors">Sign In</Link>
+                        <Link href="/" className="text-slate-300 hover:text-zinc-50 transition-colors">Generator</Link>
+                        <Link href="/pricing" className="text-zinc-50 font-medium">Pricing</Link>
+                        <Link href="/login" className="text-slate-300 hover:text-zinc-50 transition-colors">Sign In</Link>
                         <Link href="/register">
                             <Button className="bg-gradient-to-r from-cyan-500 to-purple-500 hover:opacity-90">
                                 Get Started
@@ -210,7 +211,7 @@ export default function PricingPage() {
                     {/* Mobile hamburger */}
                     <button
                         onClick={() => setMobileNavOpen(!mobileNavOpen)}
-                        className="md:hidden w-10 h-10 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                        className="md:hidden w-10 h-10 flex items-center justify-center rounded-lg text-slate-400 hover:text-zinc-50 hover:bg-slate-800 transition-colors"
                         aria-label="Toggle navigation"
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -220,10 +221,10 @@ export default function PricingPage() {
                 </div>
                 {/* Mobile Nav Dropdown */}
                 {mobileNavOpen && (
-                    <div className="md:hidden border-t border-white/10 bg-slate-900 px-4 py-3 space-y-1">
-                        <Link href="/" onClick={() => setMobileNavOpen(false)} className="block px-4 py-3 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">Generator</Link>
-                        <Link href="/pricing" onClick={() => setMobileNavOpen(false)} className="block px-4 py-3 rounded-xl text-white font-medium bg-slate-800/50">Pricing</Link>
-                        <Link href="/login" onClick={() => setMobileNavOpen(false)} className="block px-4 py-3 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">Sign In</Link>
+                    <div className="md:hidden border-t border-zinc-50/10 bg-slate-900 px-4 py-3 space-y-1">
+                        <Link href="/" onClick={() => setMobileNavOpen(false)} className="block px-4 py-3 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-zinc-50 transition-colors">Generator</Link>
+                        <Link href="/pricing" onClick={() => setMobileNavOpen(false)} className="block px-4 py-3 rounded-xl text-zinc-50 font-medium bg-slate-800/50">Pricing</Link>
+                        <Link href="/login" onClick={() => setMobileNavOpen(false)} className="block px-4 py-3 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-zinc-50 transition-colors">Sign In</Link>
                         <Link href="/register" onClick={() => setMobileNavOpen(false)} className="block px-4 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-purple-500 text-white font-semibold text-center">Get Started</Link>
                     </div>
                 )}
@@ -232,7 +233,7 @@ export default function PricingPage() {
             <main className="container mx-auto px-4 py-16">
                 {/* Hero */}
                 <div className="text-center mb-16">
-                    <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
+                    <h1 className="text-4xl md:text-5xl font-bold text-zinc-50 mb-4">
                         Simple, Transparent Pricing
                     </h1>
                     <p className="text-xl text-slate-400 max-w-2xl mx-auto mb-8">
@@ -247,7 +248,7 @@ export default function PricingPage() {
                                 "px-6 py-2 rounded-full text-sm font-medium transition-all",
                                 billingPeriod === "monthly"
                                     ? "bg-gradient-to-r from-cyan-500 to-purple-500 text-white"
-                                    : "text-slate-400 hover:text-white"
+                                    : "text-slate-400 hover:text-zinc-50"
                             )}
                         >
                             Monthly
@@ -258,7 +259,7 @@ export default function PricingPage() {
                                 "px-6 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2",
                                 billingPeriod === "yearly"
                                     ? "bg-gradient-to-r from-cyan-500 to-purple-500 text-white"
-                                    : "text-slate-400 hover:text-white"
+                                    : "text-slate-400 hover:text-zinc-50"
                             )}
                         >
                             Yearly
@@ -278,7 +279,7 @@ export default function PricingPage() {
                                 "relative rounded-2xl p-6 transition-all",
                                 plan.popular
                                     ? "bg-gradient-to-b from-purple-900/50 to-slate-800/50 border-2 border-purple-500 scale-105"
-                                    : "bg-slate-800/50 border border-white/10"
+                                    : "bg-slate-800/50 border border-zinc-50/10"
                             )}
                         >
                             {plan.popular && (
@@ -290,13 +291,13 @@ export default function PricingPage() {
                             )}
 
                             <div className="mb-6">
-                                <h3 className="text-xl font-semibold text-white mb-1">{plan.name}</h3>
+                                <h3 className="text-xl font-semibold text-zinc-50 mb-1">{plan.name}</h3>
                                 <p className="text-slate-400 text-sm">{plan.description}</p>
                             </div>
 
                             <div className="mb-6">
                                 <div className="flex items-baseline gap-1">
-                                    <span className="text-4xl font-bold text-white">{getPrice(plan)}</span>
+                                    <span className="text-4xl font-bold text-zinc-50">{getPrice(plan)}</span>
                                     <span className="text-slate-400">/{getPeriod(plan)}</span>
                                 </div>
                             </div>
@@ -340,11 +341,11 @@ export default function PricingPage() {
 
                 {/* Feature Comparison */}
                 <div className="mb-20">
-                    <h2 className="text-2xl sm:text-3xl font-bold text-white text-center mb-8">Compare Features</h2>
+                    <h2 className="text-2xl sm:text-3xl font-bold text-zinc-50 text-center mb-8">Compare Features</h2>
                     <div className="overflow-x-auto -mx-4 px-4">
                         <table className="w-full">
                             <thead>
-                                <tr className="border-b border-white/10">
+                                <tr className="border-b border-zinc-50/10">
                                     <th className="text-left py-4 px-4 text-slate-400 font-medium">Feature</th>
                                     <th className="text-center py-4 px-4 text-slate-400 font-medium">Free</th>
                                     <th className="text-center py-4 px-4 text-slate-400 font-medium">Starter</th>
@@ -366,11 +367,11 @@ export default function PricingPage() {
                                     { feature: "Team members", free: "1", starter: "1", pro: "5", enterprise: "Unlimited" },
                                     { feature: "Support", free: "Community", starter: "Email", pro: "Priority", enterprise: "Dedicated" },
                                 ].map((row) => (
-                                    <tr key={row.feature} className="border-b border-white/5 hover:bg-white/5">
-                                        <td className="py-4 px-4 text-white">{row.feature}</td>
+                                    <tr key={row.feature} className="border-b border-zinc-50/5 hover:bg-zinc-50/5">
+                                        <td className="py-4 px-4 text-zinc-50">{row.feature}</td>
                                         <td className="text-center py-4 px-4 text-slate-400">{row.free}</td>
                                         <td className="text-center py-4 px-4 text-slate-400">{row.starter}</td>
-                                        <td className="text-center py-4 px-4 text-white bg-purple-900/10">{row.pro}</td>
+                                        <td className="text-center py-4 px-4 text-zinc-50 bg-purple-900/10">{row.pro}</td>
                                         <td className="text-center py-4 px-4 text-slate-400">{row.enterprise}</td>
                                     </tr>
                                 ))}
@@ -381,15 +382,15 @@ export default function PricingPage() {
 
                 {/* FAQ */}
                 <div className="max-w-3xl mx-auto">
-                    <h2 className="text-3xl font-bold text-white text-center mb-8">Frequently Asked Questions</h2>
+                    <h2 className="text-3xl font-bold text-zinc-50 text-center mb-8">Frequently Asked Questions</h2>
                     <div className="space-y-4">
                         {faqs.map((faq, i) => (
-                            <div key={i} className="bg-slate-800/50 rounded-xl border border-white/10 overflow-hidden">
+                            <div key={i} className="bg-slate-800/50 rounded-xl border border-zinc-50/10 overflow-hidden">
                                 <button
                                     onClick={() => setExpandedFaq(expandedFaq === i ? null : i)}
                                     className="w-full px-6 py-4 text-left flex items-center justify-between"
                                 >
-                                    <span className="font-medium text-white">{faq.q}</span>
+                                    <span className="font-medium text-zinc-50">{faq.q}</span>
                                     <svg
                                         className={cn(
                                             "w-5 h-5 text-slate-400 transition-transform",
@@ -415,7 +416,7 @@ export default function PricingPage() {
                 {/* CTA */}
                 <div className="mt-20 text-center">
                     <div className="bg-gradient-to-r from-purple-900/50 to-cyan-900/50 rounded-3xl p-6 sm:p-12 border border-purple-500/30">
-                        <h2 className="text-3xl font-bold text-white mb-4">Ready to get started?</h2>
+                        <h2 className="text-3xl font-bold text-zinc-50 mb-4">Ready to get started?</h2>
                         <p className="text-slate-300 mb-8 max-w-xl mx-auto">
                             Join thousands of businesses using QRit to connect with their customers.
                         </p>
@@ -426,7 +427,7 @@ export default function PricingPage() {
                                 </Button>
                             </Link>
                             <Link href="/contact">
-                                <Button size="lg" variant="outline" className="border-white/30 text-white hover:bg-white/10 px-8">
+                                <Button size="lg" variant="outline" className="border-zinc-50/30 text-zinc-50 hover:bg-zinc-50/10 px-8">
                                     Contact Sales
                                 </Button>
                             </Link>
@@ -436,16 +437,16 @@ export default function PricingPage() {
             </main>
 
             {/* Footer */}
-            <footer className="border-t border-white/10 bg-slate-900/50 mt-20">
+            <footer className="border-t border-zinc-50/10 bg-slate-900/50 mt-20">
                 <div className="container mx-auto px-4 py-12">
                     <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                         <span className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent">
                             QRit
                         </span>
                         <div className="flex gap-6 text-slate-400 text-sm">
-                            <Link href="/privacy" className="hover:text-white">Privacy</Link>
-                            <Link href="/terms" className="hover:text-white">Terms</Link>
-                            <Link href="/contact" className="hover:text-white">Contact</Link>
+                            <Link href="/privacy" className="hover:text-zinc-50">Privacy</Link>
+                            <Link href="/terms" className="hover:text-zinc-50">Terms</Link>
+                            <Link href="/contact" className="hover:text-zinc-50">Contact</Link>
                         </div>
                         <div className="text-slate-500 text-sm">
                             © 2026 QRit. All rights reserved.

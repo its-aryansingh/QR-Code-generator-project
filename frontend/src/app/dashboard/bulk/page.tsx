@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useAuthStore } from "@/lib/auth";
 import { BulkUpload } from "@/components/dashboard/BulkUpload";
 import { API_URL } from "@/lib/config";
+import { safeJson } from "@/lib/http";
 
 export default function BulkPage() {
   const { accessToken } = useAuthStore();
@@ -16,7 +17,7 @@ export default function BulkPage() {
     if (stored) { setWorkspaceId(stored); return; }
     if (!accessToken) return;
     fetch(`${api}/workspaces`, { headers: { Authorization: `Bearer ${accessToken}` } })
-      .then((r) => r.json())
+      .then(safeJson)
       .then((data) => {
         if (data.success && data.data?.length) {
           setWorkspaceId(data.data[0].id);
@@ -57,7 +58,7 @@ export default function BulkPage() {
             { label: "Max file size", value: "5 MB" },
           ].map((item) => (
             <div key={item.label} className="bg-zinc-900 border border-zinc-800 rounded-lg p-3">
-              <p className="text-[10px] font-semibold text-zinc-600 uppercase tracking-wider mb-1">{item.label}</p>
+              <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-1">{item.label}</p>
               <p className="text-xs text-zinc-400">{item.value}</p>
             </div>
           ))}

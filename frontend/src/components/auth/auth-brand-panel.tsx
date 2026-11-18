@@ -39,7 +39,7 @@ export function AuthBrandPanel() {
 
         {/* Decorative QR code illustration */}
         <div className="absolute bottom-12 right-12 opacity-[0.06]">
-          <svg width="280" height="280" viewBox="0 0 280 280" fill="currentColor" className="text-white">
+          <svg width="280" height="280" viewBox="0 0 280 280" fill="currentColor" className="text-zinc-50">
             {/* Top-left finder pattern */}
             <rect x="10" y="10" width="70" height="70" rx="4" />
             <rect x="20" y="20" width="50" height="50" rx="2" fill="#09090b" />
@@ -81,7 +81,7 @@ export function AuthBrandPanel() {
         {/* Logo */}
         <div className="flex items-center gap-3 mb-16">
           <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center">
-            <svg className="w-6 h-6 text-zinc-950" fill="currentColor" viewBox="0 0 24 24">
+            <svg className="w-6 h-6 text-black" fill="currentColor" viewBox="0 0 24 24">
               <rect x="2" y="2" width="6" height="6" rx="0.5" />
               <rect x="4" y="4" width="2" height="2" fill="white" />
               <rect x="16" y="2" width="6" height="6" rx="0.5" />
@@ -94,11 +94,11 @@ export function AuthBrandPanel() {
               <rect x="20" y="16" width="2" height="6" />
             </svg>
           </div>
-          <span className="text-xl font-bold text-white tracking-tight">QRit</span>
+          <span className="text-xl font-bold text-zinc-50 tracking-tight">QRit</span>
         </div>
 
         {/* Headline */}
-        <h1 className="text-4xl xl:text-5xl font-bold text-white leading-tight mb-4">
+        <h1 className="text-4xl xl:text-5xl font-bold text-zinc-50 leading-tight mb-4">
           Create stunning
           <br />
           QR codes that
@@ -119,7 +119,7 @@ export function AuthBrandPanel() {
                 <feature.icon className="w-4.5 h-4.5 text-violet-400" />
               </div>
               <div>
-                <p className="text-white font-medium text-sm">{feature.title}</p>
+                <p className="text-zinc-50 font-medium text-sm">{feature.title}</p>
                 <p className="text-zinc-500 text-sm">{feature.description}</p>
               </div>
             </div>

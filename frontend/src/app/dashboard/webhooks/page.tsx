@@ -25,7 +25,6 @@ function Webhooks() {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Webhook | null>(null);
   const [url, setUrl] = useState("");
-  const [description, setDescription] = useState("");
   const [events, setEvents] = useState<string[]>(["scan.created"]);
   const [newSecret, setNewSecret] = useState<{ url: string; secret: string } | null>(null);
   const [deleting, setDeleting] = useState<Webhook | null>(null);
@@ -39,7 +38,6 @@ function Webhooks() {
     setFormOpen(false);
     setEditing(null);
     setUrl("");
-    setDescription("");
     setEvents(["scan.created"]);
   };
 
@@ -47,11 +45,11 @@ function Webhooks() {
     async () => {
       if (editing) {
         return enterprise.updateWebhook(workspaceId!, editing.id, {
-          url: url.trim(), events, description,
+          url: url.trim(), events,
         });
       }
       return enterprise.createWebhook(workspaceId!, {
-        url: url.trim(), events, description: description || undefined,
+        url: url.trim(), events,
       });
     },
     {
@@ -102,7 +100,6 @@ function Webhooks() {
   const openEdit = (webhook: Webhook) => {
     setEditing(webhook);
     setUrl(webhook.url);
-    setDescription(webhook.description ?? "");
     setEvents(webhook.events);
     setFormOpen(true);
   };
@@ -149,10 +146,11 @@ function Webhooks() {
         </div>
       )}
 
-      {list.error && <ErrorState message={list.error.message} onRetry={list.reload} />}
       {test.error && <div className="mb-4"><ErrorState message={test.error} /></div>}
 
-      {list.loading && !list.data ? (
+      {list.error ? (
+        <ErrorState message={list.error.message} onRetry={list.reload} />
+      ) : list.loading && !list.data ? (
         <LoadingPanel rows={4} />
       ) : webhooks.length ? (
         <div className="space-y-3">
@@ -190,7 +188,7 @@ function Webhooks() {
                 </p>
               )}
 
-              <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-zinc-800/60 pt-3 text-xs text-zinc-600">
+              <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-zinc-800/60 pt-3 text-xs text-zinc-400">
                 <span>
                   Last delivery {webhook.last_triggered ? formatRelative(webhook.last_triggered) : "never"}
                   {typeof webhook.delivery_count === "number" && ` · ${formatNumber(webhook.delivery_count)} total`}
@@ -232,16 +230,24 @@ function Webhooks() {
 
       <Panel title="Verifying deliveries" className="mt-5">
         <p className="text-sm text-zinc-400">
-          Each request carries <code className="text-zinc-200">X-QRit-Signature: sha256=…</code>,
-          an HMAC of the raw request body keyed with your signing secret. Recompute it and compare
-          in constant time before trusting the payload.
+          Deliveries follow the{" "}
+          <a href="https://www.standardwebhooks.com/" target="_blank" rel="noopener noreferrer" className="text-violet-400 underline underline-offset-2 hover:text-violet-300">
+            Standard Webhooks
+          </a>{" "}
+          spec: each request carries <code className="text-zinc-200">webhook-id</code>,{" "}
+          <code className="text-zinc-200">webhook-timestamp</code> and{" "}
+          <code className="text-zinc-200">webhook-signature: v1,…</code>, an HMAC-SHA256 of{" "}
+          <code className="text-zinc-200">id.timestamp.body</code> keyed with your secret. Recompute
+          it and compare in constant time before trusting the payload; the official libraries do this for you.
         </p>
-        <pre className="mt-3 overflow-x-auto rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-xs text-zinc-400">
-{`import hmac, hashlib
+        <pre className="mt-3 overflow-x-auto rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-xs text-zinc-300">
+{`import base64, hashlib, hmac
 
-def verify(raw_body: bytes, header: str, secret: str) -> bool:
-    expected = hmac.new(secret.encode(), raw_body, hashlib.sha256).hexdigest()
-    return hmac.compare_digest(f"sha256={expected}", header)`}
+def verify(headers: dict, raw_body: bytes, secret: str) -> bool:
+    key = base64.b64decode(secret.removeprefix("whsec_"))
+    signed = f"{headers['webhook-id']}.{headers['webhook-timestamp']}.".encode() + raw_body
+    expected = "v1," + base64.b64encode(hmac.new(key, signed, hashlib.sha256).digest()).decode()
+    return any(hmac.compare_digest(expected, sig) for sig in headers["webhook-signature"].split())`}
         </pre>
       </Panel>
 
@@ -273,13 +279,6 @@ def verify(raw_body: bytes, header: str, secret: str) -> bool:
               onChange={(e) => setUrl(e.target.value)}
               placeholder="https://hooks.yourcompany.com/qrit"
               autoFocus
-            />
-          </Field>
-          <Field label="Description">
-            <TextInput
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Pipes scans into the CRM"
             />
           </Field>
           <Field label="Events" required>

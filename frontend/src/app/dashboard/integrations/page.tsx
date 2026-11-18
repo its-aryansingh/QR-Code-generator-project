@@ -5,6 +5,7 @@ import { useAuthStore } from "@/lib/auth";
 import { useWorkspace } from "@/lib/workspace";
 import { Check, Copy, ExternalLink, Zap, Plus } from "lucide-react";
 import { API_URL } from "@/lib/config";
+import { safeJson } from "@/lib/http";
 
 interface Webhook {
   id: string;
@@ -39,7 +40,7 @@ const INTEGRATIONS: Integration[] = [
       </svg>
     ),
     accentColor: "border-orange-500/30 bg-orange-500/5",
-    badgeColor: "text-orange-400 bg-orange-500/10",
+    badgeColor: "text-orange-300 bg-orange-500/10",
     events: ["scan.created", "qr.created", "qr.deleted"],
     setupSteps: [
       "Go to zapier.com and create a new Zap",
@@ -143,7 +144,9 @@ function CopyButton({ text }: { text: string }) {
   return (
     <button
       onClick={() => { navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
-      className="p-1.5 rounded text-zinc-500 hover:text-zinc-300 hover:bg-zinc-700 transition-colors"
+      aria-label={copied ? "Copied" : "Copy"}
+      title="Copy"
+      className="flex size-11 items-center justify-center rounded text-zinc-500 hover:bg-zinc-700 hover:text-zinc-300 transition-colors sm:size-auto sm:p-1.5"
     >
       {copied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
     </button>
@@ -182,7 +185,7 @@ function IntegrationCard({ integration, workspaceId, existingWebhooks }: {
           secret: crypto.randomUUID().replace(/-/g, ""),
         }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (data.success) {
         setSaved(true);
         setWebhookUrl("");
@@ -222,8 +225,9 @@ function IntegrationCard({ integration, workspaceId, existingWebhooks }: {
             href={integration.docsUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="shrink-0 p-2 text-zinc-600 hover:text-zinc-400 transition-colors"
+            className="flex size-11 shrink-0 items-center justify-center text-zinc-500 hover:text-zinc-300 transition-colors sm:size-auto sm:p-2"
             title="Docs"
+            aria-label={`${integration.name} docs (opens in a new tab)`}
           >
             <ExternalLink size={14} />
           </a>
@@ -240,7 +244,7 @@ function IntegrationCard({ integration, workspaceId, existingWebhooks }: {
 
         <button
           onClick={() => setExpanded((v) => !v)}
-          className="mt-4 w-full flex items-center justify-center gap-1.5 py-2 text-xs text-zinc-400 hover:text-zinc-200 border border-zinc-700/50 rounded-lg hover:bg-zinc-800/40 transition-colors"
+          className="min-h-11 sm:min-h-0 mt-4 w-full flex items-center justify-center gap-1.5 py-2 text-xs text-zinc-400 hover:text-zinc-200 border border-zinc-700/50 rounded-lg hover:bg-zinc-800/40 transition-colors"
         >
           <Zap size={12} />
           {expanded ? "Hide setup" : "Setup guide"}
@@ -331,7 +335,7 @@ export default function IntegrationsPage() {
     fetch(`${api}/workspaces/${wsId}/webhooks`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     })
-      .then((r) => r.json())
+      .then(safeJson)
       .then((d) => { if (d.success) setWebhooks(d.data?.webhooks || []); })
       .catch(() => {});
   }, [accessToken, api]);
@@ -340,7 +344,7 @@ export default function IntegrationsPage() {
     const wsId = activeWorkspaceId || "";
     if (!wsId) {
       fetch(`${api}/workspaces`, { headers: { Authorization: `Bearer ${accessToken}` } })
-        .then((r) => r.json())
+        .then(safeJson)
         .then((d) => {
           if (d.success && d.data?.length) {
             setWorkspaceId(d.data[0].id);
@@ -410,7 +414,7 @@ export default function IntegrationsPage() {
         </div>
         <a
           href="/dashboard/webhooks"
-          className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 bg-zinc-800 border border-zinc-700 text-zinc-300 text-sm rounded-lg hover:bg-zinc-700 transition-colors"
+          className="min-h-11 sm:min-h-0 flex-shrink-0 flex items-center gap-1.5 px-4 py-2 bg-zinc-800 border border-zinc-700 text-zinc-300 text-sm rounded-lg hover:bg-zinc-700 transition-colors"
         >
           <Plus size={14} /> Create Webhook
         </a>

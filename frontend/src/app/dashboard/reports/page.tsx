@@ -133,7 +133,7 @@ export default function ReportsPage() {
                         <p className="text-xs text-zinc-500 mt-1">Full analytics with charts and recommendations</p>
                     </div>
                 </div>
-                <button className="mt-4 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700/50 rounded-lg text-sm text-zinc-300 transition-colors">
+                <button className="min-h-11 sm:min-h-0 mt-4 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700/50 rounded-lg text-sm text-zinc-300 transition-colors">
                     Configure Scheduled Reports →
                 </button>
             </div>
@@ -160,7 +160,7 @@ function ExportCard({ title, description, icon, color, downloading, onDownload }
                     <p className="text-xs text-zinc-500 mt-1">{description}</p>
                 </div>
                 <button onClick={onDownload} disabled={downloading}
-                    className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700/50 rounded-lg text-sm text-zinc-300 transition-colors disabled:opacity-50 whitespace-nowrap">
+                    className="min-h-11 sm:min-h-0 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700/50 rounded-lg text-sm text-zinc-300 transition-colors disabled:opacity-50 whitespace-nowrap">
                     {downloading ? (
                         <span className="flex items-center gap-1">
                             <span className="w-3 h-3 border border-zinc-400 border-t-transparent rounded-full animate-spin" />

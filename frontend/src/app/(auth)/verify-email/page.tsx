@@ -67,7 +67,7 @@ function VerifyEmailContent() {
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                     </svg>
                 </div>
-                <h1 className="text-3xl font-bold text-white mb-3">Verifying your email...</h1>
+                <h1 className="text-3xl font-bold text-zinc-50 mb-3">Verifying your email...</h1>
                 <p className="text-zinc-400">Please wait a moment</p>
             </div>
         );
@@ -79,7 +79,7 @@ function VerifyEmailContent() {
                 <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto mb-6">
                     <CheckCircle2 className="w-8 h-8 text-emerald-400" />
                 </div>
-                <h1 className="text-3xl font-bold text-white mb-3">Email verified!</h1>
+                <h1 className="text-3xl font-bold text-zinc-50 mb-3">Email verified!</h1>
                 <p className="text-zinc-400 mb-6">Your email address has been verified successfully.</p>
                 <Link
                     href={isAuthenticated ? "/dashboard" : "/login"}
@@ -96,7 +96,7 @@ function VerifyEmailContent() {
             <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto mb-6">
                 <XCircle className="w-8 h-8 text-red-400" />
             </div>
-            <h1 className="text-3xl font-bold text-white mb-3">Verification failed</h1>
+            <h1 className="text-3xl font-bold text-zinc-50 mb-3">Verification failed</h1>
             <p className="text-zinc-400 mb-6">{error}</p>
             {isAuthenticated && (
                 <button

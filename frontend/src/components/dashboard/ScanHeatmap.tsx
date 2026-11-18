@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuthStore } from "@/lib/auth";
 import { API_URL } from "@/lib/config";
+import { safeJson } from "@/lib/http";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
@@ -40,7 +41,7 @@ export function ScanHeatmap({ workspaceId }: Props) {
     fetch(`${api}/workspaces/${workspaceId}/analytics/heatmap`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     })
-      .then((r) => r.json())
+      .then(safeJson)
       .then((d) => {
         if (d.success && Array.isArray(d.data)) setCells(d.data);
       })

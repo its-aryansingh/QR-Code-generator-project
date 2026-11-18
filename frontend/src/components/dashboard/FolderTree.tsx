@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuthStore } from "@/lib/auth";
 import { toast } from "sonner";
 import { API_URL } from "@/lib/config";
+import { safeJson } from "@/lib/http";
 
 interface Folder {
   id: string;
@@ -64,6 +65,8 @@ function FolderNode({
         {hasChildren && (
           <button
             onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
+            aria-label={expanded ? `Collapse ${folder.name}` : `Expand ${folder.name}`}
+            aria-expanded={expanded}
             className="w-4 h-4 flex items-center justify-center text-zinc-600 hover:text-zinc-400 flex-shrink-0"
           >
             <svg className={`w-3 h-3 transition-transform ${expanded ? "rotate-90" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -146,7 +149,7 @@ export function FolderTree({ workspaceId, selectedFolderId, onSelectFolder }: Fo
     if (!workspaceId || !accessToken) return;
     const res = await fetch(`${api}/workspaces/${workspaceId}/folders`, {
       headers: { Authorization: `Bearer ${accessToken}` },
-    }).then((r) => r.json());
+    }).then(safeJson);
     if (res.success) setTree(buildTree(res.data ?? []));
   }, [workspaceId, accessToken]);
 
@@ -158,7 +161,7 @@ export function FolderTree({ workspaceId, selectedFolderId, onSelectFolder }: Fo
       method: "POST",
       headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
       body: JSON.stringify({ name: newName.trim(), color: newColor }),
-    }).then((r) => r.json());
+    }).then(safeJson);
 
     if (res.success) {
       fetchFolders();
@@ -223,7 +226,7 @@ export function FolderTree({ workspaceId, selectedFolderId, onSelectFolder }: Fo
               <button
                 key={c}
                 onClick={() => setNewColor(c)}
-                className={`w-5 h-5 rounded-sm transition-transform ${newColor === c ? "scale-125 ring-2 ring-white/30" : ""}`}
+                className={`w-5 h-5 rounded-sm transition-transform ${newColor === c ? "scale-125 ring-2 ring-zinc-50/30" : ""}`}
                 style={{ backgroundColor: c }}
               />
             ))}

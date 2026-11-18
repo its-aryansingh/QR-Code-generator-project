@@ -15,8 +15,10 @@ const PhoneInput = ({
     placeholder?: string,
     label?: string
 }) => {
-    const [selectedCode, setSelectedCode] = useState("+91");
+    // Selection is by ISO country, not dial code: +1 is both the US and Canada.
+    const [selectedCountry, setSelectedCountry] = useState("IN");
     const [number, setNumber] = useState("");
+    const selectedCode = countryCodes.find((c) => c.country === selectedCountry)?.code ?? "+91";
 
     useEffect(() => {
         if (!value) {
@@ -24,19 +26,23 @@ const PhoneInput = ({
             return;
         }
 
-        const foundCode = countryCodes.find(c => value.trim().startsWith(c.code));
-        if (foundCode) {
-            setSelectedCode(foundCode.code);
-            setNumber(value.slice(foundCode.code.length).trim());
+        const trimmed = value.trim();
+        const matches = countryCodes.filter((c) => trimmed.startsWith(c.code));
+        if (matches.length > 0) {
+            const longest = Math.max(...matches.map((c) => c.code.length));
+            const best = matches.filter((c) => c.code.length === longest);
+            setSelectedCountry((current) =>
+                best.some((c) => c.country === current) ? current : best[0].country,
+            );
+            setNumber(trimmed.slice(longest).trim());
         } else {
-            // Fallback: try to keep existing value in number if it doesnt match formatting
-            // or if it's just a raw number without code.
             setNumber(value);
         }
     }, [value]);
 
-    const handleCodeChange = (code: string) => {
-        setSelectedCode(code);
+    const handleCountryChange = (country: string) => {
+        setSelectedCountry(country);
+        const code = countryCodes.find((c) => c.country === country)?.code ?? selectedCode;
         onChange(`${code} ${number}`);
     };
 
@@ -50,12 +56,13 @@ const PhoneInput = ({
             {label && <label className="block text-sm font-medium text-slate-300 mb-2">{label}</label>}
             <div className="flex gap-2">
                 <select
-                    value={selectedCode}
-                    onChange={(e) => handleCodeChange(e.target.value)}
-                    className="w-24 px-2 py-3.5 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20 transition-all duration-300 appearance-none cursor-pointer"
+                    value={selectedCountry}
+                    onChange={(e) => handleCountryChange(e.target.value)}
+                    aria-label="Country calling code"
+                    className="w-24 px-2 py-3.5 bg-zinc-50/5 border border-zinc-50/10 rounded-xl text-zinc-50 focus:outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20 transition-all duration-300 appearance-none cursor-pointer"
                 >
                     {countryCodes.map((c) => (
-                        <option key={c.code} value={c.code} className="bg-[#12121a] text-white">
+                        <option key={c.country} value={c.country} className="bg-zinc-900 text-zinc-100">
                             {c.code} ({c.country})
                         </option>
                     ))}
@@ -65,7 +72,7 @@ const PhoneInput = ({
                     value={number}
                     onChange={(e) => handleNumberChange(e.target.value)}
                     placeholder={placeholder}
-                    className="flex-1 px-4 py-3.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20 transition-all duration-300"
+                    className="flex-1 px-4 py-3.5 bg-zinc-50/5 border border-zinc-50/10 rounded-xl text-zinc-50 placeholder:text-slate-500 focus:outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20 transition-all duration-300"
                 />
             </div>
         </div>
@@ -137,7 +144,7 @@ export const CreateQRPanel: React.FC<CreateQRPanelProps> = ({
     multiLinkData,
     setMultiLinkData,
 }) => {
-    const inputClass = "w-full px-4 py-3.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20 transition-all duration-300";
+    const inputClass = "w-full px-4 py-3.5 bg-zinc-50/5 border border-zinc-50/10 rounded-xl text-zinc-50 placeholder:text-slate-500 focus:outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20 transition-all duration-300";
 
     return (
         <div className="space-y-5">
@@ -194,7 +201,7 @@ export const CreateQRPanel: React.FC<CreateQRPanelProps> = ({
                             className={inputClass}
                         />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <div>
                             <PhoneInput
                                 value={vcardData.phone}
@@ -223,7 +230,7 @@ export const CreateQRPanel: React.FC<CreateQRPanelProps> = ({
                             className={inputClass}
                         />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <div>
                             <label className="block text-sm font-medium text-slate-300 mb-2">Job Title</label>
                             <input
@@ -358,7 +365,7 @@ export const CreateQRPanel: React.FC<CreateQRPanelProps> = ({
             {/* Location Form */}
             {selectedType === "location" && (
                 <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500 ease-out">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <div>
                             <label className="block text-sm font-medium text-slate-300 mb-2">Latitude *</label>
                             <input
@@ -416,7 +423,7 @@ export const CreateQRPanel: React.FC<CreateQRPanelProps> = ({
                             className={inputClass}
                         />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <div>
                             <label className="block text-sm font-medium text-slate-300 mb-2">Start Date/Time *</label>
                             <input
@@ -459,13 +466,13 @@ export const CreateQRPanel: React.FC<CreateQRPanelProps> = ({
                             onChange={(e) => setSocialData({ ...socialData, platform: e.target.value })}
                             className={inputClass}
                         >
-                            <option value="instagram" className="bg-[#12121a] text-white">Instagram</option>
-                            <option value="twitter" className="bg-[#12121a] text-white">Twitter/X</option>
-                            <option value="facebook" className="bg-[#12121a] text-white">Facebook</option>
-                            <option value="linkedin" className="bg-[#12121a] text-white">LinkedIn</option>
-                            <option value="tiktok" className="bg-[#12121a] text-white">TikTok</option>
-                            <option value="youtube" className="bg-[#12121a] text-white">YouTube</option>
-                            <option value="custom" className="bg-[#12121a] text-white">Custom URL</option>
+                            <option value="instagram" className="bg-zinc-900 text-zinc-50">Instagram</option>
+                            <option value="twitter" className="bg-zinc-900 text-zinc-50">Twitter/X</option>
+                            <option value="facebook" className="bg-zinc-900 text-zinc-50">Facebook</option>
+                            <option value="linkedin" className="bg-zinc-900 text-zinc-50">LinkedIn</option>
+                            <option value="tiktok" className="bg-zinc-900 text-zinc-50">TikTok</option>
+                            <option value="youtube" className="bg-zinc-900 text-zinc-50">YouTube</option>
+                            <option value="custom" className="bg-zinc-900 text-zinc-50">Custom URL</option>
                         </select>
                     </div>
                     <div>
@@ -494,7 +501,7 @@ export const CreateQRPanel: React.FC<CreateQRPanelProps> = ({
                             className={inputClass}
                         />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <div>
                             <label className="block text-sm font-medium text-slate-300 mb-2">Amount (BTC)</label>
                             <input
@@ -543,7 +550,7 @@ export const CreateQRPanel: React.FC<CreateQRPanelProps> = ({
                             className={inputClass}
                         />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <div>
                             <label className="block text-sm font-medium text-slate-300 mb-2">Amount (₹)</label>
                             <input
@@ -640,7 +647,9 @@ export const CreateQRPanel: React.FC<CreateQRPanelProps> = ({
                                             const newPhones = mecardData.phones.filter((_: any, idx: number) => idx !== i);
                                             setMecardData({ ...mecardData, phones: newPhones });
                                         }}
-                                        className="px-3 py-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all text-sm"
+                                        aria-label={`Remove phone ${i + 1}`}
+                                        title="Remove phone"
+                                        className="min-h-11 min-w-11 px-3 py-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all text-sm sm:min-h-0 sm:min-w-0"
                                     >✕</button>
                                 )}
                             </div>
@@ -676,7 +685,9 @@ export const CreateQRPanel: React.FC<CreateQRPanelProps> = ({
                                             const newEmails = mecardData.emails.filter((_: any, idx: number) => idx !== i);
                                             setMecardData({ ...mecardData, emails: newEmails });
                                         }}
-                                        className="px-3 py-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all text-sm"
+                                        aria-label={`Remove email ${i + 1}`}
+                                        title="Remove email"
+                                        className="min-h-11 min-w-11 px-3 py-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all text-sm sm:min-h-0 sm:min-w-0"
                                     >✕</button>
                                 )}
                             </div>
@@ -699,7 +710,7 @@ export const CreateQRPanel: React.FC<CreateQRPanelProps> = ({
                             className={inputClass}
                         />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <div>
                             <label className="block text-sm font-medium text-slate-300 mb-2">Website</label>
                             <input
@@ -756,7 +767,9 @@ export const CreateQRPanel: React.FC<CreateQRPanelProps> = ({
                                 <button
                                     type="button"
                                     onClick={() => setMultiLinkData(multiLinkData.filter((_, idx) => idx !== i))}
-                                    className="px-3 py-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all text-sm mt-0.5"
+                                    aria-label={`Remove link ${i + 1}`}
+                                    title="Remove link"
+                                    className="min-h-11 min-w-11 px-3 py-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all text-sm mt-0.5 sm:min-h-0 sm:min-w-0"
                                 >✕</button>
                             )}
                         </div>

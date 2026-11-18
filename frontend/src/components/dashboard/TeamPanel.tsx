@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuthStore } from "@/lib/auth";
 import { toast } from "sonner";
 import { API_URL } from "@/lib/config";
+import { safeJson } from "@/lib/http";
 
 interface Member {
   id: string;
@@ -55,7 +56,7 @@ export function TeamPanel({ workspaceId, currentUserRole = "viewer" }: TeamPanel
     try {
       const res = await fetch(`${api}/workspaces/${workspaceId}/members`, {
         headers: { Authorization: `Bearer ${accessToken}` },
-      }).then((r) => r.json());
+      }).then(safeJson);
       if (res.success) setMembers(res.data ?? []);
     } finally {
       setLoading(false);
@@ -72,7 +73,7 @@ export function TeamPanel({ workspaceId, currentUserRole = "viewer" }: TeamPanel
         method: "POST",
         headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
         body: JSON.stringify({ email: inviteEmail.trim(), role: inviteRole }),
-      }).then((r) => r.json());
+      }).then(safeJson);
 
       if (res.success) {
         toast.success(`Invite sent to ${inviteEmail}`);
@@ -92,7 +93,7 @@ export function TeamPanel({ workspaceId, currentUserRole = "viewer" }: TeamPanel
       method: "PUT",
       headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
       body: JSON.stringify({ role }),
-    }).then((r) => r.json());
+    }).then(safeJson);
 
     if (res.success) {
       toast.success("Role updated");
@@ -107,7 +108,7 @@ export function TeamPanel({ workspaceId, currentUserRole = "viewer" }: TeamPanel
     const res = await fetch(`${api}/workspaces/${workspaceId}/members/${memberId}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${accessToken}` },
-    }).then((r) => r.json());
+    }).then(safeJson);
 
     if (res.success) {
       toast.success("Member removed");

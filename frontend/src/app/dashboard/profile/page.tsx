@@ -8,8 +8,9 @@ import {
 } from "lucide-react";
 import { API_URL } from "@/lib/config";
 import { MIN_PASSWORD_LENGTH } from "@/components/auth/password-strength";
+import { safeJson } from "@/lib/http";
 
-const inputCls = "w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500 transition-colors";
+const inputCls = "w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2.5 text-sm text-zinc-50 placeholder:text-zinc-600 focus:outline-none focus:border-violet-500 transition-colors";
 const labelCls = "text-sm text-zinc-400 block mb-1.5 font-medium";
 
 interface UserProfile {
@@ -60,7 +61,7 @@ export default function ProfilePage() {
     const token = useAuthStore.getState().accessToken;
     if (!token) return;
     fetch(`${api}/user/profile`, { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => r.json())
+      .then(safeJson)
       .then((data) => {
         if (data.success) {
           const p = data.data;
@@ -85,7 +86,7 @@ export default function ProfilePage() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ name, company, avatar_url: avatarUrl }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (data.success) {
         setSaved(true);
         setTimeout(() => setSaved(false), 3000);
@@ -113,7 +114,7 @@ export default function ProfilePage() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ password: newPassword }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (data.success) {
         setPasswordSaved(true);
         setNewPassword("");
@@ -136,7 +137,7 @@ export default function ProfilePage() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ plan, billing_period: "monthly" }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (data.success && data.checkout_url) {
         window.location.href = data.checkout_url;
       }
@@ -166,7 +167,7 @@ export default function ProfilePage() {
   return (
     <div className="max-w-2xl space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-white">Profile</h1>
+        <h1 className="text-2xl font-bold text-zinc-50">Profile</h1>
         <p className="text-zinc-500 mt-1">Manage your account settings and subscription</p>
       </div>
 
@@ -187,7 +188,7 @@ export default function ProfilePage() {
             {name ? name[0].toUpperCase() : profile?.email?.[0]?.toUpperCase() || "?"}
           </div>
           <div>
-            <p className="text-white font-semibold">{name || profile?.email}</p>
+            <p className="text-zinc-50 font-semibold">{name || profile?.email}</p>
             <p className="text-sm text-zinc-500">{profile?.email}</p>
             <p className="text-xs text-zinc-600 mt-1">Joined {profile?.created_at ? new Date(profile.created_at).toLocaleDateString() : ""}</p>
           </div>
@@ -195,34 +196,34 @@ export default function ProfilePage() {
 
         <div className="grid sm:grid-cols-2 gap-4">
           <div>
-            <label className={labelCls}>
+            <label htmlFor="profile-name" className={labelCls}>
               <span className="flex items-center gap-1.5"><User size={12} /> Display Name</span>
             </label>
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" className={inputCls} />
+            <input id="profile-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" className={inputCls} />
           </div>
           <div>
-            <label className={labelCls}>
+            <label htmlFor="profile-company" className={labelCls}>
               <span className="flex items-center gap-1.5"><Building size={12} /> Company</span>
             </label>
-            <input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Acme Inc." className={inputCls} />
+            <input id="profile-company" value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Acme Inc." className={inputCls} />
           </div>
         </div>
 
         <div>
-          <label className={labelCls}>
+          <label htmlFor="profile-email" className={labelCls}>
             <span className="flex items-center gap-1.5"><Mail size={12} /> Email</span>
           </label>
-          <input value={profile?.email || ""} disabled className={inputCls + " opacity-50 cursor-not-allowed"} />
+          <input id="profile-email" value={profile?.email || ""} disabled className={inputCls + " opacity-50 cursor-not-allowed"} />
         </div>
 
         <div>
-          <label className={labelCls}>Avatar URL</label>
-          <input value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} placeholder="https://example.com/avatar.png" className={inputCls} />
+          <label htmlFor="profile-avatar" className={labelCls}>Avatar URL</label>
+          <input id="profile-avatar" value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} placeholder="https://example.com/avatar.png" className={inputCls} />
         </div>
 
         <div className="flex items-center gap-3">
           <button onClick={handleSave} disabled={saving}
-            className="px-5 py-2 bg-white text-zinc-950 text-sm font-medium rounded-lg hover:bg-zinc-200 transition-colors disabled:opacity-50 flex items-center gap-2">
+            className="min-h-11 sm:min-h-0 px-5 py-2 bg-zinc-50 text-zinc-950 text-sm font-medium rounded-lg hover:bg-zinc-200 transition-colors disabled:opacity-50 flex items-center gap-2">
             {saving ? <div className="w-4 h-4 border-2 border-zinc-950 border-t-transparent rounded-full animate-spin" /> : <Save size={14} />}
             Save Profile
           </button>
@@ -236,24 +237,26 @@ export default function ProfilePage() {
           <Shield size={14} className="text-violet-400" /> Security
         </h2>
         <div>
-          <label className={labelCls}>New Password</label>
+          <label htmlFor="profile-new-password" className={labelCls}>New Password</label>
           <div className="relative">
             <input
+              id="profile-new-password"
               type={showPassword ? "text" : "password"}
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               placeholder={`Minimum ${MIN_PASSWORD_LENGTH} characters`}
               className={inputCls + " pr-10"}
             />
-            <button onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300">
+            <button type="button" onClick={() => setShowPassword(!showPassword)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              className="absolute right-0 top-1/2 flex size-11 -translate-y-1/2 items-center justify-center text-zinc-500 hover:text-zinc-300">
               {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
           </div>
         </div>
         <div className="flex items-center gap-3">
           <button onClick={handlePasswordChange} disabled={!newPassword || saving}
-            className="px-5 py-2 bg-zinc-800 text-zinc-300 text-sm font-medium rounded-lg hover:bg-zinc-700 transition-colors disabled:opacity-50 border border-zinc-700">
+            className="min-h-11 sm:min-h-0 px-5 py-2 bg-zinc-800 text-zinc-300 text-sm font-medium rounded-lg hover:bg-zinc-700 transition-colors disabled:opacity-50 border border-zinc-700">
             Update Password
           </button>
           {passwordSaved && <span className="text-sm text-emerald-400 flex items-center gap-1"><Check size={14} /> Updated</span>}
@@ -291,24 +294,24 @@ export default function ProfilePage() {
           {profile?.plan === "free" && (
             <>
               <button onClick={() => handleCheckout("starter")}
-                className="px-4 py-2 bg-gradient-to-r from-cyan-600 to-violet-600 text-white text-sm font-medium rounded-lg hover:opacity-90 transition-opacity">
+                className="min-h-11 sm:min-h-0 px-4 py-2 bg-gradient-to-r from-cyan-600 to-violet-600 text-white text-sm font-medium rounded-lg hover:opacity-90 transition-opacity">
                 Upgrade to Starter — $9/mo
               </button>
               <button onClick={() => handleCheckout("pro")}
-                className="px-4 py-2 bg-gradient-to-r from-violet-600 to-pink-600 text-white text-sm font-medium rounded-lg hover:opacity-90 transition-opacity">
+                className="min-h-11 sm:min-h-0 px-4 py-2 bg-gradient-to-r from-violet-600 to-pink-600 text-white text-sm font-medium rounded-lg hover:opacity-90 transition-opacity">
                 Upgrade to Pro — $29/mo
               </button>
             </>
           )}
           {profile?.plan === "starter" && (
             <button onClick={() => handleCheckout("pro")}
-              className="px-4 py-2 bg-gradient-to-r from-violet-600 to-pink-600 text-white text-sm font-medium rounded-lg hover:opacity-90 transition-opacity">
+              className="min-h-11 sm:min-h-0 px-4 py-2 bg-gradient-to-r from-violet-600 to-pink-600 text-white text-sm font-medium rounded-lg hover:opacity-90 transition-opacity">
               Upgrade to Pro — $29/mo
             </button>
           )}
           {profile?.plan !== "free" && profile?.subscription_status !== "canceling" && (
             <button onClick={handleCancelSubscription}
-              className="px-4 py-2 bg-zinc-800 text-zinc-400 text-sm rounded-lg hover:bg-zinc-700 border border-zinc-700 transition-colors">
+              className="min-h-11 sm:min-h-0 px-4 py-2 bg-zinc-800 text-zinc-400 text-sm rounded-lg hover:bg-zinc-700 border border-zinc-700 transition-colors">
               Cancel Subscription
             </button>
           )}
@@ -322,15 +325,17 @@ export default function ProfilePage() {
             <Key size={14} className="text-violet-400" /> API Access
           </h2>
           <div>
-            <label className={labelCls}>API Key</label>
+            <label htmlFor="profile-api-key" className={labelCls}>API Key</label>
             <div className="flex gap-2">
               <input
+                id="profile-api-key"
                 value={showApiKey ? profile.api_key : "•".repeat(40)}
                 readOnly
                 className={inputCls + " font-mono text-xs"}
               />
-              <button onClick={() => setShowApiKey(!showApiKey)}
-                className="shrink-0 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-400 hover:text-white transition-colors text-sm">
+              <button type="button" onClick={() => setShowApiKey(!showApiKey)}
+                aria-label={showApiKey ? "Hide API key" : "Show API key"}
+                className="min-h-11 sm:min-h-0 shrink-0 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-400 hover:text-zinc-50 transition-colors text-sm">
                 {showApiKey ? <EyeOff size={14} /> : <Eye size={14} />}
               </button>
             </div>

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useAuthStore } from "@/lib/auth";
 import { Copy, Check, Eye, EyeOff, RefreshCw, Lock, Terminal } from "lucide-react";
 import { API_URL } from "@/lib/config";
+import { safeJson } from "@/lib/http";
 
 interface APIKeyInfo {
   api_key: string;
@@ -35,7 +36,7 @@ export default function APIKeyPage() {
       const res = await fetch(`${api}/api/key`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (data.success) setKeyInfo(data.data);
     } catch {}
     finally { setLoading(false); }
@@ -58,7 +59,7 @@ export default function APIKeyPage() {
         method: "POST",
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (data.success) {
         setKeyInfo((prev) => prev ? { ...prev, api_key: data.data.api_key } : prev);
         setShowKey(true);
@@ -101,7 +102,7 @@ export default function APIKeyPage() {
           <p className="text-sm text-zinc-500 mb-6">API access is available on Pro and Enterprise plans.</p>
           <a
             href="/dashboard/settings"
-            className="inline-flex items-center px-5 py-2.5 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-lg transition-colors"
+            className="min-h-11 sm:min-h-0 inline-flex items-center px-5 py-2.5 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-lg transition-colors"
           >
             Upgrade Plan
           </a>

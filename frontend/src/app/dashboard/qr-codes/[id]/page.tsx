@@ -8,6 +8,7 @@ import { ArrowLeft, Save, Trash2, QrCode, AlertCircle, ExternalLink } from "luci
 import { API_URL } from "@/lib/config";
 import { QrProof, styleFromCustomization } from "@/components/create/qr-proof";
 import { QrShareActions } from "@/components/qr/qr-share-actions";
+import { safeJson } from "@/lib/http";
 
 interface QRRecord {
   id: string;
@@ -61,7 +62,7 @@ export default function QREditPage() {
   useEffect(() => {
     if (!id || !accessToken) return;
     fetch(`${api}/workspaces/${workspaceId}/qr/${id}`, { headers: { Authorization: `Bearer ${accessToken}` } })
-      .then((r) => r.json())
+      .then(safeJson)
       .then((d) => {
         if (d.success) {
           const r: QRRecord = d.data;
@@ -102,7 +103,7 @@ export default function QREditPage() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
         body: JSON.stringify(body),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (data.success) {
         setSaved(true);
         setTimeout(() => setSaved(false), 3000);
@@ -164,7 +165,9 @@ export default function QREditPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => router.back()}
-            className="p-2 text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 rounded-lg"
+            aria-label="Back"
+            title="Back"
+            className="flex size-11 items-center justify-center rounded-lg text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200 sm:size-9"
           >
             <ArrowLeft size={18} />
           </button>

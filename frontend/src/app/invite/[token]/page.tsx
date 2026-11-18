@@ -6,6 +6,7 @@ import { useAuthStore } from "@/lib/auth";
 import Link from "next/link";
 import { Users, Shield, Clock, Check, AlertCircle, LogIn } from "lucide-react";
 import { API_URL } from "@/lib/config";
+import { safeJson } from "@/lib/http";
 
 interface InviteInfo {
   workspace_name: string;
@@ -34,7 +35,7 @@ export default function InviteAcceptPage() {
     const fetchInvite = async () => {
       try {
         const res = await fetch(`${api}/public/invite/${token}`);
-        const data = await res.json();
+        const data = await safeJson(res);
         if (data.success) {
           const invitation = data.data;
           setInvite({
@@ -84,7 +85,7 @@ export default function InviteAcceptPage() {
         method: "POST",
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (data.success) {
         setAccepted(true);
         // Redirect to workspace after 2s
@@ -129,9 +130,9 @@ export default function InviteAcceptPage() {
               <div className="w-16 h-16 rounded-full bg-emerald-900/30 border border-emerald-700 flex items-center justify-center mx-auto">
                 <Check size={32} className="text-emerald-400" />
               </div>
-              <h2 className="text-xl font-bold text-white">Welcome aboard!</h2>
+              <h2 className="text-xl font-bold text-zinc-50">Welcome aboard!</h2>
               <p className="text-sm text-zinc-400">
-                You&apos;ve joined <span className="text-white font-medium">{invite?.workspace_name}</span>
+                You&apos;ve joined <span className="text-zinc-50 font-medium">{invite?.workspace_name}</span>
               </p>
               <p className="text-xs text-zinc-500">Redirecting to dashboard…</p>
             </div>
@@ -143,7 +144,7 @@ export default function InviteAcceptPage() {
               <div className="w-16 h-16 rounded-full bg-red-900/30 border border-red-700 flex items-center justify-center mx-auto">
                 <AlertCircle size={32} className="text-red-400" />
               </div>
-              <h2 className="text-xl font-bold text-white">Invalid Invite</h2>
+              <h2 className="text-xl font-bold text-zinc-50">Invalid Invite</h2>
               <p className="text-sm text-zinc-400">{error}</p>
               <Link href="/" className="inline-block px-6 py-2.5 bg-zinc-800 text-zinc-300 rounded-lg hover:bg-zinc-700 text-sm transition-colors">
                 Go Home
@@ -159,10 +160,10 @@ export default function InviteAcceptPage() {
                   <img src={invite.workspace_logo} alt="" className="w-16 h-16 rounded-xl mx-auto mb-4 border border-zinc-700" />
                 ) : (
                   <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-violet-600 to-cyan-600 flex items-center justify-center mx-auto mb-4">
-                    <Users size={28} className="text-white" />
+                    <Users size={28} className="text-zinc-50" />
                   </div>
                 )}
-                <h2 className="text-xl font-bold text-white">You&apos;re invited!</h2>
+                <h2 className="text-xl font-bold text-zinc-50">You&apos;re invited!</h2>
                 <p className="text-sm text-zinc-400 mt-1">
                   <span className="text-zinc-200 font-medium">{invite.invited_by}</span> invited you to join
                 </p>
@@ -172,7 +173,7 @@ export default function InviteAcceptPage() {
               <div className="bg-zinc-800/50 border border-zinc-700/50 rounded-xl p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-zinc-400">Workspace</span>
-                  <span className="text-sm text-white font-semibold">{invite.workspace_name}</span>
+                  <span className="text-sm text-zinc-50 font-semibold">{invite.workspace_name}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-zinc-400 flex items-center gap-1.5">

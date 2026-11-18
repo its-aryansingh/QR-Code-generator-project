@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useAuthStore } from "@/lib/auth";
 import { API_URL } from "@/lib/config";
+import { safeJson } from "@/lib/http";
 
 interface QRRecord {
   id: string;
@@ -44,7 +45,7 @@ export default function HistoryPage() {
       const res = await fetch(`${api}/qr/history?${params}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (data.success) {
         setRecords(data.data?.records ?? data.data ?? []);
         setTotal(data.total ?? data.data?.total ?? 0);
@@ -69,7 +70,7 @@ export default function HistoryPage() {
         </div>
         <Link
           href="/dashboard/create"
-          className="flex items-center gap-1.5 px-4 py-2 bg-white text-zinc-950 text-sm font-semibold rounded-xl hover:bg-zinc-100 transition-colors"
+          className="min-h-11 sm:min-h-0 flex items-center gap-1.5 px-4 py-2 bg-zinc-50 text-zinc-950 text-sm font-semibold rounded-xl hover:bg-zinc-100 transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -117,7 +118,7 @@ export default function HistoryPage() {
               ) : records.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-4 py-16 text-center">
-                    <p className="text-zinc-600">{search ? "No QR codes match your search." : "No QR codes yet."}</p>
+                    <p className="text-zinc-500">{search ? "No QR codes match your search." : "No QR codes yet."}</p>
                     {!search && (
                       <Link href="/dashboard/create" className="text-violet-400 hover:text-violet-300 text-sm mt-2 inline-block">
                         Create your first QR code →
@@ -137,7 +138,7 @@ export default function HistoryPage() {
                           {rec.title || rec.content?.substring(0, 50)}
                         </div>
                         {rec.short_code && (
-                          <p className="text-xs text-zinc-600 font-mono">/r/{rec.short_code}</p>
+                          <p className="text-xs text-zinc-500 font-mono">/r/{rec.short_code}</p>
                         )}
                       </Link>
                     </td>
@@ -150,7 +151,7 @@ export default function HistoryPage() {
                       {rec.is_dynamic ? (
                         <span className="text-xs text-violet-400 font-semibold">Dynamic</span>
                       ) : (
-                        <span className="text-xs text-zinc-600">Static</span>
+                        <span className="text-xs text-zinc-500">Static</span>
                       )}
                     </td>
                     <td className="px-4 py-3 hidden sm:table-cell">

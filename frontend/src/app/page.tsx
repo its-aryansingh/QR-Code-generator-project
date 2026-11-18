@@ -12,6 +12,7 @@ import {
   CheckCircle2, BarChart3, Users, QrCode, ArrowRight,
   MonitorSmartphone, MapPin, Clock, ShieldCheck, ChevronDown, Sparkles, ChevronUp, Star, Quote
 } from "lucide-react";
+import { safeJson } from "@/lib/http";
 
 // builds the QR content string from the active form state
 
@@ -262,7 +263,7 @@ export default function HomePage() {
         },
         body: JSON.stringify(body),
       });
-      const data = await res.json().catch(() => ({}));
+      const data = await safeJson(res);
       if (!res.ok || !data.success) return;
       const serverImg = accessToken
         ? toQrDataUrl(data.data?.qr_base64)
@@ -298,7 +299,7 @@ export default function HomePage() {
       const res = await fetch(`${api}/qr/history?limit=50`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (data.success) setMyQRs(data.data?.records ?? data.data ?? []);
     } catch { /* silent */ } finally {
       setLoadingMyQRs(false);
@@ -325,7 +326,7 @@ export default function HomePage() {
           is_dynamic: isDynamicQR,
         }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (data.success) { setSaveSuccess(true); setTimeout(() => setSaveSuccess(false), 3000); }
     } catch { /* silent */ } finally {
       setSaving(false);
@@ -351,10 +352,10 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0d0d1a] text-white flex flex-col">
+    <div className="min-h-screen bg-zinc-950 text-zinc-50 flex flex-col">
 
       {/* ── Navigation ── */}
-      <nav className="sticky top-0 z-50 bg-[#0d0d1a]/80 backdrop-blur-xl border-b border-white/10">
+      <nav className="sticky top-0 z-50 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-50/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-500/30">
@@ -367,12 +368,12 @@ export default function HomePage() {
                 <rect x="14" y="20" width="4" height="1" rx="0.5" fill="white" />
               </svg>
             </div>
-            <span className="text-lg font-bold text-white">QR<span className="text-violet-400">it</span></span>
+            <span className="text-lg font-bold text-zinc-50">QR<span className="text-violet-400">it</span></span>
           </div>
 
           <div className="flex items-center gap-3">
             {accessToken ? (
-              <Link href="/dashboard" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sm text-slate-300 hover:text-white transition-all">
+              <Link href="/dashboard" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-50/5 hover:bg-zinc-50/10 border border-zinc-50/10 text-sm text-slate-300 hover:text-zinc-50 transition-all">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                 </svg>
@@ -380,7 +381,7 @@ export default function HomePage() {
               </Link>
             ) : (
               <>
-                <Link href="/login" className="text-sm text-slate-400 hover:text-white transition-colors px-3 py-2">
+                <Link href="/login" className="text-sm text-slate-400 hover:text-zinc-50 transition-colors px-3 py-2">
                   Sign In
                 </Link>
                 <Link href="/register" className="px-4 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-violet-500/20">
@@ -414,14 +415,14 @@ export default function HomePage() {
 
         {/* Panel tabs (for logged-in users) */}
         {accessToken && (
-          <div className="flex gap-1 mb-6 p-1 bg-white/5 border border-white/10 rounded-xl w-fit">
+          <div className="flex gap-1 mb-6 p-1 bg-zinc-50/5 border border-zinc-50/10 rounded-xl w-fit">
             {(["create", "myqrs"] as Panel[]).map((p) => (
               <button
                 key={p}
                 onClick={() => setActivePanel(p)}
                 className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${
                   activePanel === p
-                    ? "bg-white/10 text-white shadow-inner"
+                    ? "bg-zinc-50/10 text-zinc-50 shadow-inner"
                     : "text-slate-500 hover:text-slate-300"
                 }`}
               >
@@ -433,7 +434,7 @@ export default function HomePage() {
 
         {/* My QRs panel */}
         {activePanel === "myqrs" && accessToken ? (
-          <div className="p-6 rounded-2xl bg-white/5 border border-white/10">
+          <div className="p-6 rounded-2xl bg-zinc-50/5 border border-zinc-50/10">
             <MyQRPanel
               myQRs={myQRs}
               loadingMyQRs={loadingMyQRs}
@@ -451,7 +452,7 @@ export default function HomePage() {
             <div className="space-y-5">
 
               {/* QR type grid */}
-              <div className="p-5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
+              <div className="p-5 rounded-2xl bg-zinc-50/5 border border-zinc-50/10 backdrop-blur-sm">
                 <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-4">
                   Select QR Type
                 </h2>
@@ -464,7 +465,7 @@ export default function HomePage() {
                       className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all group ${
                         selectedType === t.id
                           ? "bg-violet-600/20 border-violet-500/50 shadow-lg shadow-violet-500/10"
-                          : "bg-white/3 border-white/8 hover:bg-white/8 hover:border-white/20"
+                          : "bg-zinc-50/3 border-zinc-50/8 hover:bg-zinc-50/8 hover:border-zinc-50/20"
                       }`}
                     >
                       <div className={`w-7 h-7 flex items-center justify-center transition-transform group-hover:scale-110 ${
@@ -483,14 +484,14 @@ export default function HomePage() {
               </div>
 
               {/* Form */}
-              <div className="p-5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
+              <div className="p-5 rounded-2xl bg-zinc-50/5 border border-zinc-50/10 backdrop-blur-sm">
                 <div className="flex items-center justify-between mb-5">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
+                    <div className="w-8 h-8 rounded-lg bg-zinc-50/10 flex items-center justify-center">
                       {QRIcons[selectedType]}
                     </div>
                     <div>
-                      <h2 className="text-sm font-semibold text-white">
+                      <h2 className="text-sm font-semibold text-zinc-50">
                         {qrTypes.find(t => t.id === selectedType)?.name}
                       </h2>
                       <p className="text-xs text-slate-500">
@@ -506,7 +507,7 @@ export default function HomePage() {
                       className={`relative w-10 h-5 rounded-full border transition-all ${
                         isDynamicQR
                           ? "bg-violet-600/50 border-violet-500/50"
-                          : "bg-white/10 border-white/20"
+                          : "bg-zinc-50/10 border-zinc-50/20"
                       }`}
                     >
                       <div className={`absolute top-0.5 w-4 h-4 rounded-full transition-all ${
@@ -524,7 +525,7 @@ export default function HomePage() {
                     value={title}
                     onChange={e => setTitle(e.target.value)}
                     placeholder="My QR Code"
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-600 focus:outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20 transition-all text-sm"
+                    className="w-full px-4 py-3 bg-zinc-50/5 border border-zinc-50/10 rounded-xl text-zinc-50 placeholder:text-slate-600 focus:outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20 transition-all text-sm"
                   />
                 </div>
 
@@ -563,20 +564,20 @@ export default function HomePage() {
               </div>
 
               {/* ✨ Customize Design (Free for everyone) */}
-              <div className="p-5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
+              <div className="p-5 rounded-2xl bg-zinc-50/5 border border-zinc-50/10 backdrop-blur-sm">
                 <button
                   onClick={() => setShowCustomization(!showCustomization)}
                   className="w-full flex items-center justify-between"
                 >
                   <div className="flex items-center gap-2">
                     <Sparkles className="w-5 h-5 text-violet-400" />
-                    <span className="font-semibold text-white">Customize Design</span>
+                    <span className="font-semibold text-zinc-50">Customize Design</span>
                   </div>
                   {showCustomization ? <ChevronUp className="w-5 h-5 text-slate-500" /> : <ChevronDown className="w-5 h-5 text-slate-500" />}
                 </button>
 
                 {showCustomization && (
-                  <div className="mt-5 pt-5 border-t border-white/5">
+                  <div className="mt-5 pt-5 border-t border-zinc-50/5">
                     <CustomizeQRPanel
                       designTab={designTab} setDesignTab={setDesignTab}
                       selectedDotStyle={selectedDotStyle} setSelectedDotStyle={setSelectedDotStyle}
@@ -605,13 +606,13 @@ export default function HomePage() {
 
             {/* ── Right: live preview ── */}
             <div className="lg:sticky lg:top-24 lg:self-start space-y-4">
-              <div className="p-6 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm flex flex-col items-center gap-5">
+              <div className="p-6 rounded-2xl bg-zinc-50/5 border border-zinc-50/10 backdrop-blur-sm flex flex-col items-center gap-5">
                 <h2 className="self-start text-xs font-semibold text-slate-500 uppercase tracking-widest">
                   Live Preview
                 </h2>
 
                 {/* QR display */}
-                <div className="w-56 h-56 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden">
+                <div className="w-56 h-56 rounded-2xl bg-zinc-50/5 border border-zinc-50/10 flex items-center justify-center overflow-hidden">
                   {generating ? (
                     <div className="flex flex-col items-center gap-3">
                       <div className="w-10 h-10 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
@@ -636,7 +637,7 @@ export default function HomePage() {
                   <div className="w-full space-y-2">
                     <button
                       onClick={handleDownload}
-                      className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-sm font-medium text-slate-200 hover:text-white transition-all"
+                      className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-zinc-50/10 hover:bg-zinc-50/15 border border-zinc-50/10 text-sm font-medium text-slate-200 hover:text-zinc-50 transition-all"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -691,7 +692,7 @@ export default function HomePage() {
 
                 {/* Stats / info */}
                 {!qrImage && (
-                  <div className="w-full grid grid-cols-2 gap-3 pt-2 border-t border-white/5">
+                  <div className="w-full grid grid-cols-2 gap-3 pt-2 border-t border-zinc-50/5">
                     {[
                       { label: "QR Types", value: "14+" },
                       { label: "No watermark", value: "Free" },
@@ -699,7 +700,7 @@ export default function HomePage() {
                       { label: "Account needed", value: "No" },
                     ].map(s => (
                       <div key={s.label} className="text-center">
-                        <p className="text-sm font-bold text-white">{s.value}</p>
+                        <p className="text-sm font-bold text-zinc-50">{s.value}</p>
                         <p className="text-[10px] text-slate-600 uppercase tracking-wide">{s.label}</p>
                       </div>
                     ))}
@@ -728,7 +729,7 @@ export default function HomePage() {
       </div>
 
       {/* ── Trust Bar ── */}
-      <section className="py-12 border-y border-white/5 bg-white/[0.02]">
+      <section className="py-12 border-y border-zinc-50/5 bg-white/[0.02]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 text-center">
           <p className="text-sm font-medium text-slate-400 mb-8 uppercase tracking-widest">
             Trusted by 10,000+ creators & businesses worldwide
@@ -741,7 +742,7 @@ export default function HomePage() {
               { label: "Average Rating", value: "4.8★" },
             ].map(stat => (
               <div key={stat.label} className="text-center">
-                <h4 className="text-2xl sm:text-3xl font-bold text-white mb-1">{stat.value}</h4>
+                <h4 className="text-2xl sm:text-3xl font-bold text-zinc-50 mb-1">{stat.value}</h4>
                 <p className="text-xs text-slate-500 uppercase tracking-wider">{stat.label}</p>
               </div>
             ))}
@@ -777,14 +778,14 @@ export default function HomePage() {
             </div>
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-tr from-violet-600/20 to-transparent blur-3xl rounded-full" />
-              <div className="relative rounded-2xl border border-white/10 bg-white/5 p-8 shadow-2xl backdrop-blur-sm">
+              <div className="relative rounded-2xl border border-zinc-50/10 bg-zinc-50/5 p-8 shadow-2xl backdrop-blur-sm">
                 <div className="space-y-4">
-                  <div className="h-4 bg-white/10 rounded w-1/3" />
-                  <div className="h-10 bg-white/5 rounded border border-white/10 flex items-center px-4 text-sm text-slate-400">https://old-link.com</div>
+                  <div className="h-4 bg-zinc-50/10 rounded w-1/3" />
+                  <div className="h-10 bg-zinc-50/5 rounded border border-zinc-50/10 flex items-center px-4 text-sm text-slate-400">https://old-link.com</div>
                   <div className="flex justify-center my-4">
                     <ArrowRight className="w-6 h-6 text-violet-400 rotate-90" />
                   </div>
-                  <div className="h-10 bg-violet-500/20 rounded border border-violet-500/30 flex items-center px-4 text-sm text-white">https://new-link.com</div>
+                  <div className="h-10 bg-violet-500/20 rounded border border-violet-500/30 flex items-center px-4 text-sm text-zinc-50">https://new-link.com</div>
                 </div>
               </div>
             </div>
@@ -793,7 +794,7 @@ export default function HomePage() {
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <div className="relative order-2 md:order-1">
               <div className="absolute inset-0 bg-gradient-to-tr from-cyan-600/20 to-transparent blur-3xl rounded-full" />
-              <div className="relative rounded-2xl border border-white/10 bg-white/5 p-8 shadow-2xl backdrop-blur-sm">
+              <div className="relative rounded-2xl border border-zinc-50/10 bg-zinc-50/5 p-8 shadow-2xl backdrop-blur-sm">
                 <div className="flex items-end gap-2 h-40">
                   {[40, 70, 45, 90, 65, 85, 100].map((h, i) => (
                     <div key={i} className="flex-1 bg-gradient-to-t from-violet-600 to-indigo-400 rounded-t-sm opacity-80 hover:opacity-100 transition-opacity" style={{ height: `${h}%` }} />
@@ -843,17 +844,17 @@ export default function HomePage() {
             </div>
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-tr from-fuchsia-600/20 to-transparent blur-3xl rounded-full" />
-              <div className="relative rounded-2xl border border-white/10 bg-white/5 p-8 shadow-2xl backdrop-blur-sm space-y-4">
+              <div className="relative rounded-2xl border border-zinc-50/10 bg-zinc-50/5 p-8 shadow-2xl backdrop-blur-sm space-y-4">
                 {[1, 2, 3].map((i) => (
-                  <div key={i} className="flex items-center gap-4 p-3 rounded-lg bg-white/5 border border-white/5">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-slate-700 to-slate-600 border-2 border-white/10 flex items-center justify-center">
-                      <Users className="w-5 h-5 text-white/50" />
+                  <div key={i} className="flex items-center gap-4 p-3 rounded-lg bg-zinc-50/5 border border-zinc-50/5">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-slate-700 to-slate-600 border-2 border-zinc-50/10 flex items-center justify-center">
+                      <Users className="w-5 h-5 text-zinc-50/50" />
                     </div>
                     <div className="flex-1">
-                      <div className="h-3 bg-white/20 rounded w-1/3 mb-2" />
-                      <div className="h-2 bg-white/10 rounded w-1/4" />
+                      <div className="h-3 bg-zinc-50/20 rounded w-1/3 mb-2" />
+                      <div className="h-2 bg-zinc-50/10 rounded w-1/4" />
                     </div>
-                    <div className="px-3 py-1 rounded-full bg-white/10 text-xs text-slate-300">Editor</div>
+                    <div className="px-3 py-1 rounded-full bg-zinc-50/10 text-xs text-slate-300">Editor</div>
                   </div>
                 ))}
               </div>
@@ -863,7 +864,7 @@ export default function HomePage() {
       </section>
 
       {/* ── How It Works ── */}
-      <section className="py-24 bg-white/[0.02] border-y border-white/5">
+      <section className="py-24 bg-white/[0.02] border-y border-zinc-50/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">How it works</h2>
@@ -879,7 +880,7 @@ export default function HomePage() {
               { step: 3, title: "Download & Track", desc: "Download in high quality PNG/SVG and track scans with our analytics dashboard." }
             ].map(item => (
               <div key={item.step} className="text-center relative">
-                <div className="w-24 h-24 mx-auto rounded-full bg-[#0d0d1a] border-2 border-violet-500/30 flex items-center justify-center shadow-[0_0_30px_-5px_rgba(139,92,246,0.3)] mb-6 relative z-10">
+                <div className="w-24 h-24 mx-auto rounded-full bg-zinc-950 border-2 border-violet-500/30 flex items-center justify-center shadow-[0_0_30px_-5px_rgba(139,92,246,0.3)] mb-6 relative z-10">
                   <span className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-br from-violet-400 to-fuchsia-400">{item.step}</span>
                 </div>
                 <h3 className="text-xl font-bold mb-2">{item.title}</h3>
@@ -907,7 +908,7 @@ export default function HomePage() {
               { icon: <Users />, title: "Education", desc: "Resources and attendance" },
               { icon: <BarChart3 />, title: "Marketing", desc: "Campaign tracking" },
             ].map(uc => (
-              <div key={uc.title} className="p-6 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors group">
+              <div key={uc.title} className="p-6 rounded-2xl bg-zinc-50/5 border border-zinc-50/10 hover:bg-zinc-50/10 transition-colors group">
                 <div className="w-12 h-12 rounded-xl bg-violet-500/10 text-violet-400 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                   {uc.icon}
                 </div>
@@ -920,7 +921,7 @@ export default function HomePage() {
       </section>
 
       {/* ── Testimonials ── */}
-      <section className="py-24 bg-white/[0.02] border-y border-white/5">
+      <section className="py-24 bg-white/[0.02] border-y border-zinc-50/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">Loved by our users</h2>
@@ -933,14 +934,14 @@ export default function HomePage() {
               { name: "Marcus Chen", role: "Restaurant Owner", quote: "We switched to digital menus using QRit last year. The customization options mean our codes perfectly match our brand, and updating the menu is instant." },
               { name: "Elena Rodriguez", role: "Event Coordinator", quote: "The easiest QR code generator I've used. Creating vCards for networking events and tracking attendance has never been smoother. Highly recommended!" }
             ].map(t => (
-              <div key={t.name} className="p-8 rounded-2xl bg-[#0d0d1a] border border-white/10 relative">
-                <Quote className="absolute top-6 right-6 w-8 h-8 text-white/5" />
+              <div key={t.name} className="p-8 rounded-2xl bg-zinc-950 border border-zinc-50/10 relative">
+                <Quote className="absolute top-6 right-6 w-8 h-8 text-zinc-50/5" />
                 <div className="flex gap-1 mb-4">
                   {[1,2,3,4,5].map(i => <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />)}
                 </div>
                 <p className="text-slate-300 italic mb-6 relative z-10">"{t.quote}"</p>
                 <div>
-                  <h4 className="font-semibold text-white">{t.name}</h4>
+                  <h4 className="font-semibold text-zinc-50">{t.name}</h4>
                   <p className="text-sm text-slate-500">{t.role}</p>
                 </div>
               </div>
@@ -965,12 +966,12 @@ export default function HomePage() {
               { q: "What formats can I download my QR code in?", a: "Free users can download in high-quality PNG format. Premium users can also download in vector formats like SVG and PDF." },
               { q: "How do I track QR code scans?", a: "When you create a dynamic QR code with a Pro or Enterprise plan, you get access to a dashboard showing scan locations, devices, and times." },
             ].map((faq, i) => (
-              <div key={i} className="rounded-xl border border-white/10 bg-white/5 overflow-hidden">
+              <div key={i} className="rounded-xl border border-zinc-50/10 bg-zinc-50/5 overflow-hidden">
                 <button
                   onClick={() => setExpandedFaq(expandedFaq === i ? null : i)}
-                  className="w-full px-6 py-4 text-left flex items-center justify-between hover:bg-white/5 transition-colors"
+                  className="w-full px-6 py-4 text-left flex items-center justify-between hover:bg-zinc-50/5 transition-colors"
                 >
-                  <span className="font-semibold text-white">{faq.q}</span>
+                  <span className="font-semibold text-zinc-50">{faq.q}</span>
                   {expandedFaq === i ? <ChevronUp className="w-5 h-5 text-slate-400" /> : <ChevronDown className="w-5 h-5 text-slate-400" />}
                 </button>
                 {expandedFaq === i && (
@@ -994,7 +995,7 @@ export default function HomePage() {
             <Link href="/register" className="px-8 py-4 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-violet-500/25 flex items-center justify-center gap-2">
               Get Started Free <ArrowRight className="w-5 h-5" />
             </Link>
-            <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="px-8 py-4 bg-white/10 hover:bg-white/15 border border-white/10 text-white font-bold rounded-xl transition-all">
+            <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="px-8 py-4 bg-zinc-50/10 hover:bg-zinc-50/15 border border-zinc-50/10 text-zinc-50 font-bold rounded-xl transition-all">
               Create QR Code Now
             </button>
           </div>
@@ -1002,7 +1003,7 @@ export default function HomePage() {
       </section>
 
       {/* ── Footer ── */}
-      <footer className="border-t border-white/10 bg-[#0a0a14] py-12 px-4 sm:px-6">
+      <footer className="border-t border-zinc-50/10 bg-zinc-950 py-12 px-4 sm:px-6">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
             <div className="col-span-2 md:col-span-1">
@@ -1014,7 +1015,7 @@ export default function HomePage() {
                     <rect x="3" y="14" width="7" height="7" rx="1.5" fill="white" />
                   </svg>
                 </div>
-                <span className="text-xl font-bold text-white">QR<span className="text-violet-400">it</span></span>
+                <span className="text-xl font-bold text-zinc-50">QR<span className="text-violet-400">it</span></span>
               </div>
               <p className="text-sm text-slate-500 mb-6">
                 The most advanced QR code generator for creators, businesses, and everyone in between.
@@ -1022,7 +1023,7 @@ export default function HomePage() {
             </div>
 
             <div>
-              <h4 className="font-semibold text-white mb-4">Product</h4>
+              <h4 className="font-semibold text-zinc-50 mb-4">Product</h4>
               <ul className="space-y-2 text-sm text-slate-500">
                 <li><Link href="/" className="hover:text-violet-400 transition-colors">QR Generator</Link></li>
                 <li><Link href="/pricing" className="hover:text-violet-400 transition-colors">Pricing</Link></li>
@@ -1031,7 +1032,7 @@ export default function HomePage() {
             </div>
 
             <div>
-              <h4 className="font-semibold text-white mb-4">Resources</h4>
+              <h4 className="font-semibold text-zinc-50 mb-4">Resources</h4>
               <ul className="space-y-2 text-sm text-slate-500">
                 <li><Link href="#" className="hover:text-violet-400 transition-colors">Help Center</Link></li>
                 <li><Link href="#" className="hover:text-violet-400 transition-colors">API Documentation</Link></li>
@@ -1040,7 +1041,7 @@ export default function HomePage() {
             </div>
 
             <div>
-              <h4 className="font-semibold text-white mb-4">Company</h4>
+              <h4 className="font-semibold text-zinc-50 mb-4">Company</h4>
               <ul className="space-y-2 text-sm text-slate-500">
                 <li><Link href="#" className="hover:text-violet-400 transition-colors">About Us</Link></li>
                 <li><Link href="#" className="hover:text-violet-400 transition-colors">Contact</Link></li>
@@ -1050,13 +1051,13 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="pt-8 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="pt-8 border-t border-zinc-50/10 flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-xs text-slate-600">© 2026 QRit. All rights reserved.</p>
             <div className="flex items-center gap-4">
-              <a href="#" className="text-slate-600 hover:text-white transition-colors">
+              <a href="#" aria-label="QRit on X" className="text-slate-600 hover:text-zinc-50 transition-colors">
                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"/></svg>
               </a>
-              <a href="#" className="text-slate-600 hover:text-white transition-colors">
+              <a href="#" aria-label="QRit on Instagram" className="text-slate-600 hover:text-zinc-50 transition-colors">
                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm3.98-10.842a1.44 1.44 0 11-2.88 0 1.44 1.44 0 012.88 0z"/></svg>
               </a>
             </div>

@@ -30,14 +30,14 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
             {/* Dashboard Header */}
             <div className="flex items-center justify-between mb-2">
                 <div>
-                    <h2 className="text-xl font-bold text-white">Analytics Overview</h2>
+                    <h2 className="text-xl font-bold text-zinc-50">Analytics Overview</h2>
                     <p className="text-sm text-slate-400">Real-time performance metrics</p>
                 </div>
                 <div className="flex gap-2">
                     <select
                         value={dateRange}
                         onChange={(e) => setDateRange(e.target.value)}
-                        className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-violet-500"
+                        className="bg-zinc-50/5 border border-zinc-50/10 rounded-lg px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-violet-500"
                     >
                         <option value="7">Last 7 Days</option>
                         <option value="30">Last 30 Days</option>
@@ -87,11 +87,11 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
 
             {/* Key Metrics Row */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-[#12121a] border border-white/10 rounded-xl p-4 flex flex-col justify-between relative overflow-hidden group">
+                <div className="bg-zinc-900 border border-zinc-50/10 rounded-xl p-4 flex flex-col justify-between relative overflow-hidden group">
                     <div className="absolute inset-0 bg-gradient-to-br from-violet-600/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                     <div>
                         <p className="text-sm text-slate-400 font-medium">Total Scans</p>
-                        <h3 className="text-3xl font-bold text-white mt-1">{analyticsData?.analytics?.total_scans || 0}</h3>
+                        <h3 className="text-3xl font-bold text-zinc-50 mt-1">{analyticsData?.analytics?.total_scans || 0}</h3>
                     </div>
                     <div className="mt-4 flex items-center text-xs text-emerald-400">
                         <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
@@ -99,11 +99,11 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                     </div>
                 </div>
 
-                <div className="bg-[#12121a] border border-white/10 rounded-xl p-4 flex flex-col justify-between relative overflow-hidden group">
+                <div className="bg-zinc-900 border border-zinc-50/10 rounded-xl p-4 flex flex-col justify-between relative overflow-hidden group">
                     <div className="absolute inset-0 bg-gradient-to-br from-emerald-600/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                     <div>
                         <p className="text-sm text-slate-400 font-medium">Unique Users</p>
-                        <h3 className="text-3xl font-bold text-white mt-1">{analyticsData?.analytics?.unique_scans || 0}</h3>
+                        <h3 className="text-3xl font-bold text-zinc-50 mt-1">{analyticsData?.analytics?.unique_scans || 0}</h3>
                     </div>
                     <div className="mt-4 flex items-center text-xs text-blue-400">
                         <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
@@ -111,11 +111,11 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                     </div>
                 </div>
 
-                <div className="bg-[#12121a] border border-white/10 rounded-xl p-4 flex flex-col justify-between relative overflow-hidden group">
+                <div className="bg-zinc-900 border border-zinc-50/10 rounded-xl p-4 flex flex-col justify-between relative overflow-hidden group">
                     <div className="absolute inset-0 bg-gradient-to-br from-cyan-600/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                     <div>
                         <p className="text-sm text-slate-400 font-medium">Conversion Rate</p>
-                        <h3 className="text-3xl font-bold text-white mt-1">
+                        <h3 className="text-3xl font-bold text-zinc-50 mt-1">
                             {analyticsData?.analytics?.total_scans > 0
                                 ? Math.round((analyticsData.analytics.unique_scans / analyticsData.analytics.total_scans) * 100)
                                 : 0}%
@@ -153,9 +153,9 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
             </div>
 
             {/* Recent Scans Feed */}
-            <div className="bg-[#12121a] border border-white/10 rounded-xl p-4 flex flex-col h-[400px]">
+            <div className="bg-zinc-900 border border-zinc-50/10 rounded-xl p-4 flex flex-col h-[400px]">
                 <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-md font-semibold text-white flex items-center gap-2">
+                    <h3 className="text-md font-semibold text-zinc-50 flex items-center gap-2">
                         <span>Zap</span> Live Feed
                     </h3>
                     <div className="flex items-center gap-2 text-xs text-emerald-400 animate-pulse">
@@ -167,13 +167,13 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                 <div className="flex-1 overflow-y-auto space-y-3 custom-scrollbar pr-2">
                     {analyticsData?.recent_scans && analyticsData.recent_scans.length > 0 ? (
                         analyticsData.recent_scans.map((scan: any, i: number) => (
-                            <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/5 text-xs hover:bg-white/10 transition-colors">
+                            <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-zinc-50/5 border border-zinc-50/5 text-xs hover:bg-zinc-50/10 transition-colors">
                                 <div className="flex items-center gap-3">
                                     <div className="w-8 h-8 rounded-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center text-lg shadow-inner">
                                         {scan.device_type === "mobile" ? "📱" : (scan.device_type === "tablet" ? "iPad" : "💻")}
                                     </div>
                                     <div>
-                                        <p className="text-white font-medium flex items-center gap-1.5">
+                                        <p className="text-zinc-50 font-medium flex items-center gap-1.5">
                                             {scan.city ? `${scan.city}, ${scan.country_code}` : "Unknown Location"}
                                         </p>
                                         <p className="text-slate-500 font-mono text-[10px]">
@@ -193,7 +193,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                         ))
                     ) : (
                         <div className="h-full flex flex-col items-center justify-center text-slate-500 gap-2">
-                            <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center text-2xl">📡</div>
+                            <div className="w-12 h-12 rounded-full bg-zinc-50/5 flex items-center justify-center text-2xl">📡</div>
                             <p>Waiting for first scan...</p>
                         </div>
                     )}

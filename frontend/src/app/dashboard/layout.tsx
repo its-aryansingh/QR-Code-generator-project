@@ -9,6 +9,7 @@ import { useAuthStore } from "@/lib/auth";
 import { useWorkspace, useWorkspaceStore } from "@/lib/workspace";
 import { cn } from "@/lib/utils";
 import { Avatar, Badge, RoleBadge } from "@/components/enterprise/ui";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import type { FeatureName, Role } from "@/types/enterprise";
 
 interface NavItem {
@@ -77,6 +78,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [mobileOpen, setMobileOpen] = useState(false);
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const switcherRef = useRef<HTMLDivElement>(null);
+  const mobileSwitcherRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (hydrated && !isAuthenticated) {
@@ -99,12 +101,30 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   useEffect(() => {
     if (!switcherOpen) return;
+    // Both sidebars are mounted (one is display:none), so a tap inside the
+    // drawer's switcher must not count as outside the desktop one.
     const onClick = (event: MouseEvent) => {
-      if (!switcherRef.current?.contains(event.target as Node)) setSwitcherOpen(false);
+      const target = event.target as Node;
+      const inside = [switcherRef, mobileSwitcherRef].some((ref) => ref.current?.contains(target));
+      if (!inside) setSwitcherOpen(false);
     };
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
   }, [switcherOpen]);
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = previous;
+    };
+  }, [mobileOpen]);
 
   const handleLogout = () => {
     logout();
@@ -140,7 +160,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     );
   }
 
-  const Sidebar = ({ mobile = false }: { mobile?: boolean }) => (
+  // A render function, not a component: a component declared here would be a
+  // new type on every render and remount, dropping keyboard focus.
+  const renderSidebar = (mobile: boolean) => (
     <>
       <div className="border-b border-zinc-800/60 p-3">
         <div className="flex items-center gap-2.5 px-1">
@@ -155,14 +177,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </svg>
           </div>
           {(!collapsed || mobile) && (
-            <span className="text-lg font-bold text-white">
+            <span className="text-lg font-bold text-zinc-50">
               QR<span className="text-zinc-500">it</span>
             </span>
           )}
           {mobile && (
             <button
               onClick={() => setMobileOpen(false)}
-              className="ml-auto rounded-lg p-2 text-zinc-400 hover:bg-zinc-800"
+              className="ml-auto flex size-11 items-center justify-center rounded-lg text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
               aria-label="Close navigation"
             >
               <svg className="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -173,13 +195,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
 
         {(!collapsed || mobile) && (
-          <div className="relative mt-3" ref={mobile ? undefined : switcherRef}>
+          <div className="relative mt-3" ref={mobile ? mobileSwitcherRef : switcherRef}>
             <button
               onClick={() => setSwitcherOpen((open) => !open)}
+              aria-expanded={switcherOpen}
               className="flex w-full items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900 px-2.5 py-2 text-left transition-colors hover:border-zinc-700"
             >
               <span
-                className="flex size-6 shrink-0 items-center justify-center rounded text-xs font-bold text-white"
+                className="flex size-6 shrink-0 items-center justify-center rounded text-xs font-bold text-zinc-50"
                 style={{ background: workspace?.brand_color ?? "#8B5CF6" }}
               >
                 {workspace?.name?.charAt(0).toUpperCase() ?? "W"}
@@ -211,11 +234,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     }}
                     className={cn(
                       "flex w-full items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-zinc-800",
+                      mobile && "min-h-11",
                       workspace?.id === item.id && "bg-zinc-800/70",
                     )}
                   >
                     <span
-                      className="flex size-6 shrink-0 items-center justify-center rounded text-xs font-bold text-white"
+                      className="flex size-6 shrink-0 items-center justify-center rounded text-xs font-bold text-zinc-50"
                       style={{ background: item.brand_color ?? "#8B5CF6" }}
                     >
                       {item.name.charAt(0).toUpperCase()}
@@ -223,8 +247,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm text-zinc-200">{item.name}</span>
                       <span className="block text-[11px] text-zinc-500">
-                        {(item.qr_count ?? 0).toLocaleString()} codes ·{" "}
-                        {(item.member_count ?? 0).toLocaleString()} members
+                        {(item.qr_count ?? 0).toLocaleString()} {item.qr_count === 1 ? "code" : "codes"} ·{" "}
+                        {(item.member_count ?? 0).toLocaleString()} {item.member_count === 1 ? "member" : "members"}
                       </span>
                     </span>
                     {item.role && <RoleBadge role={item.role} />}
@@ -233,7 +257,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <div className="mt-1 border-t border-zinc-800 pt-1">
                   <Link
                     href="/dashboard/settings"
-                    className="flex items-center gap-2 px-3 py-2 text-sm text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
+                    className={cn(
+                      "flex items-center gap-2 px-3 py-2 text-sm text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200",
+                      mobile && "min-h-11",
+                    )}
                   >
                     <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v12m6-6H6" />
@@ -265,14 +292,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     href={item.href}
                     title={collapsed && !mobile ? item.label : undefined}
                     className={cn(
-                      "group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors",
+                      "group flex items-center gap-2.5 rounded-lg px-2.5 text-sm transition-colors",
+                      mobile ? "min-h-11 py-2.5" : "py-2",
                       active
-                        ? "bg-zinc-800 font-medium text-white"
+                        ? "bg-zinc-800 font-medium text-zinc-50"
                         : "text-zinc-500 hover:bg-zinc-900 hover:text-zinc-200",
-                      locked && !active && "opacity-60",
+                      locked && !active && "text-zinc-600",
                     )}
                   >
-                    <span className={active ? "text-white" : "text-zinc-500 group-hover:text-zinc-300"}>
+                    <span className={active ? "text-zinc-50" : "text-zinc-500 group-hover:text-zinc-300"}>
                       {item.icon}
                     </span>
                     {(!collapsed || mobile) && (
@@ -299,6 +327,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </nav>
 
       <div className="border-t border-zinc-800/60 p-2.5">
+        {(!collapsed || mobile) && (
+          <div className="mb-2 flex items-center justify-between gap-2 px-2">
+            <span className="text-xs font-medium text-zinc-400">Theme</span>
+            <ThemeToggle />
+          </div>
+        )}
         <Link
           href="/dashboard/profile"
           className="flex items-center gap-2.5 rounded-lg px-2 py-2 transition-colors hover:bg-zinc-900"
@@ -315,7 +349,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </Link>
         <button
           onClick={handleLogout}
-          className="mt-0.5 flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-zinc-500 transition-colors hover:bg-red-500/10 hover:text-red-400"
+          className={cn(
+            "mt-0.5 flex w-full items-center gap-2.5 rounded-lg px-2.5 text-sm text-zinc-500 transition-colors hover:bg-red-500/10 hover:text-red-400",
+            mobile ? "min-h-11 py-2.5" : "py-2",
+          )}
         >
           <svg className="size-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.6} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -345,10 +382,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex min-h-screen bg-zinc-950">
       {mobileOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
+        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Navigation">
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
-          <aside className="absolute inset-y-0 left-0 flex w-72 flex-col overflow-y-auto border-r border-zinc-800/60 bg-zinc-950 shadow-2xl">
-            <Sidebar mobile />
+          <aside className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col overflow-y-auto border-r border-zinc-800/60 bg-zinc-950 shadow-2xl">
+            {renderSidebar(true)}
           </aside>
         </div>
       )}
@@ -359,7 +396,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           collapsed ? "w-16" : "w-64",
         )}
       >
-        <Sidebar />
+        {renderSidebar(false)}
       </aside>
 
       <main className="min-w-0 flex-1">
@@ -368,7 +405,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <div className="flex min-w-0 items-center gap-2 text-sm">
               <button
                 onClick={() => setMobileOpen(true)}
-                className="rounded-lg p-2 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200 lg:hidden"
+                className="-ml-1 flex size-11 shrink-0 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200 lg:hidden"
                 aria-label="Open navigation"
               >
                 <svg className="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -378,20 +415,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <span className="hidden truncate text-zinc-500 sm:inline">
                 {workspace?.name ?? "Personal"}
               </span>
-              <svg className="hidden size-3 shrink-0 text-zinc-700 sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="hidden size-3 shrink-0 text-zinc-600 sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
               <span className="truncate text-zinc-200">{currentLabel}</span>
             </div>
 
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+              <ThemeToggle className="hidden sm:inline-flex" />
+              <ThemeToggle variant="cycle" className="sm:hidden" />
               <Badge tone={PLAN_TONE[plan as keyof typeof PLAN_TONE] ?? "neutral"} className="hidden capitalize sm:inline-flex">
                 {plan}
               </Badge>
               {atLeast("editor") && (
                 <Link
                   href="/dashboard/create"
-                  className="rounded-lg bg-white px-3.5 py-1.5 text-sm font-medium text-zinc-950 transition-colors hover:bg-zinc-200"
+                  className="flex min-h-11 items-center rounded-lg bg-zinc-50 px-3.5 text-sm font-medium text-zinc-950 transition-colors hover:bg-zinc-200 sm:min-h-9"
                 >
                   + Create
                 </Link>

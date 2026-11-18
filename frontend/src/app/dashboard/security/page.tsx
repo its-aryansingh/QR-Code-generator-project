@@ -16,7 +16,7 @@ export default function SecurityPage() {
       <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-6">
         <h2 className="font-semibold text-zinc-200">Single sign-on configuration</h2>
         <p className="mt-2 text-sm text-zinc-500">Configure SAML or OIDC providers from the workspace branding and SSO settings.</p>
-        <Link href="/dashboard/branding" className="mt-5 inline-flex items-center gap-2 rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-500">
+        <Link href="/dashboard/branding" className="min-h-11 sm:min-h-0 mt-5 inline-flex items-center gap-2 rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-500">
           Open SSO settings <ArrowRight className="size-4" />
         </Link>
       </div>

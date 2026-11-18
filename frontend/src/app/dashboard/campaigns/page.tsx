@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useMutation, useResource, WorkspaceGate } from "@/components/enterprise/shell";
 import {
   Badge, Btn, ConfirmModal, EmptyState, ErrorState, Field, Grid, Modal, Panel,
-  PageHeader, SearchInput, Select, StatCard, TextArea, TextInput, formatDate,
+  PageHeader, SearchInput, Select, StatCard, TextInput, formatDate,
   formatNumber,
 } from "@/components/enterprise/ui";
 import { enterprise } from "@/lib/enterprise";
@@ -29,9 +29,7 @@ const STATUS_TONE: Record<CampaignStatus, "neutral" | "info" | "success" | "warn
 
 interface FormState {
   name: string;
-  description: string;
   status: CampaignStatus;
-  color: string;
   starts_at: string;
   ends_at: string;
   scan_goal: string;
@@ -41,7 +39,7 @@ interface FormState {
 }
 
 const EMPTY_FORM: FormState = {
-  name: "", description: "", status: "draft", color: "#8B5CF6",
+  name: "", status: "draft",
   starts_at: "", ends_at: "", scan_goal: "",
   utm_source: "", utm_medium: "qr", utm_campaign: "",
 };
@@ -80,9 +78,7 @@ function Campaigns() {
     async () => {
       const payload = {
         name: form.name.trim(),
-        description: form.description || undefined,
         status: form.status,
-        color: form.color,
         starts_at: form.starts_at || null,
         ends_at: form.ends_at || null,
         scan_goal: Number(form.scan_goal) || 0,
@@ -114,9 +110,7 @@ function Campaigns() {
     setEditing(campaign);
     setForm({
       name: campaign.name,
-      description: campaign.description ?? "",
       status: campaign.status,
-      color: campaign.color,
       starts_at: campaign.starts_at?.slice(0, 10) ?? "",
       ends_at: campaign.ends_at?.slice(0, 10) ?? "",
       scan_goal: String(campaign.scan_goal || ""),
@@ -157,7 +151,7 @@ function Campaigns() {
 
       <div className="mb-4 flex flex-col gap-2 sm:flex-row">
         <SearchInput value={search} onChange={setSearch} placeholder="Search campaigns…" className="sm:max-w-xs sm:flex-1" />
-        <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="sm:w-44">
+        <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="sm:w-44" aria-label="Filter by status">
           <option value="">Any status</option>
           {STATUSES.map((status) => (
             <option key={status} value={status} className="capitalize">{status}</option>
@@ -223,13 +217,6 @@ function Campaigns() {
               autoFocus
             />
           </Field>
-          <Field label="Description">
-            <TextArea
-              value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
-              placeholder="What is this campaign for?"
-            />
-          </Field>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <Field label="Status">
               <Select
@@ -265,17 +252,6 @@ function Campaigns() {
                 onChange={(e) => setForm({ ...form, scan_goal: e.target.value })}
                 placeholder="10000"
               />
-            </Field>
-            <Field label="Colour">
-              <div className="flex gap-2">
-                <input
-                  type="color"
-                  value={form.color}
-                  onChange={(e) => setForm({ ...form, color: e.target.value })}
-                  className="h-9 w-12 cursor-pointer rounded-lg border border-zinc-800 bg-zinc-950"
-                />
-                <TextInput value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} />
-              </div>
             </Field>
           </div>
           <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-4">

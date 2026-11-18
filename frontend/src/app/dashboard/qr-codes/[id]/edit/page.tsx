@@ -13,6 +13,7 @@ import {
   PieChart, Pie, Cell
 } from "recharts";
 import { API_URL } from "@/lib/config";
+import { safeJson } from "@/lib/http";
 
 const inputCls = "w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2.5 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-violet-500 transition-colors";
 const labelCls = "block text-xs text-zinc-500 mb-1.5 font-medium";
@@ -79,7 +80,7 @@ export default function EditQRPage() {
         const res = await fetch(`${api}/workspaces/${workspaceId}/qr/${qrId}`, {
           headers: { Authorization: `Bearer ${accessToken}` },
         });
-        const data = await res.json();
+        const data = await safeJson(res);
         if (data.success) {
           const r = data.data;
           setRecord(r);
@@ -111,7 +112,7 @@ export default function EditQRPage() {
         const res = await fetch(`${api}/qr/${qrId}/analytics`, {
           headers: { Authorization: `Bearer ${accessToken}` },
         });
-        const data = await res.json();
+        const data = await safeJson(res);
         if (data.success) setAnalytics(data.data);
       } catch { /* analytics are optional */ }
     };
@@ -137,7 +138,7 @@ export default function EditQRPage() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
         body: JSON.stringify(body),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (data.success) {
         setSaved(true);
         setTimeout(() => setSaved(false), 3000);
@@ -173,7 +174,7 @@ export default function EditQRPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <button onClick={() => router.back()} className="p-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors">
+          <button onClick={() => router.back()} aria-label="Back" title="Back" className="flex size-11 items-center justify-center rounded-lg bg-zinc-800 text-zinc-400 transition-colors hover:bg-zinc-700 hover:text-zinc-50 sm:size-9">
             <ArrowLeft size={16} />
           </button>
           <div>
@@ -219,7 +220,8 @@ export default function EditQRPage() {
                   <input value={redirectUrl} onChange={(e) => setRedirectUrl(e.target.value)} placeholder="https://example.com" className={inputCls} />
                   {redirectUrl && (
                     <a href={redirectUrl} target="_blank" rel="noopener noreferrer"
-                      className="shrink-0 p-2.5 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-400 hover:text-white transition-colors">
+                      aria-label="Open destination in a new tab" title="Open destination"
+                      className="shrink-0 p-2.5 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-400 hover:text-zinc-50 transition-colors">
                       <ExternalLink size={16} />
                     </a>
                   )}
@@ -380,7 +382,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 function StatCard({ label, value }: { label: string; value: number | string }) {
   return (
     <div className="bg-zinc-800/50 rounded-lg p-3 text-center">
-      <p className="text-lg font-bold text-white">{typeof value === "number" ? value.toLocaleString() : value}</p>
+      <p className="text-lg font-bold text-zinc-50">{typeof value === "number" ? value.toLocaleString() : value}</p>
       <p className="text-[10px] text-zinc-500 mt-0.5">{label}</p>
     </div>
   );

@@ -31,8 +31,8 @@ export const CATEGORICAL = [
   "#d55181", "#008300", "#9085e9", "#e66767",
 ] as const;
 
-const AXIS = "#52525b";
-const GRID = "#27272a";
+const AXIS = "var(--color-zinc-600)";
+const GRID = "var(--color-zinc-800)";
 
 export function categoricalColor(index: number) {
   // Past the palette, everything folds into one neutral rather than inventing
@@ -126,7 +126,7 @@ export function TrendChart({
             width={44}
           />
           <Tooltip
-            cursor={{ stroke: "#52525b", strokeWidth: 1, strokeDasharray: "4 4" }}
+            cursor={{ stroke: AXIS, strokeWidth: 1, strokeDasharray: "4 4" }}
             content={({ active, payload }) =>
               active && payload?.length ? (
                 <TooltipShell
@@ -148,7 +148,7 @@ export function TrendChart({
             stroke={SERIES_HUE}
             strokeWidth={2}
             fill="url(#scanFill)"
-            activeDot={{ r: 4, strokeWidth: 2, stroke: "#09090b", fill: SERIES_HUE }}
+            activeDot={{ r: 4, strokeWidth: 2, stroke: "var(--color-zinc-950)", fill: SERIES_HUE }}
             dot={false}
           />
         </AreaChart>
@@ -192,7 +192,7 @@ export function HourChart({ data }: { data: Array<{ hour: number; count: number 
               width={40}
             />
             <Tooltip
-              cursor={{ fill: "#ffffff08" }}
+              cursor={{ fill: "var(--color-zinc-800)", fillOpacity: 0.4 }}
               content={({ active, payload }) =>
                 active && payload?.length ? (
                   <TooltipShell

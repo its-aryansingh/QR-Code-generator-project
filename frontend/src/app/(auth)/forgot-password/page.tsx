@@ -36,7 +36,7 @@ export default function ForgotPasswordPage() {
                 {/* Mobile logo */}
                 <div className="lg:hidden flex items-center gap-3 mb-8">
                     <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center">
-                        <svg className="w-6 h-6 text-zinc-950" fill="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-6 h-6 text-black" fill="currentColor" viewBox="0 0 24 24">
                             <rect x="2" y="2" width="6" height="6" rx="0.5" />
                             <rect x="4" y="4" width="2" height="2" fill="white" />
                             <rect x="16" y="2" width="6" height="6" rx="0.5" />
@@ -49,7 +49,7 @@ export default function ForgotPasswordPage() {
                             <rect x="20" y="16" width="2" height="6" />
                         </svg>
                     </div>
-                    <span className="text-xl font-bold text-white tracking-tight">QRit</span>
+                    <span className="text-xl font-bold text-zinc-50 tracking-tight">QRit</span>
                 </div>
 
                 {/* Success State */}
@@ -57,11 +57,11 @@ export default function ForgotPasswordPage() {
                     <div className="w-16 h-16 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center mx-auto mb-6">
                         <Mail className="w-8 h-8 text-violet-400" />
                     </div>
-                    <h1 className="text-3xl font-bold text-white mb-3">Check your email</h1>
+                    <h1 className="text-3xl font-bold text-zinc-50 mb-3">Check your email</h1>
                     <p className="text-zinc-400 mb-2">
                         We sent a password reset link to
                     </p>
-                    <p className="text-white font-medium mb-6">{email}</p>
+                    <p className="text-zinc-50 font-medium mb-6">{email}</p>
                     <p className="text-zinc-500 text-sm mb-8">
                         Didn't receive the email? Check your spam folder, or{" "}
                         <button
@@ -89,7 +89,7 @@ export default function ForgotPasswordPage() {
             {/* Mobile logo */}
             <div className="lg:hidden flex items-center gap-3 mb-8">
                 <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center">
-                    <svg className="w-6 h-6 text-zinc-950" fill="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-6 h-6 text-black" fill="currentColor" viewBox="0 0 24 24">
                         <rect x="2" y="2" width="6" height="6" rx="0.5" />
                         <rect x="4" y="4" width="2" height="2" fill="white" />
                         <rect x="16" y="2" width="6" height="6" rx="0.5" />
@@ -102,12 +102,12 @@ export default function ForgotPasswordPage() {
                         <rect x="20" y="16" width="2" height="6" />
                     </svg>
                 </div>
-                <span className="text-xl font-bold text-white tracking-tight">QRit</span>
+                <span className="text-xl font-bold text-zinc-50 tracking-tight">QRit</span>
             </div>
 
             {/* Header */}
             <div className="mb-8">
-                <h1 className="text-3xl font-bold text-white mb-2">Forgot password?</h1>
+                <h1 className="text-3xl font-bold text-zinc-50 mb-2">Forgot password?</h1>
                 <p className="text-zinc-400">
                     No worries, we'll send you a reset link
                 </p>

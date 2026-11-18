@@ -74,7 +74,10 @@ function Team() {
 
   const pending = (invites.data ?? []).filter((row) => row.status === "pending");
   const seats = limit("max_members");
-  const used = (members.data?.length ?? usage("members")) + pending.length;
+  // One source for both cards, so "Members" and "Seats used" can never disagree.
+  const memberCount = members.data?.length ?? usage("members");
+  const used = memberCount + pending.length;
+  const ready = Boolean(members.data) && (!canManage || Boolean(invites.data));
 
   return (
     <>
@@ -83,7 +86,7 @@ function Team() {
         description="Who has access to this workspace, and what they can do."
         actions={
           canManage && (
-            <Btn variant="primary" onClick={() => setInviteOpen(true)} disabled={used >= seats}>
+            <Btn variant="primary" onClick={() => setInviteOpen(true)} disabled={!ready || used >= seats}>
               + Invite member
             </Btn>
           )
@@ -91,7 +94,7 @@ function Team() {
       />
 
       <Grid cols={3} className="mb-5">
-        <StatCard label="Members" value={formatNumber(members.data?.length ?? 0)} />
+        <StatCard label="Members" value={formatNumber(memberCount)} />
         <StatCard label="Pending invites" value={formatNumber(pending.length)} />
         <StatCard
           label="Seats used"
@@ -124,10 +127,14 @@ function Team() {
       )}
 
       {members.error && <ErrorState message={members.error.message} onRetry={members.reload} />}
+      {invites.error && <ErrorState message={invites.error.message} onRetry={invites.reload} />}
       {changeRole.error && <div className="mb-4"><ErrorState message={changeRole.error} /></div>}
 
       <div className="space-y-5">
-        <Panel title="Members" description={`${members.data?.length ?? 0} people in this workspace`}>
+        <Panel
+          title="Members"
+          description={`${formatNumber(memberCount)} ${memberCount === 1 ? "person" : "people"} in this workspace`}
+        >
           {members.loading && !members.data ? (
             <LoadingPanel rows={4} />
           ) : (

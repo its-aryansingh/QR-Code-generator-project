@@ -27,6 +27,12 @@ const ACTION_TONE: Record<string, Tone> = {
   login: "neutral",
 };
 
+const DOT_TONE: Record<string, string> = {
+  danger: "bg-red-400",
+  success: "bg-emerald-500",
+  warning: "bg-amber-500",
+};
+
 /** Turns a row into a sentence, so the log reads as a story rather than a
  *  table of enum values. */
 function describe(entry: AuditEntry) {
@@ -113,18 +119,17 @@ function AuditLog() {
         description="An immutable record of every change made in this workspace — who did what, from where, and when."
         actions={
           can("exports") && (
-            <Btn variant="outline" loading={exportCsv.busy} onClick={() => exportCsv.run()}>
+            <Btn variant="outline" loading={exportCsv.busy} onClick={() => exportCsv.run()} disabled={!data}>
               Export CSV
             </Btn>
           )
         }
       />
 
-      {error && <ErrorState message={error.message} onRetry={reload} />}
       {exportCsv.error && <div className="mb-4"><ErrorState message={exportCsv.error} /></div>}
 
       <Panel bodyClassName="p-4">
-        <div className="mb-4 flex flex-col gap-2 lg:flex-row">
+        <fieldset disabled={Boolean(error)} className="mb-4 flex min-w-0 flex-col gap-2 disabled:opacity-50 lg:flex-row">
           <SearchInput
             value={search}
             onChange={setSearch}
@@ -132,7 +137,7 @@ function AuditLog() {
             className="lg:max-w-sm lg:flex-1"
           />
           <div className="flex flex-wrap gap-2">
-            <Select value={action} onChange={(e) => { setAction(e.target.value); setPage(1); }} className="w-auto min-w-32">
+            <Select value={action} aria-label="Filter by action" onChange={(e) => { setAction(e.target.value); setPage(1); }} className="w-auto min-w-32">
               <option value="">Any action</option>
               {(data?.actions ?? []).map((value) => (
                 <option key={value} value={value} className="capitalize">
@@ -140,7 +145,7 @@ function AuditLog() {
                 </option>
               ))}
             </Select>
-            <Select value={resource} onChange={(e) => { setResource(e.target.value); setPage(1); }} className="w-auto min-w-32">
+            <Select value={resource} aria-label="Filter by resource" onChange={(e) => { setResource(e.target.value); setPage(1); }} className="w-auto min-w-32">
               <option value="">Any resource</option>
               {(data?.resources ?? []).map((value) => (
                 <option key={value} value={value} className="capitalize">
@@ -148,7 +153,7 @@ function AuditLog() {
                 </option>
               ))}
             </Select>
-            <Select value={days} onChange={(e) => { setDays(e.target.value); setPage(1); }} className="w-auto min-w-32">
+            <Select value={days} aria-label="Time range" onChange={(e) => { setDays(e.target.value); setPage(1); }} className="w-auto min-w-32">
               <option value="">All time</option>
               <option value="1">Last 24 hours</option>
               <option value="7">Last 7 days</option>
@@ -166,9 +171,11 @@ function AuditLog() {
               </Btn>
             )}
           </div>
-        </div>
+        </fieldset>
 
-        {loading && !data ? (
+        {error ? (
+          <ErrorState message={error.message} onRetry={reload} />
+        ) : loading && !data ? (
           <LoadingPanel rows={8} />
         ) : data && data.items.length ? (
           <>
@@ -176,14 +183,8 @@ function AuditLog() {
               {data.items.map((entry) => (
                 <li key={entry.id} className="relative flex gap-3 py-3 pl-5">
                   <span
-                    className="absolute -left-[5px] top-[22px] size-2.5 rounded-full border-2 border-zinc-950"
-                    style={{
-                      background:
-                        ACTION_TONE[entry.action] === "danger" ? "#e66767"
-                        : ACTION_TONE[entry.action] === "success" ? "#199e70"
-                        : ACTION_TONE[entry.action] === "warning" ? "#c98500"
-                        : "#52525b",
-                    }}
+                    aria-hidden
+                    className={`absolute -left-[5px] top-[22px] size-2.5 rounded-full border-2 border-zinc-950 ${DOT_TONE[ACTION_TONE[entry.action] ?? "neutral"] ?? "bg-zinc-500"}`}
                   />
                   <Avatar
                     name={entry.user?.name}
@@ -193,7 +194,7 @@ function AuditLog() {
                   />
                   <div className="min-w-0 flex-1">
                     <p className="text-sm text-zinc-200">{describe(entry)}</p>
-                    <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-600">
+                    <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-400">
                       <Badge tone={ACTION_TONE[entry.action] ?? "neutral"}>
                         {entry.action.replace(/_/g, " ")}
                       </Badge>
