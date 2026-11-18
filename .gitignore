@@ -52,6 +52,32 @@ Thumbs.db
 # Docker
 .docker/
 
+# Local only: kept on the developer's machine, never pushed.
+# Paths are anchored to the repo root so backend/apps and frontend/src/app/api stay tracked.
+/reference/
+/docs/
+/apps/
+/packages/
+/package.json
+/pnpm-lock.yaml
+/pnpm-workspace.yaml
+/turbo.json
+/api/
+/tools/
+/deploy/
+/.do/
+/Makefile
+/DEPLOYMENT.md
+
+# AI agent instructions and coordination files
+GEMINI.md
+CLAUDE.md
+AGENTS.md
+COORDINATION.md
+plan.md
+.githooks/
+.antigravitycli/
+
 # Scratch & One-off files
 patch.py
 verify_*.ps1
