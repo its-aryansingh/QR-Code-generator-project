@@ -1,119 +1,70 @@
-# QRit — QR Code Generator SaaS
+# QRit
 
-A full-stack SaaS for generating, managing, and tracking QR codes. Built with Django REST Framework and Next.js.
+A QR code platform: dynamic QR codes, scan analytics, campaigns, lead capture, teams and workspaces.
 
-![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
-![Django](https://img.shields.io/badge/Django-092E20?style=for-the-badge&logo=django&logoColor=white)
-![Next.js](https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=next.js&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)
+| Folder | What it is |
+|---|---|
+| `backend/` | Django 6.1 API on Python 3.13+, managed with [uv](https://docs.astral.sh/uv/). PostgreSQL, Redis, procrastinate workers. |
+| `frontend/` | Next.js 16 dashboard and marketing site (React 19, Tailwind, light/dark themes). |
 
-## Stack
+## Run locally
 
-- **Backend** — Django 4.2, Django REST Framework, PostgreSQL
-- **Auth** — Custom JWT (PyJWT + bcrypt)
-- **QR** — qrcode[pil]
-- **Payments** — Stripe
-- **Frontend** — Next.js 16, TypeScript, Tailwind CSS, ShadCN
-- **State** — Zustand
-
-## Getting Started
-
-### With Docker
+### Backend with Docker
 
 ```bash
-docker-compose up -d
+docker compose up -d --build
+docker compose run --rm api python manage.py migrate
 ```
 
-App runs at http://localhost:3000, API at http://localhost:8084.
+This starts PostgreSQL, Redis, Mailpit (mail UI on http://localhost:8025) and MinIO, plus:
+- the API on http://localhost:8080
+- the short-link redirect service on http://localhost:8090
+- the background worker
 
-### Local Development
+### Backend without Docker
 
-**Database:**
-```bash
-docker run -d --name qrapp-db \
-  -e POSTGRES_USER=postgres \
-  -e POSTGRES_PASSWORD=postgres \
-  -e POSTGRES_DB=qrapp \
-  -p 5432:5432 \
-  postgres:16-alpine
-```
+You need PostgreSQL 17 or later and, optionally, Redis.
 
-**Backend:**
 ```bash
 cd backend
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-cp .env.example .env
-python manage.py migrate
-python manage.py runserver 0.0.0.0:8084
+uv sync
+cp ../.env.example .env     # then point DATABASE_URL at your database
+uv run python manage.py migrate
+uv run python manage.py runserver 8080
 ```
 
-**Frontend:**
+### Frontend
+
 ```bash
 cd frontend
+cp .env.example .env.local
 npm install
 npm run dev
 ```
 
-Frontend: http://localhost:3000 | API: http://localhost:8084
+The app runs on http://localhost:3000. The browser calls `/api/v1` on the app's own origin, and the Next.js server forwards those calls to `BACKEND_INTERNAL_URL` (default `http://127.0.0.1:8080`). Leave `NEXT_PUBLIC_API_URL` unset. If you point it somewhere else, the dashboard bypasses the proxy and calls that server directly.
 
-## Project Structure
+## Checks
 
-```
-qr_code_project/
-├── backend/
-│   ├── api/
-│   │   ├── models.py
-│   │   ├── urls.py
-│   │   ├── views/
-│   │   └── utils/
-│   ├── qrapp/
-│   │   └── settings.py
-│   ├── manage.py
-│   └── requirements.txt
-├── frontend/
-│   └── src/
-│       ├── app/
-│       ├── components/
-│       ├── lib/
-│       └── types/
-├── docker-compose.yml
-└── render.yaml
+CI (`.github/workflows/ci.yml`) runs these backend checks on every pull request:
+
+```bash
+cd backend
+uv run ruff check . && uv run ruff format --check .
+uv run mypy
+uv run python manage.py makemigrations --check --dry-run
+uv run pytest -n auto      # needs DATABASE_URL pointing at PostgreSQL
 ```
 
-## Environment Variables
+Before opening a pull request that touches the frontend, run `npm run typecheck` and `npm run build`.
 
-**Backend** (`backend/.env`):
-```env
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/qrapp
-JWT_SECRET=your-secret
-STRIPE_SECRET_KEY=
-STRIPE_WEBHOOK_SECRET=
-APP_BASE_URL=http://localhost:3000
-API_BASE_URL=http://localhost:8084
-```
+## Deploy
 
-**Frontend** (`frontend/.env.local`):
-```env
-NEXT_PUBLIC_API_URL=http://localhost:8084/api/v1
-```
+Railway runs two services from this repository:
+- **Backend:** root directory `backend`, built from `backend/Dockerfile`.
+- **Frontend:** root directory `frontend`, built from `frontend/Dockerfile`. Set `BACKEND_INTERNAL_URL` to the backend's private address.
 
-## API
-
-Base URL: `/api/v1/`
-
-| Method | Endpoint | Auth |
-|--------|----------|------|
-| POST | `/auth/register` | — |
-| POST | `/auth/login` | — |
-| POST | `/auth/refresh` | Refresh token |
-| GET/PUT | `/auth/me` | JWT |
-| POST | `/qr/generate` | JWT |
-| GET | `/qr/history` | JWT |
-| GET/PUT/DELETE | `/qr/<id>` | JWT |
-| POST | `/public/generate` | — |
-| GET | `/analytics/dashboard` | JWT |
+`.env.example` (backend) and `frontend/.env.example` list every setting. Production refuses the placeholder secrets.
 
 ## License
 

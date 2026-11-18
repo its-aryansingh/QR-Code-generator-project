@@ -2,7 +2,10 @@
 
 Plan §6.1 rule 1, 2, 5 & §6.4:
 Verifies table names, column names, constraints, RLS policies, and Plan §6.4 deltas
-between the reference Go migrations (reference/go-v2/db/migrations/00001..00007) and Django models.
+between the Go v2 migrations 00001..00007 and Django models.
+
+The Go source isn't in this repository, so fixtures/go_schema holds verbatim
+copies of those seven migrations; they are the frozen schema contract.
 """
 
 import re
@@ -13,14 +16,7 @@ from django.apps import apps
 
 
 def get_reference_migrations_dir() -> Path:
-    # Walk up to repo root
-    cwd = Path(__file__).resolve().parent
-    while cwd.parent != cwd:
-        candidate = cwd / "reference" / "go-v2" / "db" / "migrations"
-        if candidate.is_dir():
-            return candidate
-        cwd = cwd.parent
-    raise FileNotFoundError("Could not find reference/go-v2/db/migrations directory")
+    return Path(__file__).resolve().parent / "fixtures" / "go_schema"
 
 
 def parse_go_schema() -> dict[str, dict[str, Any]]:
